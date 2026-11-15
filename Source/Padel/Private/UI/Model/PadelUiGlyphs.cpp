@@ -15,7 +15,7 @@ namespace Padel::Ui
 			std::string_view Switch;
 		};
 
-		constexpr std::array<FKeyLabels, 16> Labels{{
+		constexpr std::array<FKeyLabels, 16> KeyLabelTable{{
 			{"Gamepad_FaceButton_Bottom", "A", "Cross", "B"},
 			{"Gamepad_FaceButton_Right", "B", "Circle", "A"},
 			{"Gamepad_FaceButton_Left", "X", "Square", "Y"},
@@ -74,7 +74,7 @@ namespace Padel::Ui
 
 	std::string GamepadKeyLabel(std::string_view KeyName, EPadFamily Family)
 	{
-		for (const FKeyLabels& Entry : Labels)
+		for (const FKeyLabels& Entry : KeyLabelTable)
 		{
 			if (Entry.Key != KeyName)
 			{

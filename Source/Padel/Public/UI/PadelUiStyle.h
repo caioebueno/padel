@@ -53,8 +53,8 @@ namespace PadelUiStyle
 		return FString(UTF8_TO_TCHAR(Utf8.c_str()));
 	}
 
-	inline std::string ToUtf8(const FString& Text)
+	inline std::string ToUtf8(const FString& Source)
 	{
-		return std::string(TCHAR_TO_UTF8(*Text));
+		return std::string(TCHAR_TO_UTF8(*Source));
 	}
 }
