@@ -139,7 +139,7 @@ void UPadelMenuWidget::FocusOption(int32 Index)
 {
 	if (FocusOrder.IsValidIndex(Index) && FocusOrder[Index])
 	{
-		FocusOrder[Index]->SetFocus();
+		FocusButton(FocusOrder[Index]);
 	}
 	else
 	{

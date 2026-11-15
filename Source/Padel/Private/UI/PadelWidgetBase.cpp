@@ -73,13 +73,21 @@ UButton* UPadelWidgetBase::MakeMenuButton(const FText& Label, UTextBlock** OutLa
 	return Button;
 }
 
+void UPadelWidgetBase::FocusButton(UButton* Button)
+{
+	if (Button && Button->GetOwningLocalPlayer())
+	{
+		Button->SetFocus();
+	}
+}
+
 void UPadelWidgetBase::FocusFirst()
 {
 	for (UButton* Button : FocusOrder)
 	{
 		if (Button && Button->IsVisible())
 		{
-			Button->SetFocus();
+			FocusButton(Button);
 			return;
 		}
 	}

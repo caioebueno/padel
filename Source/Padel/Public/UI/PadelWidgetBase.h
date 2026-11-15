@@ -34,6 +34,10 @@ protected:
 	/** Gives keyboard/gamepad focus to the first button, so menus work without a mouse. */
 	void FocusFirst();
 
+	// Gives a button keyboard focus when a local player owns this widget. Without one
+	// (headless automation tests) UWidget::SetFocus logs an error, so skip it there.
+	static void FocusButton(UButton* Button);
+
 	UPROPERTY()
 	TArray<TObjectPtr<UButton>> FocusOrder;
 

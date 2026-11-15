@@ -200,7 +200,7 @@ void UPadelHudWidget::OpenGoldenPrompt(int32 DefaultPlayerId, const FText& Confi
 	GoldenHint->SetText(ConfirmHint);
 	GoldenPrompt->SetVisibility(ESlateVisibility::Visible);
 	const int32 Index = DefaultPlayerId == GoldenChoices[1] ? 1 : 0;
-	GoldenButtons[Index]->SetFocus();
+	FocusButton(GoldenButtons[Index]);
 }
 
 void UPadelHudWidget::CloseGoldenPrompt()
