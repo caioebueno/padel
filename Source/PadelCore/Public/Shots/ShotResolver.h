@@ -1,6 +1,6 @@
 // GDD 5: turns a contact into an FShotIntent. Quality changes the intended values and
 // adds scatter; it never rolls "is this an error". Randomness only comes from the
-// FShotRng passed in, so a seeded match replays exactly (CLAUDE.md).
+// FPadelRng passed in, so a seeded match replays exactly (CLAUDE.md).
 
 #pragma once
 
@@ -9,14 +9,14 @@
 #include "Shots/ShotContext.h"
 #include "Shots/ShotIntent.h"
 #include "Shots/ShotLibrary.h"
-#include "Shots/ShotRng.h"
+#include "PadelRng.h"
 #include "Shots/ShotSelector.h"
 
 namespace Padel::Shots
 {
 	struct PADELCORE_API FShotResolver
 	{
-		static FShotIntent Resolve(const FShotContext& Context, const FShotLibrary& Library, FShotRng& Rng);
+		static FShotIntent Resolve(const FShotContext& Context, const FShotLibrary& Library, FPadelRng& Rng);
 
 		// The rating that drives error and spin: forehand or backhand rating, blended
 		// with Return on the return of serve, with the wrong-side penalty.
@@ -33,6 +33,6 @@ namespace Padel::Shots
 		static double StaminaFactor(double Stamina, const FShotModel& Model);
 
 		// GDD 5.1 Miss: a weak, random ball, often into the net or a short pop-up.
-		static FShotIntent Mishit(const FShotContext& Context, const FShotModel& Model, FShotRng& Rng);
+		static FShotIntent Mishit(const FShotContext& Context, const FShotModel& Model, FPadelRng& Rng);
 	};
 }

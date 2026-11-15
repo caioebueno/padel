@@ -43,7 +43,7 @@ namespace Padel::Shots
 	}
 	using namespace ShotResolverDetail;
 
-	FShotIntent FShotResolver::Resolve(const FShotContext& C, const FShotLibrary& Library, FShotRng& Rng)
+	FShotIntent FShotResolver::Resolve(const FShotContext& C, const FShotLibrary& Library, FPadelRng& Rng)
 	{
 		const FShotModel& Model = Library.Model;
 		const FShotChoice Choice = FShotSelector::Select(C, Library);
@@ -94,8 +94,8 @@ namespace Padel::Shots
 		{
 			Pull = C.ContactSide * Model.EarlyLatePullM;
 		}
-		const double Angle = Rng.NextUnit() * Tau;
-		const double R = std::sqrt(Rng.NextUnit()) * Radius;
+		const double Angle = Rng.NextDouble() * Tau;
+		const double R = std::sqrt(Rng.NextDouble()) * Radius;
 		Intent.Target = Add(Add(Aimed, Scale(RightAxis(C.TeamSign), Pull)), Vec(std::cos(Angle) * R, std::sin(Angle) * R, 0.0));
 		return Intent;
 	}
@@ -184,7 +184,7 @@ namespace Padel::Shots
 		return Lerp(Model.StaminaFactorAtZero, 1.0, Clamp(Stamina / Model.StaminaFullAbove, 0.0, 1.0));
 	}
 
-	FShotIntent FShotResolver::Mishit(const FShotContext& C, const FShotModel& Model, FShotRng& Rng)
+	FShotIntent FShotResolver::Mishit(const FShotContext& C, const FShotModel& Model, FPadelRng& Rng)
 	{
 		FShotIntent Intent = BaseIntent(C, EShotType::Mishit, ETimingGrade::Miss);
 		Intent.SpeedMps = Rng.Range(Model.MishitSpeedMinKmh, Model.MishitSpeedMaxKmh) / 3.6;
@@ -192,7 +192,7 @@ namespace Padel::Shots
 		const double Across = Rng.Range(-Model.MishitLateralMaxM, Model.MishitLateralMaxM);
 		Intent.Target = Vec(-C.TeamSign * Depth, Across, 0.0);
 		Intent.AimedTarget = Intent.Target;
-		if (Rng.NextUnit() < Model.MishitPopupChance)
+		if (Rng.NextDouble() < Model.MishitPopupChance)
 		{
 			Intent.ApexHeightM = Rng.Range(Model.MishitPopupApexMinM, Model.MishitPopupApexMaxM);
 		}

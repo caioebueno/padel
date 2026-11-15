@@ -60,7 +60,7 @@ namespace Padel::Shots
 		{
 			return;
 		}
-		const std::size_t Pick = static_cast<std::size_t>(Rng.NextUnit() * static_cast<double>(Pool.size()));
+		const std::size_t Pick = static_cast<std::size_t>(Rng.NextDouble() * static_cast<double>(Pool.size()));
 		const FBallMachineFeed& Feed = *Pool[Pick < Pool.size() ? Pick : Pool.size() - 1];
 		// The data is written for a player on +X; mirror for Team B.
 		const double S = PlayerTeamSign;

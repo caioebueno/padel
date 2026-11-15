@@ -8,7 +8,7 @@
 
 #include "Shots/BallMachineFeed.h"
 #include "Shots/PracticeBall.h"
-#include "Shots/ShotRng.h"
+#include "PadelRng.h"
 
 #include <string>
 #include <vector>
@@ -43,7 +43,7 @@ namespace Padel::Shots
 		std::vector<FBallMachineFeed> Feeds;
 		std::vector<std::string> Drills;
 		double PlayerTeamSign = 1.0;
-		FShotRng Rng;
+		FPadelRng Rng;
 		std::size_t DrillIndex = 0;
 		double WaitS = 0.0;
 		bool bPaused = false;

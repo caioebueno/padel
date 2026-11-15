@@ -171,7 +171,7 @@ TEST_CASE("Shots.Resolve: perfect timing scatters less and hits faster than late
 {
 	FFixture F;
 	FShotContext C = F.Context(EShotButton::Drive, 0.9);
-	FShotRng Rng(1);
+	FPadelRng Rng(1);
 	C.TimingOffsetS = 0.0;
 	const FShotIntent Perfect = FShotResolver::Resolve(C, F.Lib, Rng);
 	C.TimingOffsetS = 0.15;
@@ -188,7 +188,7 @@ TEST_CASE("Shots.Resolve: early pulls across the body, late pushes toward the co
 	F.Lib.Shots[static_cast<int>(EShotType::Drive)].BaseErrorM = 1e-9; // isolate the pull from scatter
 	FShotContext C = F.Context(EShotButton::Drive, 0.9);
 	C.ContactSide = 1.0; // ball on the player's right
-	FShotRng Rng(2);
+	FPadelRng Rng(2);
 	C.TimingOffsetS = -0.15;
 	const FShotIntent Early = FShotResolver::Resolve(C, F.Lib, Rng);
 	C.TimingOffsetS = 0.15;
@@ -203,7 +203,7 @@ TEST_CASE("Shots.Resolve: a miss is a weak mishit")
 	FFixture F;
 	FShotContext C = F.Context(EShotButton::Drive, 0.9);
 	C.TimingOffsetS = -0.3;
-	FShotRng Rng(3);
+	FPadelRng Rng(3);
 	const FShotIntent I = FShotResolver::Resolve(C, F.Lib, Rng);
 	CHECK(I.ShotType == EShotType::Mishit);
 	CHECK(I.TimingGrade == ETimingGrade::Miss);
@@ -254,7 +254,7 @@ TEST_CASE("Shots.Resolve: off-the-glass shots scatter more for a poor wall playe
 {
 	FFixture F;
 	FShotContext C = F.Context(EShotButton::Drive, 0.9);
-	FShotRng Rng(4);
+	FPadelRng Rng(4);
 	const double Clean = FShotResolver::Resolve(C, F.Lib, Rng).ScatterRadiusM;
 	C.bOffGlass = true;
 	F.Player.WallPlay = 1;
@@ -267,7 +267,7 @@ TEST_CASE("Shots.Resolve: Power raises speed, the main rating lowers scatter")
 {
 	FFixture F;
 	FShotContext C = F.Context(EShotButton::Drive, 0.9);
-	FShotRng Rng(5);
+	FPadelRng Rng(5);
 	F.Player.Power = 1;
 	F.Player.Drive = 1;
 	const FShotIntent Weak = FShotResolver::Resolve(C, F.Lib, Rng);
@@ -283,8 +283,8 @@ TEST_CASE("Shots.Resolve: same seed, same shot")
 {
 	FFixture F;
 	FShotContext C = F.Context(EShotButton::Drive, 0.9);
-	FShotRng A(42);
-	FShotRng B(42);
+	FPadelRng A(42);
+	FPadelRng B(42);
 	const FShotIntent First = FShotResolver::Resolve(C, F.Lib, A);
 	const FShotIntent Second = FShotResolver::Resolve(C, F.Lib, B);
 	CHECK(First.Target.X == Second.Target.X);
@@ -295,7 +295,7 @@ TEST_CASE("Shots.Resolve: lob uses the apex range by charge")
 {
 	FFixture F;
 	FShotContext C = F.Context(EShotButton::Lob, 0.8);
-	FShotRng Rng(6);
+	FPadelRng Rng(6);
 	C.Charge = 0.0;
 	CHECK(FShotResolver::Resolve(C, F.Lib, Rng).ApexHeightM == Approx(6.0));
 	C.Charge = 1.0;

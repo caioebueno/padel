@@ -16,7 +16,7 @@
 #include "Shots/PlayerMotion.h"
 #include "Shots/ShotContext.h"
 #include "Shots/ShotLibrary.h"
-#include "Shots/ShotRng.h"
+#include "PadelRng.h"
 #include "Shots/SwingPhase.h"
 
 #include <cstdint>
@@ -104,7 +104,7 @@ namespace Padel::Shots
 		const FPlayerRatings* Ratings = nullptr;
 		const FShotLibrary* Library = nullptr;
 		FPlayerMotion Motion;
-		FShotRng Rng;
+		FPadelRng Rng;
 
 		double NowS = 0.0;
 		FPlayerInputFrame Previous;
