@@ -7,6 +7,7 @@
 #pragma once
 
 #include "CourtSpec.h"
+#include "PadelCoreApi.h"
 
 #include <optional>
 #include <string>
@@ -62,9 +63,9 @@ namespace Padel::Court
 	};
 
 	// Every box of the placeholder court. Built once and cached.
-	const std::vector<FCourtBox>& BuildCourtLayout();
+	PADELCORE_API const std::vector<FCourtBox>& BuildCourtLayout();
 
 	// First colliding box hit by the segment Start -> End, if any. Starting inside a
 	// box does not count as a hit on that box.
-	std::optional<FRayHit> RaycastLayout(const std::vector<FCourtBox>& Layout, const FVec3& Start, const FVec3& End);
+	PADELCORE_API std::optional<FRayHit> RaycastLayout(const std::vector<FCourtBox>& Layout, const FVec3& Start, const FVec3& End);
 }

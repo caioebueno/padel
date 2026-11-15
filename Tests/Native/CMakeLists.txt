@@ -26,6 +26,8 @@ file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.c
 
 add_executable(padel_core_tests ${CORE_SOURCES} ${MODEL_SOURCES} ${TEST_SOURCES})
 target_include_directories(padel_core_tests PRIVATE ${CORE_DIR}/Public ${GAME_DIR}/Public ${REPO_ROOT}/ThirdParty/doctest)
+# The tests read the real tuning files under Data/.
+target_compile_definitions(padel_core_tests PRIVATE PADEL_REPO_ROOT="${REPO_ROOT}")
 
 if(MSVC)
   target_compile_options(padel_core_tests PRIVATE /W4 /WX)
