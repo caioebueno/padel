@@ -4,9 +4,11 @@ Owner: Agent 8 (QA). Updated each week. Caio plays, writes notes at the bottom, 
 
 ## How to run the build
 
-1. Install Godot 4.7.2-stable (see `README.md`).
-2. `git pull` on `main`, then open `project.godot` or run `godot --path .`.
-3. Use a gamepad if you have one; GDD section 7 has the controls.
+1. Install **Unreal Engine 5.8** from the Epic Games Launcher, and Xcode on the Mac (see `README.md`).
+2. `git pull` on `main`, then open `Padel.uproject`. Let it build the C++ modules when it asks.
+3. Press Play in the editor. Use a gamepad if you have one; GDD section 7 has the controls.
+
+If you can, also run `Tools/RunUnrealTests.sh` once: the cloud agents can't run the Unreal tests, so your Mac is where they run for now.
 
 ---
 
@@ -14,21 +16,23 @@ Owner: Agent 8 (QA). Updated each week. Caio plays, writes notes at the bottom, 
 
 ### What changed
 
-- Project setup is merged: the regulation court, the broadcast camera view, the input map, GUT tests and CI.
-- QA added contract tests: CI now fails if the engine's reason codes or `MatchEvents` signals drift from GDD 3.3 and 3.4, or if engine code uses the global RNG, the wall clock or Nodes.
+- The project moved to **Unreal Engine 5.8** (C++), with realistic art as the target. The setup is merged: the court built from engine cubes at regulation size, the broadcast camera, the input actions, native tests on Linux and Mac in CI.
+- The rule that a ball leaving the court without bouncing is "out direct" is now in the GDD.
+- QA added CI checks: a PR fails if the simulation's reason codes or match events drift from the GDD, if a rule has no test, or if the simulation code uses unseeded randomness, the clock, Unreal objects or Chaos physics.
 - The match engine, controls, AI, assets and UI are being built now. Nothing is playable yet.
 
 ### What to try
 
-1. Run the project. You should see the empty court from behind and above the near back glass.
-2. Does the camera height and angle feel like the broadcast view you want (GDD 9)? The ball and far players will need to read from here.
-3. Look at the court proportions: glass height, the 2 m step on the side glass, the door gaps, net height. Anything that looks off against a real court?
+1. Open the project on your Mac and press Play. You should see the placeholder court from the broadcast camera, behind and above the near back glass.
+2. Does it build and open without errors on the Mac? How long did the first build take?
+3. Does the camera height and angle feel like the TV view you want (GDD 9)?
+4. Do the court proportions look right: glass height, the 2 m step on the side glass, the door gaps, the net?
 
 ### Questions to answer after playing
 
+- Did the Mac build work first time? Anything you had to install or click through?
 - Is the camera too high, too low, or about right?
-- Does the court read as a padel court at a glance?
-- Anything in GDD section 13 (open decisions) you want to change before the engine and AI agents build on it?
+- Anything in GDD section 13 you want to change before the engine and AI agents build on it?
 
 ### Your notes
 
@@ -67,4 +71,4 @@ Use this once a full match is playable. Answer each one with yes, no, or a note.
 **Stability**
 - [ ] A full best-of-3 match from the main menu to the stats screen, gamepad only, with no crash or soft-lock.
 - [ ] The score was right every point, including golden points and tiebreaks.
-- [ ] 60 fps throughout.
+- [ ] 60 fps throughout, on the Mac and on the Windows target PC.

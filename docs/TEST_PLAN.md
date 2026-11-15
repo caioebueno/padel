@@ -4,18 +4,23 @@ Owner: Agent 8 (QA). This is the checklist QA reviews PRs against. It turns GDD 
 
 Status key: **gate** = CI test already enforces it · **todo** = the owning agent writes the test with their feature · **QA** = QA runs or reviews it by hand.
 
-## 0. Gates already in CI (this PR)
+## 0. Gates already in CI
 
-| ID | Check | Test |
-|---|---|---|
-| G-01 | Every GDD 3.3 reason code (and `OUT_OF_COURT_WINNER`) is an enum key in `scripts/engine/types.gd` | `tests/unit/test_gdd_contracts.gd` (pending until `types.gd` exists) |
-| G-02 | Every reason code is referenced by at least one test | same file (pending until `types.gd` exists) |
-| G-03 | The `MatchEvents` autoload declares every GDD 3.4 signal with the right argument count | same file (pending until the autoload is registered) |
-| G-04 | `scripts/engine/` uses no global RNG, wall clock, frame delta, scene tree or `RigidBody3D` | `tests/unit/test_engine_hard_rules.gd` |
-| G-05 | No script in `scripts/engine/` is a Node | same file |
-| G-06 | Every script parses with untyped declarations as errors | `tools/check_scripts.sh` (Agent 1) |
+`Tools/QA/check_contracts.py`, run by `.github/workflows/qa.yml` on every PR. No engine needed. Its own self-tests (`Tools/QA/test_check_contracts.py`) plant a violation for each check, so a green job means the check works.
+
+| ID | Check |
+|---|---|
+| G-01 | Every GDD 3.3 reason code (and `OUT_OF_COURT_WINNER`) is an enumerator in `Source/PadelCore/Public/PadelTypes.h`, as `DOUBLE_BOUNCE` or `DoubleBounce`. Skipped until the file exists |
+| G-02 | Every reason code is mentioned by at least one native test in `Tests/Native/` (GDD 12 item 2). Skipped until `PadelTypes.h` exists |
+| G-03 | `UPadelMatchEvents` declares `On<Event>` for every GDD 3.4 event, and its delegate takes the GDD's number of parameters. Skipped until the class exists |
+| G-04 | `PadelCore` uses no global RNG (`FMath::Rand*`, `rand()`), no `std::random_device`, no `std::*_distribution` (their output differs between GCC, Clang and MSVC), no wall clock or frame time, no world, no UObjects, no Chaos |
+| G-05 | `PadelCore` includes only its own headers and the C++ standard library, except `PadelCoreModule.cpp` and `Private/Tests/` |
+| G-06 | Native tests pass on Linux and Apple Silicon (`Tools/RunNativeTests.sh`, Agent 1's `tests.yml`) |
+| G-07 | No `SetSimulatePhysics(true)` in `Source/Padel` unless marked `// QA-allow: cosmetic`: the ball never uses Chaos |
 
 The reason codes and event names are read from `docs/GDD.md`, so changing the GDD changes the gate. That is on purpose.
+
+**Where tests go.** Rule, score, serve and physics tests are native doctest tests in `Tests/Native/` (CLAUDE.md: that's the layer CI always runs). Anything needing the engine (actors, input, UI, the soak) is an Unreal Automation test named `Padel.<Area>.<Case>`, run with `Tools/RunUnrealTests.sh` on a Mac until a self-hosted runner exists.
 
 ## 1. Scoring (GDD 3.1) — Agent 2, `todo`
 
@@ -62,10 +67,10 @@ One test per reason code is the minimum (G-02 enforces it). These are the cases 
 |---|---|---|
 | R-01 | `DOUBLE_BOUNCE` | Second ground bounce on a side loses for that side, even after glass in between |
 | R-02 | Bounce, glass, glass, mesh, then played | Legal: walls any number of times after the bounce |
-| R-03 | `INTO_NET` | Shot doesn't cross Z = 0 above the net height at that X |
+| R-03 | `INTO_NET` | Shot doesn't cross X = 0 above the net height at that Y |
 | R-04 | Net cord rolls over in a rally | In play (not a let) |
 | R-05 | `WALL_BEFORE_BOUNCE` | Hits opponents' glass or mesh before their ground |
-| R-06 | Leaves the court without bouncing (straight out over the back wall, side mesh or door) | `OUT_DIRECT`, never `WALL_BEFORE_BOUNCE`. `WALL_BEFORE_BOUNCE` is only for hitting the opponents' glass or mesh first (decided 2026-11-15; the GDD 3.3 wording still needs updating) |
+| R-06 | Leaves the court without bouncing (over the walls, through a door, wide) | `OUT_DIRECT`. If it touches the opponents' wall on the way out, the first contact decides: wall first is `WALL_BEFORE_BOUNCE` (GDD 3.3 v0.2). Test both orders |
 | R-07 | `OUT_DIRECT` | Ceiling, light, post, outside run-off before bouncing in |
 | R-08 | `OWN_SIDE` | Bounces on own ground after own hit |
 | R-09 | Contrapared: own glass, then over, then opponents' ground | Legal |
@@ -74,7 +79,7 @@ One test per reason code is the minimum (G-02 enforces it). These are the cases 
 | R-12 | `BODY_HIT` | Ball touches a player before the second bounce, including a ball heading out |
 | R-13 | `DOUBLE_HIT` | Same player twice, and partner after partner |
 | R-14 | `NET_TOUCH` | Player, racket or clothing touches the net or post while live |
-| R-15 | `CROSSED` | Player crosses Z = 0 while live |
+| R-15 | `CROSSED` | Player crosses X = 0 while live |
 | R-16 | `RACKET_THROWN` | Contact from a racket not in hand |
 | R-17 | `OUT_OF_COURT_WINNER` | Bounces in, then leaves over the back wall ("by three") or through a door / over side mesh ("by four") = point to hitter (slice) |
 | R-18 | Ball comes back over on its own | Point to hitter (slice, no reach-over) |
@@ -85,7 +90,7 @@ One test per reason code is the minimum (G-02 enforces it). These are the cases 
 
 ## 4. Ball physics (GDD 2) — Agent 2, `todo`
 
-Physics tests are tolerance tests at a fixed step. Values come from `data/physics/*.tres`, so tests load the same resource instead of repeating numbers.
+Physics tests are tolerance tests at a fixed step. Values come from `Data/Physics.json`, so tests load the same file instead of repeating numbers. The core steps at a fixed 120 Hz.
 
 | ID | Case | Expect |
 |---|---|---|
@@ -97,6 +102,7 @@ Physics tests are tolerance tests at a fixed step. Values come from `data/physic
 | P-06 | Net | Ball hitting the tape loses most energy; can roll over |
 | P-07 | Determinism | Same seed and inputs give a bit-identical trajectory over 10 s, run twice in one process |
 | P-08 | Step independence | 120 Hz vs 240 Hz land within a few cm of each other (catches integrator bugs) |
+| P-12 | Cross-platform determinism | The same seeded trajectory gives the same landing point (to 1e-9 m) on the Linux/GCC and macOS/Clang CI runners: a native test prints a checksum and both jobs compare it with a value stored in the test |
 | P-09 | No tunnelling | A 140 km/h smash at the glass never passes through it at the fixed step |
 | P-10 | Energy | No bounce gains energy |
 | P-11 | Launch solver | Given a target, speed and spin, the ball lands within 5 cm of the target with zero scatter |
@@ -113,7 +119,7 @@ Physics tests are tolerance tests at a fixed step. Values come from `data/physic
 | C-06 | Formulas 5.3 | Max speed, spin, scatter, `power_mult` (1.0 to 80%, 1.6 at 100%), `pressure_mult` only on big points, stamina factor |
 | C-07 | Overhead context | Not set or charge < 60% → bandeja; RB forehand → víbora; RB backhand → bandeja with lower accuracy; set + 100% → smash; not set + 100% → bandeja with extra error |
 | C-08 | Wall shots | Scatter × `lerp(1.6, 0.9, WallPlay/99)`, Wall Play drives the windows |
-| C-09 | No hard-coded tuning | Every number above comes from a `.tres` (QA reviews) |
+| C-09 | No hard-coded tuning | Every number above comes from `Data/Shots.json` or `Data/Players.json` (QA reviews) |
 | C-10 | Every slice shot reachable | A ball-machine integration test produces each shot type at least once, and each off the glass |
 
 ## 6. AI (GDD 8) — Agent 4, `todo` and `QA`
@@ -122,10 +128,10 @@ Physics tests are tolerance tests at a fixed step. Values come from `data/physic
 |---|---|---|
 | A-01 | Prediction | AI's predicted interception matches the engine sim with Wall Play 99 and no noise |
 | A-02 | Determinism | Same seed, same match, twice: identical point log |
-| A-03 | Difficulty data | Easy/Medium/Hard load from `data/difficulty/` with the GDD table values |
+| A-03 | Difficulty data | Easy/Medium/Hard load from `Data/Difficulty.json` with the GDD table values |
 | A-04 | Partner commands | Each command changes the partner's target position and lasts until the point ends or the next command |
-| A-05 | Soak (GDD 12.2) | 100 AI-vs-AI matches, fixed seeds: zero stuck points, zero invariant failures. QA runs it on every engine or AI PR |
-| A-06 | Soak invariants | Each point ends with exactly one winner and a reason code; a point never lasts more than N simulated seconds; score always valid; serve order valid; ball never below Y = 0 or outside the walls without `ball_left_court` |
+| A-05 | Soak (GDD 12.2) | `Padel.Soak`: 100 AI-vs-AI matches, fixed seeds, zero stuck points, zero invariant failures. QA runs it on every engine or AI PR |
+| A-06 | Soak invariants | Each point ends with exactly one winner and a reason code; a point never lasts more than N simulated seconds; score always valid; serve order valid; ball never below Z = 0 or outside the walls without `ball_left_court` |
 | A-07 | Feel numbers (GDD 12.4) | On Medium: average rally 6–12 shots; ≥ 25% of points have a shot off the glass. The soak prints these |
 
 ## 7. UI and presentation (GDD 3.4, 9, 12) — Agent 7, `QA`
@@ -134,7 +140,9 @@ Physics tests are tolerance tests at a fixed step. Values come from `data/physic
 |---|---|---|
 | U-01 | Full flow on gamepad only | Main menu → quick match → stats screen, no keyboard or mouse |
 | U-02 | HUD matches the engine | Score bug equals `score_changed` after every point, including golden point and tiebreak |
-| U-03 | UI never writes engine state | UI and audio only listen to `MatchEvents` (QA reviews) |
+| U-03 | UI never writes simulation state | UI and audio only bind to `UPadelMatchEvents` delegates (QA reviews) |
+| U-05 | Logic in C++ | No gameplay, rule, AI or UI logic in Blueprints; Blueprints only pick assets (QA reviews) |
+| U-06 | Mac | Builds, runs in the editor and plays a match on Apple Silicon at 60 fps (GDD 1, 12 item 5) |
 | U-04 | Pause | Pausing mid-point and resuming changes nothing in the engine result (determinism) |
 
 ## 8. How QA reviews a PR
@@ -142,9 +150,9 @@ Physics tests are tolerance tests at a fixed step. Values come from `data/physic
 For every PR:
 
 1. Read the GDD sections the PR says it implements, and check the behaviour against them, not against the PR description.
-2. Check out the branch and run `tools/check_scripts.sh` and `tools/run_tests.sh` locally with Godot 4.7.2. Don't trust "tests pass" without running them.
+2. Check out the branch and run `Tools/RunNativeTests.sh` and `python3 Tools/QA/check_contracts.py`. Don't trust "tests pass" without running them. The QA cloud session has no Unreal install, so Unreal Automation tests (`Tools/RunUnrealTests.sh`) are run on Caio's Mac or a self-hosted runner, and the review says when they weren't run.
 3. For engine or AI PRs, run the soak once it exists.
-4. Check CLAUDE.md: folder ownership, static typing, no tuning numbers in code, signals not renamed, generated files not hand-edited, no assets or names from real padel or other games, `assets/manifest.csv` updated for new assets.
+4. Check CLAUDE.md: folder ownership; Epic naming; no tuning numbers in C++ (they go in `Data/*.json`); logic in C++, not Blueprints; `PadelCore` stays plain C++; metres-to-centimetres conversion only at the boundary; delegates not renamed; no Windows-only APIs or plugins without Mac support; binaries in Git LFS; no assets or names from real padel or other games; asset sources and licences recorded.
 5. Look for missing tests: every rule needs one, every bug fix gets one that would have caught it.
 6. Leave a review with exact file and line references and, for bugs, steps to reproduce. File an issue for anything outside the PR's scope.
 7. QA doesn't change gameplay code. When a test exposes a bug, the test goes in the QA PR (or a comment on the owner's PR) and the fix belongs to the owner.

@@ -1,0 +1,26 @@
+name: QA contracts
+
+# Owner: Agent 8 (QA). Checks the code against the GDD's reason codes and events and
+# against CLAUDE.md's determinism rules (see docs/TEST_PLAN.md section 0). No engine needed.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: GDD contracts and determinism rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Self-test the checker
+        run: python3 -m unittest Tools/QA/test_check_contracts.py
+      - name: Check contracts
+        run: python3 Tools/QA/check_contracts.py
