@@ -1,0 +1,32 @@
+[
+	{
+		"Name": "practice_default",
+		"DisplayName": "Practice player",
+		"Handedness": "Right",
+		"PreferredSide": "Left",
+		"HeightM": 1.82,
+		"Drive": 76,
+		"Backhand": 74,
+		"Volley": 78,
+		"Lob": 75,
+		"Overhead": 80,
+		"Bandeja": 79,
+		"Vibora": 78,
+		"WallPlay": 74,
+		"Touch": 72,
+		"Serve": 75,
+		"ReturnSkill": 74,
+		"Speed": 76,
+		"Acceleration": 77,
+		"Agility": 76,
+		"Power": 80,
+		"Reach": 78,
+		"Jump": 75,
+		"Stamina": 76,
+		"Anticipation": 75,
+		"Positioning": 74,
+		"Composure": 74,
+		"Consistency": 75,
+		"Teamwork": 74
+	}
+]

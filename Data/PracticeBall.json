@@ -1,0 +1,16 @@
+[
+	{
+		"Name": "default",
+		"GravityMps2": 9.81,
+		"RadiusM": 0.0325,
+		"GroundRestitution": 0.72,
+		"GroundTangentKeep": 0.75,
+		"GlassRestitution": 0.68,
+		"GlassTangentKeep": 0.9,
+		"MeshRestitution": 0.3,
+		"MeshTangentKeep": 0.4,
+		"NetRestitution": 0.1,
+		"DeadLingerS": 0.8,
+		"StepS": 0.008333333
+	}
+]

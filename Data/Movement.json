@@ -1,0 +1,27 @@
+[
+	{
+		"Name": "default",
+		"TopSpeedAt1Mps": 4.5,
+		"TopSpeedAt99Mps": 6.5,
+		"TimeToTopAt1S": 0.9,
+		"TimeToTopAt99S": 0.45,
+		"BrakeMult": 1.6,
+		"SprintSpeedBonus": 0.15,
+		"SprintDrainAt1": 0.1,
+		"SprintDrainAt99": 0.04,
+		"RegenAt1": 0.02,
+		"RegenAt99": 0.05,
+		"SprintMinStamina": 0.05,
+		"SplitMaxSpeedMps": 1.0,
+		"SplitWindowS": 0.15,
+		"SplitHopS": 0.18,
+		"SplitFirstStepAt1": 1.15,
+		"SplitFirstStepAt99": 1.6,
+		"SplitBoostS": 0.25,
+		"HomeDriftAt1": 0.15,
+		"HomeDriftAt99": 0.45,
+		"HomeArriveM": 0.15,
+		"WallMarginM": 0.3,
+		"NetMarginM": 0.35
+	}
+]

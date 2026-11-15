@@ -1,0 +1,62 @@
+#include "Data/PadelShotModelRow.h"
+
+Padel::Shots::FShotModel FPadelShotModelRow::ToCore() const
+{
+	Padel::Shots::FShotModel Out;
+	Out.ChargeTimeS = ChargeTimeS;
+	Out.PerfectErrorMult = PerfectErrorMult;
+	Out.PerfectSpeedBonus = PerfectSpeedBonus;
+	Out.GoodErrorMult = GoodErrorMult;
+	Out.EarlyLateErrorMult = EarlyLateErrorMult;
+	Out.EarlyLatePullM = EarlyLatePullM;
+	Out.WindowWiden = WindowWiden;
+	Out.WindowNarrow = WindowNarrow;
+	Out.ShadowSwingWindows = ShadowSwingWindows;
+	Out.IdealContactSideM = IdealContactSideM;
+	Out.IdealContactForwardM = IdealContactForwardM;
+	Out.PositionErrorPerM = PositionErrorPerM;
+	Out.PositionPowerLossPerM = PositionPowerLossPerM;
+	Out.PositionPowerMin = PositionPowerMin;
+	Out.RunningErrorMult = RunningErrorMult;
+	Out.RunningSpeedFraction = RunningSpeedFraction;
+	Out.ReachMinM = ReachMinM;
+	Out.ReachMaxM = ReachMaxM;
+	Out.ReachSlackM = ReachSlackM;
+	Out.OverheadReachAboveHeightM = OverheadReachAboveHeightM;
+	Out.JumpExtraHeightM = JumpExtraHeightM;
+	Out.SpeedPowerMin = SpeedPowerMin;
+	Out.SpeedPowerMax = SpeedPowerMax;
+	Out.SpinRatingMin = SpinRatingMin;
+	Out.SpinRatingMax = SpinRatingMax;
+	Out.ScatterRatingReduction = ScatterRatingReduction;
+	Out.PowerMultStartCharge = PowerMultStartCharge;
+	Out.PowerMultMax = PowerMultMax;
+	Out.PressureScale = PressureScale;
+	Out.ConsistencyScatterAt1 = ConsistencyScatterAt1;
+	Out.ConsistencyScatterAt99 = ConsistencyScatterAt99;
+	Out.WallScatterAt1 = WallScatterAt1;
+	Out.WallScatterAt99 = WallScatterAt99;
+	Out.StaminaFullAbove = StaminaFullAbove;
+	Out.StaminaFactorAtZero = StaminaFactorAtZero;
+	Out.SmashMinCharge = SmashMinCharge;
+	Out.SetMaxSpeedMps = SetMaxSpeedMps;
+	Out.SetMinAheadM = SetMinAheadM;
+	Out.UnsetFullChargeErrorMult = UnsetFullChargeErrorMult;
+	Out.BackhandOverheadErrorMult = BackhandOverheadErrorMult;
+	Out.MishitSpeedMinKmh = MishitSpeedMinKmh;
+	Out.MishitSpeedMaxKmh = MishitSpeedMaxKmh;
+	Out.MishitDepthMaxM = MishitDepthMaxM;
+	Out.MishitLateralMaxM = MishitLateralMaxM;
+	Out.MishitPopupChance = MishitPopupChance;
+	Out.MishitPopupApexMinM = MishitPopupApexMinM;
+	Out.MishitPopupApexMaxM = MishitPopupApexMaxM;
+	Out.ServeTossHeightM = ServeTossHeightM;
+	Out.ReturnWeight = ReturnWeight;
+	Out.WrongSideMult = WrongSideMult;
+	Out.PredictHorizonS = PredictHorizonS;
+	Out.PredictStepS = PredictStepS;
+	Out.HeightCostWeight = HeightCostWeight;
+	Out.OutOfBandCostWeight = OutOfBandCostWeight;
+	Out.TimeCostPerS = TimeCostPerS;
+	return Out;
+}
