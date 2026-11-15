@@ -1,0 +1,2 @@
+# Only needed for `generate` (the AI services). Everything else is the standard library + Blender.
+requests>=2.31

@@ -1,0 +1,9 @@
+{
+  "_doc": "Prompt template for AI-generated characters (GDD 10: realistic athletes, invented faces). {placeholders} come from the asset's 'vars' in config/assets.json. The negative part is appended to every prompt so every character stays original.",
+  "prompt": "Photorealistic full-body 3D game character of an invented adult padel player, {age}, {build} athletic build, {hair}, wearing a plain {kit_colour} technical short-sleeve sports shirt, plain athletic shorts and plain court shoes, standing in a T-pose with arms straight out, neutral relaxed face, realistic skin and fabric, PBR materials, even studio lighting",
+  "negative": "logo, text, letters, numbers, brand, emblem, badge, sponsor, watermark, celebrity, real person, likeness, cartoon, stylised, racket, ball, extra limbs, base, pedestal",
+  "provider_options": {
+    "meshy": {"ai_model": "latest", "pose_mode": "t-pose", "should_remesh": true, "topology": "triangle", "enable_pbr": true},
+    "tripo": {"model": "v3.1-20260211"}
+  }
+}

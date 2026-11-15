@@ -1,0 +1,171 @@
+{
+  "_doc": "Realistic material settings (GDD 10). Each entry becomes a material instance MI_<Group>_<Name> of one of the master materials that unreal/import_assets.py builds. Colours are sRGB hex. Change a kit or court colour here and re-run the import; never edit the material assets by hand.",
+  "court": {
+    "Turf": {
+      "master": "Turf",
+      "color": "#1d4f9c",
+      "roughness": 0.92,
+      "sand_color": "#c9b48a",
+      "sand_amount": 0.18
+    },
+    "Line": {
+      "master": "Opaque",
+      "color": "#eef0f2",
+      "roughness": 0.85
+    },
+    "Runoff": {
+      "master": "Opaque",
+      "color": "#2a2e35",
+      "roughness": 0.9
+    },
+    "Glass": {
+      "master": "Glass",
+      "color": "#e9f3f8",
+      "opacity": 0.08,
+      "roughness": 0.02,
+      "specular": 0.6,
+      "edge_tint": "#7fb6a8"
+    },
+    "Frame": {
+      "master": "Opaque",
+      "color": "#1e2126",
+      "roughness": 0.38,
+      "metallic": 1.0
+    },
+    "Mesh": {
+      "master": "Masked",
+      "color": "#24272c",
+      "roughness": 0.45,
+      "metallic": 1.0,
+      "mask": "T_WeldedMesh_Mask",
+      "tiling_m": 0.05
+    },
+    "Net": {
+      "master": "Masked",
+      "color": "#121316",
+      "roughness": 0.9,
+      "mask": "T_NetGrid_Mask",
+      "tiling_m": 0.045
+    },
+    "NetTape": {
+      "master": "Opaque",
+      "color": "#f1f2f3",
+      "roughness": 0.8
+    },
+    "LightPanel": {
+      "master": "Emissive",
+      "color": "#fff3e2",
+      "emission": 40.0
+    }
+  },
+  "ball": {
+    "Felt": {
+      "master": "Opaque",
+      "color": "#e8ff1f",
+      "roughness": 0.95,
+      "emission": 0.6,
+      "texture": "T_Ball_Felt",
+      "seam_color": "#fbfff2"
+    }
+  },
+  "racket_a": {
+    "Face": {
+      "master": "Opaque",
+      "color": "#efefe9",
+      "roughness": 0.35,
+      "specular": 0.6
+    },
+    "Frame": {
+      "master": "Opaque",
+      "color": "#16181d",
+      "roughness": 0.25,
+      "metallic": 0.1
+    },
+    "Accent": {
+      "master": "Opaque",
+      "color": "#ff6a13",
+      "roughness": 0.3
+    },
+    "Grip": {
+      "master": "Opaque",
+      "color": "#2a2d33",
+      "roughness": 0.95
+    }
+  },
+  "team_a": {
+    "Shirt": {
+      "master": "Opaque",
+      "color": "#c8321e",
+      "roughness": 0.85
+    },
+    "Shorts": {
+      "master": "Opaque",
+      "color": "#1a1c22",
+      "roughness": 0.85
+    },
+    "Trim": {
+      "master": "Opaque",
+      "color": "#f4f4f4",
+      "roughness": 0.85
+    },
+    "Skin": {
+      "master": "Opaque",
+      "color": "#b9805a",
+      "roughness": 0.55,
+      "specular": 0.35
+    },
+    "Hair": {
+      "master": "Opaque",
+      "color": "#21160f",
+      "roughness": 0.6
+    },
+    "Shoes": {
+      "master": "Opaque",
+      "color": "#eeeeee",
+      "roughness": 0.6
+    },
+    "Socks": {
+      "master": "Opaque",
+      "color": "#f8f8f8",
+      "roughness": 0.95
+    }
+  },
+  "team_b": {
+    "Shirt": {
+      "master": "Opaque",
+      "color": "#6f2fa3",
+      "roughness": 0.85
+    },
+    "Shorts": {
+      "master": "Opaque",
+      "color": "#ececec",
+      "roughness": 0.85
+    },
+    "Trim": {
+      "master": "Opaque",
+      "color": "#1a1c22",
+      "roughness": 0.85
+    },
+    "Skin": {
+      "master": "Opaque",
+      "color": "#dca684",
+      "roughness": 0.55,
+      "specular": 0.35
+    },
+    "Hair": {
+      "master": "Opaque",
+      "color": "#6b3f1c",
+      "roughness": 0.6
+    },
+    "Shoes": {
+      "master": "Opaque",
+      "color": "#2a2d33",
+      "roughness": 0.6
+    },
+    "Socks": {
+      "master": "Opaque",
+      "color": "#f8f8f8",
+      "roughness": 0.95
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "_doc": "Prompt template for AI-generated props (GDD 10: realistic, invented designs). {placeholders} come from the asset's 'vars' in config/assets.json.",
+  "prompt": "Photorealistic 3D game prop: {object}. Materials: {materials}. Real-world proportions, plain unbranded surfaces, PBR materials, isolated object, even studio lighting",
+  "negative": "logo, text, letters, numbers, brand, emblem, sponsor, watermark, person, cartoon, stylised, base, pedestal, ground plane",
+  "provider_options": {
+    "meshy": {"ai_model": "latest", "should_remesh": true, "topology": "triangle", "enable_pbr": true},
+    "tripo": {"model": "v3.1-20260211"}
+  }
+}

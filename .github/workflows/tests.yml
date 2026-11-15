@@ -60,6 +60,31 @@ jobs:
           bad=$(git ls-files -- '*.uasset' '*.umap' | git check-attr --stdin filter | grep -v ': filter: lfs$' || true)
           if [ -n "$bad" ]; then echo "::error::Not tracked by LFS:"; echo "$bad"; exit 1; fi
 
+  assets:
+    # Tools/AssetPipeline: config, prompt and provider tests, then every procedural
+    # asset built with Blender's bpy module and its FBX checked (GDD 2 sizes, budgets, bones).
+    name: Asset pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # bpy 5.3 is built for Python 3.13.
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: Tools/AssetPipeline/requirements-ci.txt
+      - name: Install bpy
+        run: |
+          # The X and GL libraries bpy links against, even when it renders nothing.
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libxrender1 libxxf86vm1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1 libegl1
+          pip install -r Tools/AssetPipeline/requirements-ci.txt
+      - name: Check the catalogue, palette and prompts
+        run: python Tools/AssetPipeline/pipeline.py check
+      - name: Run the asset pipeline tests
+        run: BLENDER_PYTHON="$(which python)" python -m unittest discover -v -s Tools/AssetPipeline/tests -t Tools/AssetPipeline
+
   unreal:
     # Unreal Automation tests need an engine install, which GitHub-hosted runners don't
     # have. This job runs only when a self-hosted runner labelled "unreal" exists and the

@@ -25,3 +25,8 @@ Plugins/*/Intermediate/
 # OS
 .DS_Store
 Thumbs.db
+
+# Asset pipeline: raw AI downloads and hand-off files (the manifest records their source)
+SourceArt/_raw/
+SourceArt/_incoming/
+__pycache__/
