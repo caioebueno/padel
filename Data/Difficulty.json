@@ -1,0 +1,41 @@
+[
+	{
+		"Name": "Easy",
+		"ReadDelayS": 0.28,
+		"TimingWeightPerfect": 0.1,
+		"TimingWeightGood": 0.55,
+		"TimingWeightEarlyLate": 0.3,
+		"TimingWeightMiss": 0.05,
+		"SafeShotBias": 0.7,
+		"TacticalWeight": 0.2,
+		"AimScatterMult": 1.4,
+		"AttributeOffset": -10,
+		"PredictionNoiseMult": 1.5
+	},
+	{
+		"Name": "Medium",
+		"ReadDelayS": 0.18,
+		"TimingWeightPerfect": 0.25,
+		"TimingWeightGood": 0.6,
+		"TimingWeightEarlyLate": 0.13,
+		"TimingWeightMiss": 0.02,
+		"SafeShotBias": 0.4,
+		"TacticalWeight": 0.6,
+		"AimScatterMult": 1.0,
+		"AttributeOffset": 0,
+		"PredictionNoiseMult": 1.0
+	},
+	{
+		"Name": "Hard",
+		"ReadDelayS": 0.11,
+		"TimingWeightPerfect": 0.6,
+		"TimingWeightGood": 0.33,
+		"TimingWeightEarlyLate": 0.06,
+		"TimingWeightMiss": 0.01,
+		"SafeShotBias": 0.2,
+		"TacticalWeight": 1.0,
+		"AimScatterMult": 0.8,
+		"AttributeOffset": 5,
+		"PredictionNoiseMult": 0.7
+	}
+]
