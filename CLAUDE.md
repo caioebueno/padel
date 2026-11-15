@@ -17,7 +17,7 @@ Current milestone: **the vertical slice** (GDD section 12). Don't build anything
 
 **Unreal Engine 5.8**, pinned in `Padel.uproject` (`EngineAssociation`) and in CI. C++20, the engine's default compiler per platform (MSVC on Windows, Xcode/Clang on macOS).
 
-**Platforms:** Windows is the first ship target, and **macOS on Apple Silicon is a supported dev and test platform from day one** (Caio develops and playtests on a Mac). Every change must build and pass tests on both. No Windows-only APIs, no DirectX-only features, and no plugins without Mac support. Shaders and materials must work on Metal. CI should run on both a Windows and a macOS runner. Plugins in use: Enhanced Input, CommonUI, Motion Matching / Pose Search (animation), Python Editor Script Plugin (asset import).
+**Platforms:** Windows is the first ship target, and **macOS on Apple Silicon is a supported dev and test platform from day one** (Caio develops and playtests on a Mac). Every change must build and pass tests on both. No Windows-only APIs, no DirectX-only features, and no plugins without Mac support. Shaders and materials must work on Metal. Before merging, run the Unreal tests on a Mac (`Tools/RunUnrealTests.sh`). Plugins in use: Enhanced Input, CommonUI, Motion Matching / Pose Search (animation), Python Editor Script Plugin (asset import).
 
 ## Folder layout
 
@@ -28,7 +28,8 @@ docs/        GDD.md, PLAYTEST.md, decisions/ (one short .md per decision)
 Source/
   PadelCore/        ball sim, court geometry, referee, score (plain C++, no UObjects); module tests in Private/Tests/
   Padel/
-    Gameplay/      player pawn, movement, shot system, input
+    Court/         APadelCourt, built at runtime from PadelCore's CourtSpec.h
+    Gameplay/      player pawn, movement, shot system, input (PadelInputConfig.cpp creates the IA_* actions and IMC_Match in C++)
     AI/            prediction, pair tactics, shot choice, difficulty
     UI/            HUD, menus, stats screen (UMG + CommonUI, logic in C++)
     Presentation/  camera, audio, replays, the UPadelMatchEvents subsystem and its listeners
@@ -37,7 +38,8 @@ Source/
 Content/Padel/     Maps/, Court/, Characters/, Animations/, UI/, Audio/, Data/ (imported DataTables)
 Data/              Shots.json, Players.json, Teams.json, Difficulty.json, Physics.json, Camera.json (the source of truth)
 Config/            DefaultEngine.ini, DefaultInput.ini, DefaultGame.ini
-Tools/             build and test scripts, the asset pipeline (Python, Blender, Unreal Python import)
+Tools/             build and test scripts (RunUnrealTests.sh), the asset pipeline (Python, Blender, Unreal Python import)
+Tests/Native/      plain C++ tests for PadelCore (CMake + doctest), outside Source/ so the engine build skips them
 ```
 
 ## Coordinates and units
@@ -55,7 +57,12 @@ Unreal's axes: Z up, X along the court's length, Y across its width, origin at t
 
 ## Tests
 
-Unreal Automation tests (`IMPLEMENT_SIMPLE_AUTOMATION_TEST` and Automation Spec), run headless. Every rule in GDD section 3 needs a test. Every bug fix gets a test that would have caught it. Tests are named `Padel.<Area>.<Case>`, e.g. `Padel.Referee.WallBeforeBounce`.
+Unreal Automation tests (`IMPLEMENT_SIMPLE_AUTOMATION_TEST` and Automation Spec), run headless. Every rule in GDD section 3 needs a test. Every bug fix gets a test that would have caught it. Two layers:
+
+- **Native tests (`Tests/Native/`, CMake + doctest):** test `PadelCore` without the engine. They run on GitHub's normal Linux runners on every PR. Every rule test belongs here, because this is the layer CI always runs.
+- **Unreal Automation tests:** for anything that needs the engine (actors, the court level, input, UI). Named `Padel.<Area>.<Case>`, e.g. `Padel.Court.WallCollision`. GitHub-hosted runners have no engine install, so these run with `Tools/RunUnrealTests.sh` on a Mac, or on a self-hosted runner if one is set up.
+
+Input Actions and `IMC_Match` are created in C++ from a binding table, not stored as `.uasset` files, so bindings stay diffable text.
 
 Exact commands: **TBD by the setup agent**. They will follow this shape:
 
@@ -67,7 +74,7 @@ UnrealEditor-Cmd Padel.uproject -ExecCmds="Automation RunTests Padel.; Quit" -un
 UnrealEditor-Cmd Padel.uproject -ExecCmds="Automation RunTests Padel.Soak; Quit" -unattended -nullrhi
 ```
 
-CI runs the tests on every PR. A PR merges only with green CI.
+CI runs the native tests on every PR. A PR merges only with green CI.
 
 ## Git and PRs
 
