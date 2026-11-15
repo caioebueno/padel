@@ -45,7 +45,7 @@ Real dimensions from the padel regulations. All units are metres.
 | Exits (doors) | One opening on each side of each half, at the net end of the side glass, about 2.0 wide (exact gap per court variant) |
 | Clear height above court | 8.0 for the indoor slice court (ceiling is a fault if hit) |
 
-**Coordinate system (all code uses this):** Unreal's own axes and units. Z is up and distances are in **centimetres** (this doc's tables are in metres for readability; multiply by 100 in code). The court is centred on the origin. Length runs along X (−1000 to +1000 cm), width along Y (−500 to +500 cm). The net is the plane X = 0. **Team A** (the human's team in the slice) plays the +X half at the start of the match. Ground is Z = 0.
+**Coordinate system (all code uses this):** Unreal's axes. Z is up. The court is centred on the origin. Length runs along X (−10 to +10 m), width along Y (−5 to +5 m). The net is the plane X = 0. **Team A** (the human's team in the slice) plays the +X half at the start of the match. Ground is Z = 0. The simulation core (`PadelCore`) works in **metres**, like this doc; the Unreal world is in **centimetres**, so positions are multiplied by 100 at the boundary.
 
 **Surfaces** each have their own bounce response (starting values, to be tuned in data files):
 
