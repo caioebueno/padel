@@ -65,7 +65,7 @@ One test per reason code is the minimum (G-02 enforces it). These are the cases 
 | R-03 | `INTO_NET` | Shot doesn't cross Z = 0 above the net height at that X |
 | R-04 | Net cord rolls over in a rally | In play (not a let) |
 | R-05 | `WALL_BEFORE_BOUNCE` | Hits opponents' glass or mesh before their ground |
-| R-06 | Straight out over the back wall without bouncing | `WALL_BEFORE_BOUNCE` or `OUT_DIRECT` as the GDD table says; pick one and test it, don't leave both |
+| R-06 | Leaves the court without bouncing (straight out over the back wall, side mesh or door) | `OUT_DIRECT`, never `WALL_BEFORE_BOUNCE`. `WALL_BEFORE_BOUNCE` is only for hitting the opponents' glass or mesh first (decided 2026-11-15; the GDD 3.3 wording still needs updating) |
 | R-07 | `OUT_DIRECT` | Ceiling, light, post, outside run-off before bouncing in |
 | R-08 | `OWN_SIDE` | Bounces on own ground after own hit |
 | R-09 | Contrapared: own glass, then over, then opponents' ground | Legal |
