@@ -55,6 +55,11 @@ jobs:
               print(f"::error::{e}")
           sys.exit(1 if errors else 0)
           PY
+      - name: Data/ is staged in packaged builds
+        # The game reads Data/*.json at runtime; without this a packaged build has no tuning data.
+        run: |
+          grep -qE '^\+DirectoriesToAlwaysStageAsNonUFS=\(Path="\.\./Data"\)' Config/DefaultGame.ini \
+            || { echo "::error::Config/DefaultGame.ini must stage ../Data as NonUFS"; exit 1; }
       - name: Binary assets must be in Git LFS
         run: |
           bad=$(git ls-files -- '*.uasset' '*.umap' | git check-attr --stdin filter | grep -v ': filter: lfs$' || true)
