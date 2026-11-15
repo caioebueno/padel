@@ -1,6 +1,6 @@
 # Game Design Document: 2v2 padel sim (working title "Padel Street")
 
-Status: **draft v0.1, waiting for Caio's approval**. Owner: Agent 0 (game designer).
+Status: **v0.2: engine switched to Unreal Engine 5, art direction realistic**. Owner: Agent 0 (game designer).
 Every agent reads this before building anything. When the code and this doc disagree, this doc wins until it is changed by a PR that Caio approves.
 
 Sections marked **[SLICE]** are in the first milestone. Everything else is later and is here so the slice is built in a way that won't block it.
@@ -20,7 +20,9 @@ An original 2v2 padel game with the depth and presentation of a modern football 
 
 **Originality rule (hard requirement).** No names, players, teams, tournaments, sponsors, logos, likenesses, UI layouts or assets from any existing game, sports league, tour or brand. All players, clubs and tournaments are invented. Before shipping a name, search it to make sure it isn't a real padel player, tour, club or racket brand.
 
-**Platform (assumed for the slice):** PC (Windows, macOS, Linux) with a gamepad, keyboard as a fallback. 60 fps on a mid-range laptop GPU.
+**Engine:** Unreal Engine 5 (C++ first, Blueprints only for thin presentation wiring). Chosen for a realistic, football-sim-level look and direct console support later.
+
+**Platform (assumed for the slice):** Windows PC with a gamepad, keyboard as a fallback. 60 fps at 1080p on a mid-range desktop GPU (an RTX 3060 class card). Consoles come after the slice.
 
 ---
 
@@ -43,7 +45,7 @@ Real dimensions from the padel regulations. All units are metres.
 | Exits (doors) | One opening on each side of each half, at the net end of the side glass, about 2.0 wide (exact gap per court variant) |
 | Clear height above court | 8.0 for the indoor slice court (ceiling is a fault if hit) |
 
-**Coordinate system (all code uses this):** Y is up. The court is centred on the origin. Length runs along Z (−10 to +10), width along X (−5 to +5). The net is the plane Z = 0. **Team A** (the human's team in the slice) plays the +Z half at the start of the match. Ground is Y = 0.
+**Coordinate system (all code uses this):** Unreal's own axes and units. Z is up and distances are in **centimetres** (this doc's tables are in metres for readability; multiply by 100 in code). The court is centred on the origin. Length runs along X (−1000 to +1000 cm), width along Y (−500 to +500 cm). The net is the plane X = 0. **Team A** (the human's team in the slice) plays the +X half at the start of the match. Ground is Z = 0.
 
 **Surfaces** each have their own bounce response (starting values, to be tuned in data files):
 
@@ -123,7 +125,7 @@ Partners hit alternately or not at all: only **one touch per team**, and either 
 
 ### 3.4 Referee events
 
-The engine emits a signal for each event so the UI, audio, replays and stats can listen without touching engine code. The event names below are the contract (Agent 2 owns them, Agent 7 consumes them):
+The match simulation broadcasts an event for each of these so the UI, audio, replays and stats can listen without touching simulation code. In Unreal they are multicast delegates on a `UPadelMatchEvents` world subsystem, named `On` + the event in PascalCase (`ball_bounced` becomes `OnBallBounced`). The event names below are the contract (Agent 2 owns them, Agent 7 consumes them):
 
 `serve_started(server_id)`, `serve_fault(reason)`, `serve_let()`, `ball_hit(player_id, shot_type, timing_grade, speed, spin)`, `ball_bounced(surface, half, position)` with `surface` in {`ground`, `glass`, `mesh`, `net`, `ceiling`}, `ball_left_court(position)`, `point_ended(winning_team, reason_code, last_hitter_id)`, `score_changed(score_snapshot)`, `game_won(team)`, `set_won(team)`, `match_won(team)`, `change_of_ends()`, `golden_point_started(receiving_team)`.
 
@@ -131,7 +133,7 @@ The engine emits a signal for each event so the UI, audio, replays and stats can
 
 ## 4. Shots [SLICE except where marked]
 
-Each shot is a data resource (`data/shots/<name>.tres`) with base speed range, base spin, base error, timing window widths, and a list of the attributes that drive it. No shot values are hard-coded.
+Each shot is a row in the shots data table (`Data/Shots.json`, imported as a DataTable) with base speed range, base spin, base error, timing window widths, and a list of the attributes that drive it. No shot values are hard-coded.
 
 | Shot | When it's available | Button (pad / keys) | Speed (km/h) | Spin | Intent | Key attributes |
 |---|---|---|---|---|---|---|
@@ -194,7 +196,7 @@ Let `S` be the shot's main attribute (0–1, from rating/99), `P` = Power/99, `C
 
 ## 6. Players and ratings [SLICE: 4 fixed players]
 
-Ratings run from 1 to 99, like a football sim. Each player is a resource (`data/players/<id>.tres`).
+Ratings run from 1 to 99, like a football sim. Each player is a row in `Data/Players.json`.
 
 ### 6.1 Attributes
 
@@ -277,7 +279,7 @@ Gamepad first; everything is reachable on a gamepad. Labels use the Xbox layout 
 
 **Player switching:** the human always controls the same player. There is no switching to the partner.
 
-**Rebinding** and dead-zone settings: post-slice. Agent 1 sets up the input map with these action names: `move_*`, `sprint`, `shot_drive`, `shot_lob`, `shot_overhead`, `shot_drop`, `mod_attack`, `mod_touch`, `cmd_net`, `cmd_back`, `cmd_middle`, `cmd_yours`, `pause`, `ui_*`.
+**Rebinding** and dead-zone settings: post-slice. Agent 1 sets these up with Enhanced Input, one Input Action each: `IA_Move`, `IA_Sprint`, `IA_ShotDrive`, `IA_ShotLob`, `IA_ShotOverhead`, `IA_ShotDrop`, `IA_ModAttack`, `IA_ModTouch`, `IA_CmdNet`, `IA_CmdBack`, `IA_CmdMiddle`, `IA_CmdYours`, `IA_Pause`, in one mapping context `IMC_Match` (menus use CommonUI's input routing).
 
 ---
 
@@ -299,7 +301,7 @@ Gamepad first; everything is reachable on a gamepad. Labels use the Xbox layout 
 
 **Prediction:** the AI uses the ball engine to simulate the ball forward (with the same deterministic code) and picks the reachable interception point, including rebounds off the glass. Wall Play adds noise to the predicted rebound.
 
-**Difficulty levels** (data files `data/difficulty/*.tres`):
+**Difficulty levels** (rows in `Data/Difficulty.json`):
 
 | | Easy | Medium | Hard |
 |---|---|---|---|
@@ -327,11 +329,13 @@ Gamepad first; everything is reachable on a gamepad. Labels use the Xbox layout 
 
 ## 10. Art direction
 
-**Default chosen: stylised realism** (see open decision 1). Believable proportions and real materials (glass, mesh, artificial grass with sand), but simplified shapes, clean colours and strong lighting, so it reads well from the high camera and is achievable with AI-generated and hand-built assets.
+**Decided: realistic, at the level of a modern football sim.** Real materials and lighting (Lumen), believable athletes, motion-captured movement, and TV-style presentation. The look to aim for is a televised indoor padel match.
 
-- **Readability first:** each team has one strong kit colour, and the ball is always the brightest thing on screen (bright yellow with a subtle trail at high speed). The glass is visible (reflections and edge highlights) but never hides the ball.
-- **Court:** one indoor club court for the slice. Blue playing surface, white lines, dark frame and mesh, warm overhead lights. Signage around the court uses invented brands only.
-- **Characters:** athletic, slightly stylised faces, no likeness of any real person. Rackets of invented designs.
+- **Readability first, even when realistic:** each team has one strong kit colour, and the ball is always the brightest thing on screen (bright yellow, with a subtle motion trail at high speed). The glass shows reflections and edge highlights but never hides the ball.
+- **Court:** one indoor club court for the slice, built to the dimensions in section 2. Blue artificial grass with visible sand, white lines, dark aluminium frame and mesh, tempered glass with real reflections, arena lighting. Signage around the court uses invented brands only.
+- **Characters:** realistic athletes built with MetaHuman (or an equivalent the asset agent picks), with invented faces that resemble no real person. Real sports clothing proportions and cloth, sweat and hair detail later. Rackets of invented designs.
+- **Animation:** motion capture for every swing and movement, with Motion Matching for locomotion so players move and plant their feet like real athletes.
+- **Performance budget:** realism must still hold 60 fps on the target PC; the broadcast camera's fixed angle helps (see section 9).
 - **UI:** a clean broadcast look: a compact score bug in one corner, big type for the score on change-overs.
 - **Audio:** the pop of the ball on the racket face, the thud and ring of the glass, the rattle of the mesh, shoes on sand, a small indoor crowd. Sound is part of readability (the glass and the mesh must sound different).
 
@@ -372,8 +376,8 @@ The existing browser prototype in this project (`padel-street/index.html`, a neo
 
 I've picked a default for each so work isn't blocked. Change any of them and the doc gets updated.
 
-1. **Art direction.** Stylised realism (default) or full realism? Stylised is cheaper, reads better from the high camera, and fits AI-generated assets.
+1. **Art direction.** ~~Stylised or realistic?~~ Decided: realistic, in Unreal Engine 5 (section 10).
 2. **Name and brand.** Does the sim use the "Padel Street" name from the arcade prototype, or should it get its own name? (Default: "Padel Street" as a working title only.)
-3. **Platform.** PC with a gamepad first (default), or also Steam Deck, consoles or mobile from the start? Mobile would change the controls a lot.
+3. **Platform.** Windows PC with a gamepad first (default). Which consoles after the slice? Unreal supports them directly, but each needs a platform developer account.
 4. **Partner commands.** Are these four right: go to the net, stay back, take the middle, "yours"? (Default: yes.)
 5. **Slice match length.** Best of 3 with golden point (default), or 1 set to keep test matches short? Both are options; this sets what the main menu offers first.
