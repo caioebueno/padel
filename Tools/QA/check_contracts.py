@@ -8,6 +8,8 @@ Checks (IDs match docs/TEST_PLAN.md section 0):
   G-02  every reason code is mentioned by at least one native test (Tests/Native/)
   G-03  UPadelMatchEvents declares On<Event> for every GDD 3.4 event, with the GDD's
         parameter count
+  G-08  PadelCore's IMatchEventListener has a virtual On<Event> for every GDD 3.4 event,
+        with the GDD's parameter count
   G-04  PadelCore has no global RNG, wall clock, frame time, UObjects or Chaos, and no
         std:: distributions (their output differs between GCC, Clang and MSVC, which
         would break replays and cross-platform determinism)
@@ -210,6 +212,48 @@ def check_match_events(root: Path, events: dict[str, int], report: Report) -> No
         report.ok("G-03", f"UPadelMatchEvents matches all {len(events)} GDD 3.4 events")
 
 
+def count_params(params: str) -> int:
+    params = params.strip()
+    if not params or params == "void":
+        return 0
+    depth, count = 0, 1
+    for ch in params:
+        if ch in "<([{":
+            depth += 1
+        elif ch in ">)]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            count += 1
+    return count
+
+
+def check_listener(root: Path, events: dict[str, int], report: Report) -> None:
+    found = None
+    for path in source_files(root, "Source/PadelCore"):
+        code = strip_comments_and_strings(path.read_text(encoding="utf-8"))
+        if re.search(r"\bclass\s+(\w+_API\s+)?IMatchEventListener\b", code):
+            found = (path, code)
+            break
+    if found is None:
+        report.skip("G-08", "IMatchEventListener not added yet (Agent 2)")
+        return
+    path, code = found
+    rel = path.relative_to(root)
+    bad = 0
+    for event, count in events.items():
+        method = "On" + pascal(event)
+        m = re.search(rf"\bvirtual\s+void\s+{method}\s*\(([^)]*)\)", code)
+        if not m:
+            report.error("G-08", f"{rel}: IMatchEventListener has no virtual {method} (GDD 3.4 {event})")
+            bad += 1
+        elif count_params(m.group(1)) != count:
+            report.error("G-08", f"{rel}: {method} takes {count_params(m.group(1))} parameters, "
+                         f"GDD 3.4 {event} has {count}")
+            bad += 1
+    if not bad:
+        report.ok("G-08", f"IMatchEventListener matches all {len(events)} GDD 3.4 events")
+
+
 def check_core_rules(root: Path, report: Report) -> None:
     files = source_files(root, "Source/PadelCore")
     for path in files:
@@ -257,6 +301,7 @@ def run(root: Path) -> Report:
         check_reason_enum(root, codes, report)
         check_reason_tests(root, codes, report)
         check_match_events(root, events, report)
+        check_listener(root, events, report)
     check_core_rules(root, report)
     check_no_chaos_ball(root, report)
     return report

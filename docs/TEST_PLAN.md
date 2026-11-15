@@ -17,6 +17,7 @@ Status key: **gate** = CI test already enforces it · **todo** = the owning agen
 | G-05 | `PadelCore` includes only its own headers and the C++ standard library, except `PadelCoreModule.cpp` and `Private/Tests/` |
 | G-06 | Native tests pass on Linux and Apple Silicon (`Tools/RunNativeTests.sh`, Agent 1's `tests.yml`) |
 | G-07 | No `SetSimulatePhysics(true)` in `Source/Padel` unless marked `// QA-allow: cosmetic`: the ball never uses Chaos |
+| G-08 | `PadelCore`'s `IMatchEventListener` has a virtual `On<Event>` for every GDD 3.4 event with the GDD's parameter count. Skipped until it exists |
 
 The reason codes and event names are read from `docs/GDD.md`, so changing the GDD changes the gate. That is on purpose.
 

@@ -72,6 +72,7 @@ class Checks(unittest.TestCase):
         self.assertEqual(report.errors, [])
         self.assertTrue(any("G-01] skipped" in n for n in report.notes))
         self.assertTrue(any("G-03] skipped" in n for n in report.notes))
+        self.assertTrue(any("G-08] skipped" in n for n in report.notes))
 
     def test_reason_enum_and_tests(self) -> None:
         codes = all_codes()
@@ -109,6 +110,22 @@ class Checks(unittest.TestCase):
         self.assertEqual(len(errors), 2, errors)
         self.assertTrue(any("OnServeLet" in e for e in errors))
         self.assertTrue(any("OnPointEnded takes 4" in e for e in errors))
+
+    def test_event_listener(self) -> None:
+        methods = []
+        for name, count in all_events().items():
+            if name == "golden_point_started":
+                continue  # missing on purpose
+            n = count - 1 if name == "ball_hit" else count  # wrong arity on purpose
+            args = ", ".join(f"const TMap<int, int>& /*A{i}*/" for i in range(n))
+            methods.append(f"\t\tvirtual void On{cc.pascal(name)}({args}) {{}}")
+        self.f.write("Source/PadelCore/Public/MatchEventListener.h",
+                     "namespace Padel\n{\n\tclass IMatchEventListener\n\t{\n\tpublic:\n"
+                     + "\n".join(methods) + "\n\t};\n}\n")
+        errors = self.f.errors("G-08")
+        self.assertEqual(len(errors), 2, errors)
+        self.assertTrue(any("OnGoldenPointStarted" in e for e in errors))
+        self.assertTrue(any("OnBallHit takes 4" in e for e in errors))
 
     def test_core_banned_apis(self) -> None:
         self.f.write("Source/PadelCore/Private/Bad.cpp", """\
