@@ -15,7 +15,9 @@ Current milestone: **the vertical slice** (GDD section 12). Don't build anything
 
 ## Engine and version
 
-**Unreal Engine 5.8**, pinned in `Padel.uproject` (`EngineAssociation`) and in CI. C++20, the engine's default compiler per platform (MSVC on Windows). Plugins in use: Enhanced Input, CommonUI, Motion Matching / Pose Search (animation), Python Editor Script Plugin (asset import).
+**Unreal Engine 5.8**, pinned in `Padel.uproject` (`EngineAssociation`) and in CI. C++20, the engine's default compiler per platform (MSVC on Windows, Xcode/Clang on macOS).
+
+**Platforms:** Windows is the first ship target, and **macOS on Apple Silicon is a supported dev and test platform from day one** (Caio develops and playtests on a Mac). Every change must build and pass tests on both. No Windows-only APIs, no DirectX-only features, and no plugins without Mac support. Shaders and materials must work on Metal. CI should run on both a Windows and a macOS runner. Plugins in use: Enhanced Input, CommonUI, Motion Matching / Pose Search (animation), Python Editor Script Plugin (asset import).
 
 ## Folder layout
 

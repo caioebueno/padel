@@ -22,7 +22,7 @@ An original 2v2 padel game with the depth and presentation of a modern football 
 
 **Engine:** Unreal Engine 5 (C++ first, Blueprints only for thin presentation wiring). Chosen for a realistic, football-sim-level look and direct console support later.
 
-**Platform (assumed for the slice):** Windows PC with a gamepad, keyboard as a fallback. 60 fps at 1080p on a mid-range desktop GPU (an RTX 3060 class card). Consoles come after the slice.
+**Platform (assumed for the slice):** Windows PC is the first ship target, with a gamepad and keyboard as a fallback: 60 fps at 1080p on a mid-range desktop GPU (an RTX 3060 class card). **macOS on Apple Silicon is a supported development and test platform from day one**: the project must build, run in the editor, pass its tests and play a match on an M-series Mac, at 60 fps at 1080p on an M2 Pro class machine (Metal, with lower Lumen settings if needed). Consoles come after the slice.
 
 ---
 
@@ -366,7 +366,7 @@ The existing browser prototype in this project (`padel-street/index.html`, a neo
 2. **The score is always right:** at least 30 rule tests pass (one or more for every row in section 3), and the AI-vs-AI soak test (100 matches, headless, fixed seeds) finishes with zero stuck points and zero referee invariant failures (for example, a point always ends with exactly one winner and a reason code).
 3. **Every slice shot can be played on purpose:** drive, volley, lob, bandeja, víbora, smash, chiquita, serve (both types), and each of them off the glass. Verified against the ball machine in practice and in a match.
 4. **The rally feels like padel:** on Medium, AI vs AI rallies average 6 to 12 shots; at least 25% of points include a shot off the glass; lobs and the fight for the net decide points, not just smashes.
-5. **It runs well:** 60 fps on the target PC, input-to-swing response under 100 ms.
+5. **It runs well:** 60 fps on the target PC and on the Apple Silicon Mac (section 1), input-to-swing response under 100 ms.
 6. **It reads well:** in a playtest, Caio can always tell the score, who is serving, and where the ball is.
 7. **Caio signs off on feel** after a playtest using the checklist in `docs/PLAYTEST.md`.
 
