@@ -10,10 +10,13 @@
 #include "Gameplay/PadelPlayerController.h"
 #include "PadelLog.h"
 #include "Presentation/PadelBroadcastCamera.h"
+#include "UI/PadelHUD.h"
 
 APadelGameMode::APadelGameMode()
 {
 	PlayerControllerClass = APadelPlayerController::StaticClass();
+	// Menus, HUD and the match flow (Agent 7).
+	HUDClass = APadelHUD::StaticClass();
 	// No pawn yet: the player watches from the broadcast camera until Agent 3 adds the player.
 	DefaultPawnClass = nullptr;
 }

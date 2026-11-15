@@ -41,3 +41,7 @@ namespace Padel::Ui
 		virtual void OnGoldenPointStarted(int ReceivingTeam) = 0;
 	};
 }
+
+// Global name for Unreal classes that implement the sink: UHT reads base class names and
+// doesn't follow namespaces, so UCLASSes inherit FPadelUiEventSink.
+using FPadelUiEventSink = Padel::Ui::IUiEventSink;

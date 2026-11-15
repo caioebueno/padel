@@ -15,6 +15,11 @@ public class Padel : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"PadelCore",
+			// UI (HUD, menus, stats) and loading Data/*.json.
+			"UMG",
+			"Slate",
+			"SlateCore",
+			"Json",
 		});
 	}
 }

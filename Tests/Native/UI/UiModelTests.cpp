@@ -3,6 +3,7 @@
 
 #include "UI/Model/PadelUiCodes.h"
 #include "UI/Model/PadelUiGlyphs.h"
+#include "UI/Model/PadelUiMatchSetup.h"
 #include "UI/Model/PadelUiMatchStats.h"
 #include "UI/Model/PadelUiRoster.h"
 #include "UI/Model/PadelUiScore.h"
@@ -226,4 +227,32 @@ TEST_CASE("UI.Glyphs: the bottom face button is A, Cross or B by pad (GDD 7)")
 	CHECK(FamilyFromDeviceName("DualSense") == EPadFamily::PlayStation);
 	CHECK(FamilyFromDeviceName("PS4Controller") == EPadFamily::PlayStation);
 	CHECK(FamilyFromDeviceName("SwitchProController") == EPadFamily::Switch);
+}
+
+TEST_CASE("UI.Setup: Quick Match defaults and cycling (GDD 11, GDD 13 decision 5)")
+{
+	FMatchSetup Setup;
+	CHECK(Setup.DifficultyLabel() == "Medium");
+	CHECK(Setup.SetsToWin == 2);
+	CHECK(Setup.LengthLabel() == "Best of 3 sets");
+	CHECK(Setup.bGoldenPoint);
+	// GDD 6.4: the human plays the left side by default.
+	CHECK(Setup.HumanPlayerId == 1);
+	CHECK(Setup.PartnerId() == 0);
+	CHECK(Setup.PlayerLabel() == "Mikko Ventara (left side)");
+
+	Setup.CycleDifficulty(1);
+	CHECK(Setup.DifficultyLabel() == "Hard");
+	Setup.CycleDifficulty(1);
+	CHECK(Setup.DifficultyLabel() == "Easy");
+	Setup.CycleDifficulty(-1);
+	CHECK(Setup.DifficultyKey() == "hard");
+
+	Setup.CycleLength();
+	CHECK(Setup.LengthLabel() == "1 set");
+	Setup.ToggleGoldenPoint();
+	CHECK(Setup.GoldenPointLabel() == "Off (advantage)");
+	Setup.CyclePlayer();
+	CHECK(Setup.HumanPlayerId == 0);
+	CHECK(Setup.PartnerId() == 1);
 }
