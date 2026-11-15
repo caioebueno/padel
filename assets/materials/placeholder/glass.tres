@@ -1,8 +1,0 @@
-[gd_resource type="StandardMaterial3D" format=3]
-
-[resource]
-resource_name = "placeholder_glass"
-transparency = 1
-albedo_color = Color(0.75, 0.88, 1, 0.16)
-metallic = 0.2
-roughness = 0.05

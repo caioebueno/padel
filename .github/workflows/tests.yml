@@ -11,53 +11,73 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Pinned engine version. Keep in sync with project.godot (config/features)
-  # and CLAUDE.md.
-  GODOT_VERSION: "4.7.2"
+  # Pinned engine version. Keep in sync with Padel.uproject (EngineAssociation) and CLAUDE.md.
+  UE_VERSION: "5.8"
 
 jobs:
-  gut:
-    name: GUT (headless)
-    runs-on: ubuntu-latest
+  native:
+    # PadelCore without the engine: runs on GitHub's own runners, on Linux (GCC)
+    # and on Apple Silicon (Clang), the compilers the game builds with on Mac.
+    name: Native tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Build and run PadelCore tests
+        run: Tools/RunNativeTests.sh
 
-      - name: Cache Godot
-        id: cache-godot
-        uses: actions/cache@v4
-        with:
-          path: ~/godot
-          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
-
-      - name: Download Godot
-        if: steps.cache-godot.outputs.cache-hit != 'true'
+  project:
+    name: Project files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Padel.uproject and the engine pin
         run: |
-          mkdir -p ~/godot
-          curl -fsSL -o /tmp/godot.zip \
-            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q /tmp/godot.zip -d ~/godot
-          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
-          chmod +x ~/godot/godot
+          python3 - <<'PY'
+          import json, os, sys
+          with open("Padel.uproject", encoding="utf-8") as f:
+              project = json.load(f)
+          want = os.environ["UE_VERSION"]
+          got = project.get("EngineAssociation")
+          errors = []
+          if got != want:
+              errors.append(f"EngineAssociation is {got!r}, CI pins {want!r}")
+          for module in project.get("Modules", []):
+              name = module["Name"]
+              if not os.path.isfile(f"Source/{name}/{name}.Build.cs"):
+                  errors.append(f"module {name} has no Source/{name}/{name}.Build.cs")
+          for e in errors:
+              print(f"::error::{e}")
+          sys.exit(1 if errors else 0)
+          PY
+      - name: Binary assets must be in Git LFS
+        run: |
+          bad=$(git ls-files -- '*.uasset' '*.umap' | git check-attr --stdin filter | grep -v ': filter: lfs$' || true)
+          if [ -n "$bad" ]; then echo "::error::Not tracked by LFS:"; echo "$bad"; exit 1; fi
 
-      - name: Godot version
-        run: ~/godot/godot --headless --version
-
-      - name: Import project
-        # The first import builds .godot/ (class names, resource cache).
-        # Godot can exit non-zero here on a fresh project; the test step is the real gate.
-        run: ~/godot/godot --headless --path . --import || true
-
-      - name: Check scripts parse (static typing enforced)
-        run: GODOT=~/godot/godot tools/check_scripts.sh
-
-      - name: Run tests
-        run: GODOT=~/godot/godot tools/run_tests.sh
-
-      - name: Upload test results
+  unreal:
+    # Unreal Automation tests need an engine install, which GitHub-hosted runners don't
+    # have. This job runs only when a self-hosted runner labelled "unreal" exists and the
+    # repository variable UNREAL_RUNNER is "true" (Settings > Secrets and variables > Actions).
+    name: Unreal Automation tests
+    if: ${{ vars.UNREAL_RUNNER == 'true' }}
+    runs-on: [self-hosted, unreal]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Build editor and run Padel.* tests
+        run: Tools/RunUnrealTests.sh
+      - name: Upload automation report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gut-results
-          path: test_results/
+          name: unreal-automation-report
+          path: Saved/AutomationReports/
           if-no-files-found: ignore
