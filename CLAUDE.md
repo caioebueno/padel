@@ -14,7 +14,7 @@ Current milestone: **the vertical slice** (GDD section 12). Don't build anything
 
 ## Engine and version
 
-Godot 4 stable, the exact version pinned in `project.godot` and in CI (Agent 1 picks the latest stable 4.x and writes it here). GDScript only, no C#, no GDExtension unless the GDD asks for it.
+**Godot 4.7.2-stable**, pinned in `project.godot` and in CI. Tests use **GUT 9.7.1**. GDScript only, no C#, no GDExtension unless the GDD asks for it.
 
 ## Folder layout
 
@@ -32,7 +32,9 @@ scripts/
 scenes/      court/, player/, match/, ui/
 data/        shots/, players/, teams/, difficulty/, physics/, camera/ (.tres files)
 assets/      models/, textures/, audio/, fonts/, animations/, manifest.csv (source + licence for every asset)
-tools/       asset pipeline scripts (Python, Blender)
+tools/       run_tests.sh, check_scripts.sh; godot/ (editor scripts that generate scenes and the input map, e.g.
+             build_court.gd builds the court from scripts/engine/court_spec.gd, configure_project.gd
+             writes the input map); the asset pipeline (Python, Blender)
 tests/       unit/, integration/, soak/
 addons/gut/  test framework
 ```
@@ -55,17 +57,22 @@ Metres, seconds, kilograms, radians in code (degrees only in UI). Y is up, the c
 GUT, run headless. Every rule in GDD section 3 needs a test. Every bug fix gets a test that would have caught it.
 
 ```
-# all tests
-godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
+# all tests (GODOT points at the Godot 4.7.2 binary)
+GODOT=/path/to/godot tools/run_tests.sh
 
-# AI soak test (100 matches, fixed seeds)
+# parse every script, untyped declarations count as errors
+GODOT=/path/to/godot tools/check_scripts.sh
+
+# AI soak test (100 matches, fixed seeds), once Agent 4 adds it
 godot --headless --script res://tests/soak/run_soak.gd -- --matches 100
 ```
 
-CI (GitHub Actions) runs the full test suite on every PR. A PR merges only with green CI. (Agent 1 sets these up; update the commands here if they change.)
+Don't hand-edit generated scenes or the input map in `project.godot`: change the spec or the script in `tools/godot/` and regenerate.
+
+CI (GitHub Actions) runs both scripts on every PR. A PR merges only with green CI. Update the commands here if they change.
 
 ## Git and PRs
 
-- Branch per task: `agent-<n>/<short-topic>`, e.g. `agent-2/referee`.
+- Branch per task: `agent-<n>/<short-topic>`, e.g. `agent-2/referee`. If your session can only push to a branch it was given (like `claude/...`), use that and name the agent in the PR title.
 - Small, focused PRs. The description says which GDD sections it implements and how to see it working.
 - Don't commit generated files (`.godot/`, imported caches, exports). Large binaries (`.glb`, `.wav`, textures) go through Git LFS.
