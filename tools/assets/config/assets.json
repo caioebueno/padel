@@ -1,0 +1,88 @@
+{
+  "_doc": "Asset catalogue for tools/assets/pipeline.py. One entry per game asset. Sizes in metres, budgets in triangles for LOD0. LOD 'begin' is the camera distance in metres where that LOD takes over. See tools/assets/README.md.",
+  "version": 1,
+  "lod_hysteresis_m": 1.0,
+  "assets": [
+    {
+      "id": "court_indoor",
+      "category": "court",
+      "source": "procedural",
+      "builder": "court",
+      "out": "assets/models/court/court_indoor.glb",
+      "budget_tris": 30000,
+      "lods": []
+    },
+    {
+      "id": "ball",
+      "category": "props",
+      "source": "procedural",
+      "builder": "ball",
+      "out": "assets/models/props/ball.glb",
+      "size": {"diameter_m": 0.065},
+      "budget_tris": 400,
+      "lods": [{"ratio": 0.35, "begin_m": 12.0}]
+    },
+    {
+      "id": "racket_placeholder",
+      "category": "props",
+      "source": "procedural",
+      "builder": "racket",
+      "out": "assets/models/props/racket_placeholder.glb",
+      "size": {"length_m": 0.455, "width_m": 0.26, "thickness_m": 0.038},
+      "palette": "racket_a",
+      "budget_tris": 3000,
+      "lods": [{"ratio": 0.4, "begin_m": 6.0}, {"ratio": 0.12, "begin_m": 16.0}]
+    },
+    {
+      "id": "player_placeholder_a",
+      "category": "characters",
+      "source": "procedural",
+      "builder": "character",
+      "out": "assets/models/characters/player_placeholder_a.glb",
+      "size": {"height_m": 1.82},
+      "body": {"build": "tall", "hair": "short"},
+      "palette": "team_a",
+      "budget_tris": 8000,
+      "lods": [{"ratio": 0.5, "begin_m": 14.0}, {"ratio": 0.2, "begin_m": 26.0}]
+    },
+    {
+      "id": "player_placeholder_b",
+      "category": "characters",
+      "source": "procedural",
+      "builder": "character",
+      "out": "assets/models/characters/player_placeholder_b.glb",
+      "size": {"height_m": 1.72},
+      "body": {"build": "compact", "hair": "bun"},
+      "palette": "team_b",
+      "budget_tris": 8000,
+      "lods": [{"ratio": 0.5, "begin_m": 14.0}, {"ratio": 0.2, "begin_m": 26.0}]
+    },
+    {
+      "id": "player_gen_a",
+      "category": "characters",
+      "source": "ai",
+      "enabled": false,
+      "provider": "meshy",
+      "template": "character",
+      "vars": {"build": "tall, lean", "kit_colour": "vermilion red", "hair": "short dark curly hair", "age": "late twenties"},
+      "rig": {"skeleton": "mixamo"},
+      "out": "assets/models/characters/player_gen_a.glb",
+      "size": {"height_m": 1.82},
+      "budget_tris": 15000,
+      "lods": [{"ratio": 0.45, "begin_m": 14.0}, {"ratio": 0.15, "begin_m": 26.0}]
+    },
+    {
+      "id": "court_bench",
+      "category": "props",
+      "source": "ai",
+      "enabled": false,
+      "provider": "tripo",
+      "template": "prop",
+      "vars": {"object": "a simple courtside bench with a metal frame and wooden slats", "materials": "brushed dark metal, light oak"},
+      "out": "assets/models/props/court_bench.glb",
+      "size": {"length_m": 1.8},
+      "budget_tris": 2500,
+      "lods": [{"ratio": 0.3, "begin_m": 15.0}]
+    }
+  ]
+}

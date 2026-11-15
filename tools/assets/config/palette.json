@@ -1,0 +1,43 @@
+{
+  "_doc": "Stylised material palette (GDD 10). Colours are sRGB hex. Every procedural asset and every 'palette' override takes its colours from here, so a kit or court colour changes in one place.",
+  "court": {
+    "turf": {"color": "#1f5bb0", "roughness": 0.95},
+    "line": {"color": "#f4f6f8", "roughness": 0.8},
+    "runoff": {"color": "#2b3038", "roughness": 0.95},
+    "glass": {"color": "#cfe6ff", "alpha": 0.14, "roughness": 0.04},
+    "glass_edge": {"color": "#e8f4ff", "alpha": 0.55, "roughness": 0.1},
+    "frame": {"color": "#23272d", "roughness": 0.45, "metallic": 0.8},
+    "mesh": {"color": "#2a2e34", "roughness": 0.55, "metallic": 0.7},
+    "net": {"color": "#16181c", "roughness": 0.9},
+    "net_tape": {"color": "#f4f6f8", "roughness": 0.8},
+    "light_panel": {"color": "#fff1dc", "emission": 4.0}
+  },
+  "ball": {
+    "felt": {"color": "#f2ff2e", "roughness": 0.85, "emission": 0.35},
+    "seam": {"color": "#fbfff0", "roughness": 0.7}
+  },
+  "racket_a": {
+    "face": {"color": "#f5f5f2", "roughness": 0.5},
+    "frame": {"color": "#1b1e24", "roughness": 0.35, "metallic": 0.2},
+    "accent": {"color": "#ff7a1a", "roughness": 0.4},
+    "grip": {"color": "#2c2f36", "roughness": 0.9}
+  },
+  "team_a": {
+    "shirt": {"color": "#e4472b", "roughness": 0.8},
+    "shorts": {"color": "#1d2027", "roughness": 0.8},
+    "trim": {"color": "#ffffff", "roughness": 0.8},
+    "skin": {"color": "#c98c64", "roughness": 0.6},
+    "hair": {"color": "#2a1b14", "roughness": 0.7},
+    "shoes": {"color": "#f2f2f2", "roughness": 0.6},
+    "socks": {"color": "#ffffff", "roughness": 0.9}
+  },
+  "team_b": {
+    "shirt": {"color": "#8e3bc4", "roughness": 0.8},
+    "shorts": {"color": "#f1f1f1", "roughness": 0.8},
+    "trim": {"color": "#1d2027", "roughness": 0.8},
+    "skin": {"color": "#e3b08f", "roughness": 0.6},
+    "hair": {"color": "#7a4a22", "roughness": 0.7},
+    "shoes": {"color": "#2a2d33", "roughness": 0.6},
+    "socks": {"color": "#ffffff", "roughness": 0.9}
+  }
+}
