@@ -1,56 +1,52 @@
 # Padel
 
-An original 2v2 padel sim built in Godot 4. See `docs/GDD.md` and `CLAUDE.md`.
+An original 2v2 padel sim built in Unreal Engine 5. See `docs/GDD.md` and `CLAUDE.md`.
 
-## Setup
+## Setup (macOS on Apple Silicon)
 
-1. Install **Godot 4.7.2-stable** (standard build, not .NET). This exact version is pinned in `project.godot` and CI.
-2. Open `project.godot` in Godot, or run it from the command line:
+1. Install **Unreal Engine 5.8** from the Epic Games Launcher.
+2. Install **Xcode**, using the version Epic lists for 5.8 on [macOS development requirements](https://dev.epicgames.com/documentation/unreal-engine/macos-development-requirements-for-unreal-engine). Open it once to accept the licence. A C++ project can't open without it.
+3. Run `git lfs install` once. Binary assets (`.uasset`, `.umap`, textures, audio) go through Git LFS.
+4. Double-click `Padel.uproject`. The first time, Unreal says the modules are missing and offers to rebuild them: choose **Yes**. Or build from a terminal:
 
    ```
-   godot --path .
+   "/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/Mac/Build.sh" PadelEditor Mac Development -Project="$PWD/Padel.uproject"
    ```
 
-   The main scene (`scenes/match/main.tscn`) shows the court from the broadcast camera.
+   To work in Xcode, right-click `Padel.uproject` and choose **Services > Generate Xcode Project**, then open `Padel (Mac).xcworkspace`.
+5. Press **Play**. The editor opens on an empty map, and `APadelGameMode` spawns the placeholder court, the lights and the broadcast camera.
 
-Large binaries under `assets/` go through Git LFS, so run `git lfs install` once before you pull assets.
+On Windows, follow the same steps with Visual Studio 2022 and Unreal's Windows requirements.
 
 ## Tests
 
-[GUT](https://github.com/bitwes/Gut) 9.7.1 is vendored in `addons/gut/`. Tests live in `tests/unit/` and `tests/integration/` (files named `test_*.gd`); the soak test goes in `tests/soak/` and is run separately.
-
 ```
-# all tests, headless (set GODOT if the binary is not on PATH as "godot")
-GODOT=/path/to/godot tools/run_tests.sh
-
-# one file
-tools/run_tests.sh -gselect=test_court_scene
-
-# parse every script with static typing enforced
-tools/check_scripts.sh
+Tools/RunNativeTests.sh     # PadelCore without the engine (CMake + a C++20 compiler)
+Tools/RunUnrealTests.sh     # Unreal Automation tests (Padel.*), headless; needs UE 5.8
 ```
 
-In the editor, the GUT panel at the bottom runs the same suite (settings in `.gutconfig.json`).
+In the editor, the same Unreal tests are under **Tools > Session Frontend > Automation**, filtered by `Padel`.
 
-CI (`.github/workflows/tests.yml`) runs both scripts on every pull request and on pushes to `main`.
+CI (`.github/workflows/tests.yml`) runs the native tests on Linux and Apple Silicon and checks the project files on every PR. GitHub's own runners have no Unreal install, so the Unreal job only runs on a self-hosted runner. To turn it on, register your Mac as a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) with the label `unreal`, then set the repository variable `UNREAL_RUNNER` to `true`.
 
-## Generated files
+## The court
 
-Two pieces of the project are generated from code. Edit the source, re-run the tool, and commit the result:
+`APadelCourt` builds a regulation court out of engine cubes (GDD section 2):
 
-| What | Source of truth | Regenerate with |
-|---|---|---|
-| Input map and physics layer names in `project.godot` | `tools/godot/configure_project.gd`, `scripts/gameplay/input_actions.gd`, `scripts/engine/physics_layers.gd` | `godot --headless --path . --script res://tools/godot/configure_project.gd` |
-| `scenes/court/court.tscn`, `scenes/match/main.tscn`, `assets/materials/placeholder/` | `scripts/engine/court_spec.gd`, `tools/godot/build_court.gd` | `godot --headless --path . --script res://tools/godot/build_court.gd` |
+- 20 × 10 m.
+- 3 m back glass, with mesh up to 4 m.
+- Side glass of 3 m, then a 2 m step.
+- A 2 m exit on each side of each half.
+- Mesh from the exits to the net.
+- A net of 0.88 m in the centre and 0.92 m at the posts.
+- Run-off floor for out-of-court play, and an invisible ceiling at 8 m.
 
-## Court scene
+The geometry comes from `Source/PadelCore/Public/CourtLayout.h`, which is built from `CourtSpec.h`. The native tests ray-cast against the same boxes.
 
-`scenes/court/court.tscn` is a primitive placeholder at regulation size (GDD section 2): 20 × 10 m, 3 m back glass with mesh to 4 m, side glass of 3 m then a 2 m step, a 2 m exit on each side of each half, mesh to the net, a net of 0.88 m in the centre and 0.92 m at the posts, run-off floor outside for out-of-court play, and an invisible ceiling at 8 m.
+Every collider carries the component tags `Surface.<Ground|Glass|Mesh|Net|Ceiling>` and `Zone.<Court|Runoff|Ceiling>`. Glass and mesh are invisible colliders with a dark frame until real materials exist. The ball doesn't use these colliders: it runs on `PadelCore`'s own integrator, which reads `CourtSpec` directly.
 
-Every collider is a `StaticBody3D` with:
+Coordinates: X along the length (Team A on +X), Y across, Z up, net at X = 0. `PadelCore` is in metres, and the Unreal world in centimetres. The only conversion is in `Court/PadelCourtUnits.h`.
 
-- metadata `surface`: one of `ground`, `glass`, `mesh`, `net`, `ceiling` (`CourtSpec.SURFACE_*`, the same values as the `ball_bounced` event)
-- metadata `zone`: `court`, `runoff` or `ceiling`
-- one physics layer from `PhysicsLayers` (`court_ground`, `court_glass`, `court_mesh`, `court_net`, `court_ceiling`, `runoff_ground`; `players` and `ball` are reserved)
+## Input
 
-The ball uses its own integrator in `scripts/engine/`, not these colliders; they are for players, raycasts and debug tools. Engine code should read measurements from `CourtSpec`, never from the scene.
+Enhanced Input, gamepad first (GDD section 7). `UPadelInputConfig` creates `IA_Move`, `IA_Sprint`, `IA_ShotDrive`, `IA_ShotLob`, `IA_ShotOverhead`, `IA_ShotDrop`, `IA_ModAttack`, `IA_ModTouch`, `IA_CmdNet`, `IA_CmdBack`, `IA_CmdMiddle`, `IA_CmdYours` and `IA_Pause` in `IMC_Match`, from the binding table in `PadelInputConfig.cpp`. `APadelPlayerController` adds the context. Bind actions with `GetInputConfig()->GetAction(EPadelInputAction::...)`. `IA_Move` is 2D, and up on the stick, or W, is +Y ("toward the opponents").
