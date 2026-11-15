@@ -1,0 +1,15 @@
+# Godot 4
+.godot/
+/android/
+*.tmp
+# Exports
+/build/
+/exports/
+export_credentials.cfg
+# GUT output
+/test_results/
+.gut_editor_config.json
+.gut_editor_shortcuts.cfg
+# OS
+.DS_Store
+Thumbs.db
