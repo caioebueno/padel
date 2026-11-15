@@ -1,0 +1,13 @@
+{
+	"Broadcast": {
+		"_comment": "GDD 9 broadcast end camera. Metres and seconds. 7-9 m high, 6-8 m behind the human team's back glass, tracking capped at 1.5 m.",
+		"HeightM": 8.0,
+		"BehindGlassM": 7.0,
+		"LookAtPastNetM": 2.0,
+		"FieldOfViewDeg": 50.0,
+		"TrackingStrength": 0.3,
+		"MaxTrackingM": 1.5,
+		"TrackingResponse": 2.5,
+		"EndTransitionSeconds": 1.6
+	}
+}
