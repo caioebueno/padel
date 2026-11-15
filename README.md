@@ -47,6 +47,10 @@ Every collider carries the component tags `Surface.<Ground|Glass|Mesh|Net|Ceilin
 
 Coordinates: X along the length (Team A on +X), Y across, Z up, net at X = 0. `PadelCore` is in metres, and the Unreal world in centimetres. The only conversion is in `Court/PadelCourtUnits.h`.
 
+## Art assets
+
+`python3 Tools/AssetPipeline/pipeline.py all` builds the court, glass, net, ball, racket and two rigged placeholder players in Blender, and imports them into `Content/Padel/` with their materials. You need Blender and Unreal 5.8 installed, and the editor closed. AI-generated models (Meshy or Tripo) are switched off until an API key is set. Setup and options are in [Tools/AssetPipeline/README.md](Tools/AssetPipeline/README.md).
+
 ## Input
 
 Enhanced Input, gamepad first (GDD section 7). `UPadelInputConfig` creates `IA_Move`, `IA_Sprint`, `IA_ShotDrive`, `IA_ShotLob`, `IA_ShotOverhead`, `IA_ShotDrop`, `IA_ModAttack`, `IA_ModTouch`, `IA_CmdNet`, `IA_CmdBack`, `IA_CmdMiddle`, `IA_CmdYours` and `IA_Pause` in `IMC_Match`, from the binding table in `PadelInputConfig.cpp`. `APadelPlayerController` adds the context. Bind actions with `GetInputConfig()->GetAction(EPadelInputAction::...)`. `IA_Move` is 2D, and up on the stick, or W, is +Y ("toward the opponents").

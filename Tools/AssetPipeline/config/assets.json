@@ -1,0 +1,156 @@
+{
+  "_doc": "Asset catalogue for Tools/AssetPipeline/pipeline.py. One entry per game asset. Sizes in metres (the pipeline converts to Unreal centimetres on export), budgets in triangles for LOD0. Skeletal meshes get baked LODs with Unreal screen sizes; static meshes use Nanite instead. See Tools/AssetPipeline/README.md.",
+  "version": 2,
+  "assets": [
+    {
+      "id": "CourtIndoor",
+      "kind": "static",
+      "category": "Court",
+      "source": "procedural",
+      "builder": "court",
+      "nanite": true,
+      "budget_tris": 60000,
+      "part": "solid",
+      "_note": "Floor, lines, frame, mesh, net and lights. Glass is a separate mesh because Nanite does not render translucent materials."
+    },
+    {
+      "id": "CourtIndoorGlass",
+      "kind": "static",
+      "category": "Court",
+      "source": "procedural",
+      "builder": "court",
+      "part": "glass",
+      "nanite": false,
+      "budget_tris": 2000
+    },
+    {
+      "id": "Ball",
+      "kind": "static",
+      "category": "Equipment",
+      "source": "procedural",
+      "builder": "ball",
+      "size": {
+        "diameter_m": 0.065
+      },
+      "nanite": false,
+      "budget_tris": 1200
+    },
+    {
+      "id": "RacketPlaceholder",
+      "kind": "static",
+      "category": "Equipment",
+      "source": "procedural",
+      "builder": "racket",
+      "size": {
+        "length_m": 0.455,
+        "width_m": 0.26,
+        "thickness_m": 0.038
+      },
+      "palette": "racket_a",
+      "nanite": true,
+      "budget_tris": 12000
+    },
+    {
+      "id": "PlayerPlaceholderA",
+      "kind": "skeletal",
+      "category": "Characters",
+      "source": "procedural",
+      "builder": "character",
+      "size": {
+        "height_m": 1.82
+      },
+      "body": {
+        "build": "tall",
+        "hair": "short"
+      },
+      "palette": "team_a",
+      "budget_tris": 12000,
+      "lods": [
+        {
+          "ratio": 0.5,
+          "screen_size": 0.3
+        },
+        {
+          "ratio": 0.2,
+          "screen_size": 0.12
+        }
+      ]
+    },
+    {
+      "id": "PlayerPlaceholderB",
+      "kind": "skeletal",
+      "category": "Characters",
+      "source": "procedural",
+      "builder": "character",
+      "size": {
+        "height_m": 1.72
+      },
+      "body": {
+        "build": "compact",
+        "hair": "bun"
+      },
+      "palette": "team_b",
+      "budget_tris": 12000,
+      "lods": [
+        {
+          "ratio": 0.5,
+          "screen_size": 0.3
+        },
+        {
+          "ratio": 0.2,
+          "screen_size": 0.12
+        }
+      ]
+    },
+    {
+      "id": "PlayerGenA",
+      "kind": "skeletal",
+      "category": "Characters",
+      "source": "ai",
+      "enabled": false,
+      "provider": "meshy",
+      "template": "character",
+      "vars": {
+        "build": "tall, lean",
+        "kit_colour": "deep red",
+        "hair": "short dark curly hair",
+        "age": "late twenties"
+      },
+      "rig": {
+        "skeleton": "ue5_mannequin"
+      },
+      "size": {
+        "height_m": 1.82
+      },
+      "budget_tris": 40000,
+      "lods": [
+        {
+          "ratio": 0.45,
+          "screen_size": 0.3
+        },
+        {
+          "ratio": 0.15,
+          "screen_size": 0.12
+        }
+      ]
+    },
+    {
+      "id": "CourtBench",
+      "kind": "static",
+      "category": "Court",
+      "source": "ai",
+      "enabled": false,
+      "provider": "tripo",
+      "template": "prop",
+      "vars": {
+        "object": "a courtside bench with a powder-coated aluminium frame and wooden slats",
+        "materials": "matte dark grey aluminium, oiled oak"
+      },
+      "size": {
+        "length_m": 1.8
+      },
+      "nanite": true,
+      "budget_tris": 20000
+    }
+  ]
+}

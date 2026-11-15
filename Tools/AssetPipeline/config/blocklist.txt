@@ -1,0 +1,76 @@
+# Originality guard (GDD 1, CLAUDE.md "Original content only").
+# Any prompt, asset id or file name containing one of these terms (case-insensitive,
+# whole words) is refused before it reaches an AI service. One term per line.
+# It is a safety net, not the whole check: still search every new name before using it.
+
+# Words that ask a generator for branding
+logo
+trademark
+sponsor
+watermark
+brand name
+celebrity
+lookalike
+look-alike
+likeness of
+
+# Real tours and governing bodies
+world padel tour
+wpt
+premier padel
+a1 padel
+upt
+fip
+international padel federation
+
+# Real racket, ball and apparel brands
+bullpadel
+babolat
+adidas
+nike
+head padel
+wilson
+dunlop
+nox
+siux
+starvie
+varlion
+drop shot
+vibor-a
+black crown
+royal padel
+kuikma
+joma
+asics
+lacoste
+puma
+tecnifibre
+oxdog
+dabber
+
+# Real players (do not generate likenesses)
+lebron
+galan
+coello
+tapia
+belasteguin
+navarro
+stupaczuk
+di nenno
+chingotto
+triay
+sanchez
+josemaria
+bea gonzalez
+salazar
+brea
+
+# Existing games and series
+padel simulator
+fifa
+ea sports
+pes
+efootball
+top spin
+virtua tennis
+mario tennis
