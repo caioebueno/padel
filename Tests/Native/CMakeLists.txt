@@ -17,10 +17,15 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS ${CORE_DIR}/Private/*.cpp)
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*/PadelCoreModule\\.cpp$")
 list(FILTER CORE_SOURCES EXCLUDE REGEX ".*/Private/Tests/.*")
 
-file(GLOB TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+# The game module's engine-free models (UI and presentation maths): plain C++ with no
+# Unreal headers, so they're tested here too. Only */Model/ folders, never UObject code.
+set(GAME_DIR ${REPO_ROOT}/Source/Padel)
+file(GLOB_RECURSE MODEL_SOURCES CONFIGURE_DEPENDS ${GAME_DIR}/Private/*/Model/*.cpp)
 
-add_executable(padel_core_tests ${CORE_SOURCES} ${TEST_SOURCES})
-target_include_directories(padel_core_tests PRIVATE ${CORE_DIR}/Public ${REPO_ROOT}/ThirdParty/doctest)
+file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+
+add_executable(padel_core_tests ${CORE_SOURCES} ${MODEL_SOURCES} ${TEST_SOURCES})
+target_include_directories(padel_core_tests PRIVATE ${CORE_DIR}/Public ${GAME_DIR}/Public ${REPO_ROOT}/ThirdParty/doctest)
 
 if(MSVC)
   target_compile_options(padel_core_tests PRIVATE /W4 /WX)
