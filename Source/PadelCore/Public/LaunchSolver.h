@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "BallSim.h"
 
 namespace Padel
@@ -42,7 +44,7 @@ namespace Padel
 	};
 
 	// The world spin for a local spin on a flight along Forward (horizontal part used).
-	FVec3 SpinLocalToWorld(const FVec3& SpinLocal, const FVec3& Forward);
+	PADELCORE_API FVec3 SpinLocalToWorld(const FVec3& SpinLocal, const FVec3& Forward);
 
-	FLaunchResult SolveLaunch(const FBallSim& Sim, const FLaunchRequest& Request);
+	PADELCORE_API FLaunchResult SolveLaunch(const FBallSim& Sim, const FLaunchRequest& Request);
 }

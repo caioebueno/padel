@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "BallContact.h"
 #include "BallPhysicsParams.h"
 #include "BallState.h"
@@ -13,7 +15,7 @@
 
 namespace Padel
 {
-	class FBallSim
+	class PADELCORE_API FBallSim
 	{
 	public:
 		explicit FBallSim(const FBallPhysicsParams& InParams) : Params(InParams) {}

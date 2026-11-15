@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "CourtSpec.h"
 
 #include <string>
@@ -24,7 +26,7 @@ namespace Padel
 		double SpeedVariation = 0.0;
 	};
 
-	struct FBallPhysicsParams
+	struct PADELCORE_API FBallPhysicsParams
 	{
 		// m/s².
 		double Gravity = 0.0;
@@ -65,5 +67,5 @@ namespace Padel
 	// Reads Data/Physics.json text: either one object, or a DataTable-style array of rows
 	// where the row whose "Name" is "Default" (or the first row) is used. Every field is
 	// required. Surface fields are prefixed by the surface: GroundRestitution, MeshFriction...
-	bool ParseBallPhysicsJson(const std::string& Text, FBallPhysicsParams& Out, std::string& Error);
+	PADELCORE_API bool ParseBallPhysicsJson(const std::string& Text, FBallPhysicsParams& Out, std::string& Error);
 }

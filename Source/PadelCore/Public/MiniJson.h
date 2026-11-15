@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include <string>
 #include <vector>
 
@@ -19,7 +21,7 @@ namespace Padel::Json
 		Object,
 	};
 
-	struct FValue
+	struct PADELCORE_API FValue
 	{
 		EType Type = EType::Null;
 		bool Bool = false;
@@ -34,5 +36,5 @@ namespace Padel::Json
 	};
 
 	// Parses Text into Out. On failure returns false and describes the problem in Error.
-	bool Parse(const std::string& Text, FValue& Out, std::string& Error);
+	PADELCORE_API bool Parse(const std::string& Text, FValue& Out, std::string& Error);
 }

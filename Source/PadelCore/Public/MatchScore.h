@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "MatchConfig.h"
 
 #include <array>
@@ -52,7 +54,7 @@ namespace Padel
 		bool bGoldenPointNext = false;
 	};
 
-	class FMatchScore
+	class PADELCORE_API FMatchScore
 	{
 	public:
 		explicit FMatchScore(const FMatchConfig& InConfig = FMatchConfig());

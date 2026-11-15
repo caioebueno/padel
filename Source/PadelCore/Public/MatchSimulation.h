@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "BallSim.h"
 #include "LaunchSolver.h"
 #include "MatchEventListener.h"
@@ -26,7 +28,7 @@ namespace Padel
 		MatchOver,
 	};
 
-	class FMatchSimulation
+	class PADELCORE_API FMatchSimulation
 	{
 	public:
 		FMatchSimulation(const FMatchConfig& Config, const FBallPhysicsParams& Physics, uint64_t Seed);

@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "BallContact.h"
 #include "PadelTypes.h"
 
@@ -47,7 +49,7 @@ namespace Padel
 		Over,
 	};
 
-	class FReferee
+	class PADELCORE_API FReferee
 	{
 	public:
 		std::function<void(EServeFault)> OnServeFault;
