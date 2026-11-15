@@ -10,7 +10,7 @@ FAiBallPredictor::FAiBallPredictor(const IAiBallModel& InModel, const FAiTactics
 {
 }
 
-std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, double NoiseM, FAiRng& Rng) const
+std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, double NoiseM, FPadelRng& Rng) const
 {
 	std::vector<FTrajectorySample> Samples;
 	const double Dt = Tactics.PredictDtS;

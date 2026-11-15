@@ -7,6 +7,7 @@
 #include <cmath>
 
 using namespace Padel::AI;
+using Padel::FPadelRng;
 using doctest::Approx;
 
 TEST_CASE("Ai.TeamFrame: a team's right is -Y times its half, depth runs to its own glass")
@@ -138,7 +139,7 @@ namespace
 TEST_CASE("Ai.Taker: the player on the ball's side takes it")
 {
 	FAiPairTactics Pair(TestData::Tactics());
-	FAiRng Rng(3);
+	FPadelRng Rng(3);
 	FTakerQuery Q = MiddleBall();
 	Q.BallLocalX = 3.0;
 	CHECK(Pair.ChooseTaker(Q, Rng) == RightSlot);
@@ -149,7 +150,7 @@ TEST_CASE("Ai.Taker: the player on the ball's side takes it")
 TEST_CASE("Ai.Taker: down the middle, the left player's forehand by default")
 {
 	FAiPairTactics Pair(TestData::Tactics());
-	FAiRng Rng(3);
+	FPadelRng Rng(3);
 	FTakerQuery Q = MiddleBall();
 	CHECK(Pair.ChooseTaker(Q, Rng) == LeftSlot);
 	// A left-hander on the right with a right-hander... still the left by default;
@@ -163,7 +164,7 @@ TEST_CASE("Ai.Taker: the partner takes a middle ball when clearly better placed"
 {
 	const FAiTactics& T = TestData::Tactics();
 	FAiPairTactics Pair(T);
-	FAiRng Rng(3);
+	FPadelRng Rng(3);
 	FTakerQuery Q = MiddleBall();
 	Q.Plans[RightSlot]->Slack = Q.Plans[LeftSlot]->Slack + T.BetterPlacedMarginS + 0.1;
 	CHECK(Pair.ChooseTaker(Q, Rng) == RightSlot);
@@ -177,7 +178,7 @@ TEST_CASE("Ai.Taker: the partner takes a middle ball when clearly better placed"
 TEST_CASE("Ai.Taker: low Teamwork sometimes sends the wrong partner, high never does")
 {
 	FAiPairTactics Pair(TestData::Tactics());
-	FAiRng Rng(11);
+	FPadelRng Rng(11);
 	int Wrong = 0;
 	FTakerQuery Q = MiddleBall();
 	Q.Teamwork = 99;
@@ -198,7 +199,7 @@ TEST_CASE("Ai.Taker: low Teamwork sometimes sends the wrong partner, high never 
 TEST_CASE("Ai.Commands: \"yours\" hands the next ball to the partner, once")
 {
 	FAiPairTactics Pair(TestData::Tactics());
-	FAiRng Rng(3);
+	FPadelRng Rng(3);
 	FTakerQuery Q = MiddleBall();
 	Q.BallLocalX = 3.0;  // the right player's ball
 	Pair.SetCommand(LeftSlot, EPartnerCommand::Yours);

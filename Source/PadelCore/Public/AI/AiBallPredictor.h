@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiBallModel.h"
-#include "AI/AiRng.h"
+#include "AI/AiRandom.h"
 #include "AI/AiTuning.h"
 
 #include <vector>
@@ -27,7 +29,7 @@ namespace Padel::AI
 		bool bContact = false;
 	};
 
-	class FAiBallPredictor
+	class PADELCORE_API FAiBallPredictor
 	{
 	public:
 		FAiBallPredictor(const IAiBallModel& InModel, const FAiTactics& InTactics);
@@ -36,7 +38,7 @@ namespace Padel::AI
 		// or at the horizon. NoiseM: after the first wall contact every later position
 		// is offset by one random ground-plane vector of up to this length, drawn from
 		// Rng (GDD 8: Wall Play adds noise to the predicted rebound).
-		std::vector<FTrajectorySample> Predict(const FAiBall& Start, double NoiseM, FAiRng& Rng) const;
+		std::vector<FTrajectorySample> Predict(const FAiBall& Start, double NoiseM, FPadelRng& Rng) const;
 
 	private:
 		const IAiBallModel& Model;

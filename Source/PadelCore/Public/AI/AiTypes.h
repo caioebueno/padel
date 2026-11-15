@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiMath.h"
 
 #include <optional>
@@ -71,9 +73,9 @@ namespace Padel::AI
 		Miss,
 	};
 
-	const char* AiShotName(EAiShot Shot);
-	bool IsOverhead(EAiShot Shot);
-	bool IsServe(EAiShot Shot);
+	PADELCORE_API const char* AiShotName(EAiShot Shot);
+	PADELCORE_API bool IsOverhead(EAiShot Shot);
+	PADELCORE_API bool IsServe(EAiShot Shot);
 
 	// What the AI asks the shot system to play (Agent 3's RequestAiShot).
 	struct FAiShotDecision

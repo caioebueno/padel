@@ -4,12 +4,14 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiTuning.h"
 #include "AI/AiTypes.h"
 
 namespace Padel::AI
 {
-	struct FAiPlayerProfile
+	struct PADELCORE_API FAiPlayerProfile
 	{
 		int Speed = 50;
 		int Acceleration = 50;

@@ -66,7 +66,7 @@ namespace Padel::AI::Test
 			uint64_t Seed, FMatchOptions InOptions = {})
 			: Tactics(InTactics)
 			, Options(InOptions)
-			, Rng(Seed, 0xba11)
+			, Rng(Seed ^ 0xba11ba11ba11ba11ull)
 		{
 			const std::array<const FAiDifficulty*, 2> Difficulties = { &DifficultyA, &DifficultyB };
 			for (int Team = 0; Team < 2; ++Team)
@@ -585,7 +585,7 @@ namespace Padel::AI::Test
 
 		const FAiTactics& Tactics;
 		FMatchOptions Options;
-		FAiRng Rng;
+		FPadelRng Rng;
 		FStandInBallModel Model;
 		std::array<std::optional<FAiTeamController>, 2> Teams;
 		std::array<std::array<FPlayer, 2>, 2> Players;

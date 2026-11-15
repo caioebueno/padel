@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiBallPredictor.h"
 #include "AI/AiPairTactics.h"
 #include "AI/AiShotChooser.h"
@@ -39,7 +41,7 @@ namespace Padel::AI
 		uint64_t Seed = 0;
 	};
 
-	class FAiTeamController
+	class PADELCORE_API FAiTeamController
 	{
 	public:
 		FAiTeamController(const FAiTeamSetup& Setup, const FAiTactics& InTactics, const FAiDifficulty& InDifficulty,
@@ -85,7 +87,7 @@ namespace Padel::AI
 		const FAiDifficulty& Difficulty;
 		FAiBallPredictor Predictor;
 		FAiPairTactics Pair;
-		FAiRng Rng;
+		FPadelRng Rng;
 
 		// Absolute time of the next read of the incoming ball, or negative for none.
 		double ReadAt = -1.0;

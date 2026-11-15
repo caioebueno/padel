@@ -106,7 +106,7 @@ std::array<FAiVec2, 2> FAiPairTactics::HomePositions(const FAiVec2& BallLocal) c
 	return Homes;
 }
 
-int FAiPairTactics::ChooseTaker(const FTakerQuery& Query, FAiRng& Rng) const
+int FAiPairTactics::ChooseTaker(const FTakerQuery& Query, FPadelRng& Rng) const
 {
 	// A command from the human overrides the default split.
 	for (int Slot = 0; Slot < 2; ++Slot)
@@ -163,7 +163,7 @@ int FAiPairTactics::ChooseTaker(const FTakerQuery& Query, FAiRng& Rng) const
 	int Taker = Slack(Other) - Slack(Default) > Tactics.BetterPlacedMarginS ? Other : Default;
 
 	const double Confusion = Tactics.ConfusionMax * (1.0 - ByRating(Query.Teamwork, 0.0, 1.0));
-	if (Rng.Chance(Confusion))
+	if (Random::Chance(Rng, Confusion))
 	{
 		Taker = 1 - Taker;
 	}

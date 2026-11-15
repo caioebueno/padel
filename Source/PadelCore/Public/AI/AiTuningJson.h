@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiTuning.h"
 
 #include <string>
@@ -20,6 +22,6 @@ namespace Padel::AI::TuningJson
 
 	// Every field must be present exactly once, and no unknown keys are allowed, so the
 	// data and the struct can't drift apart silently.
-	FLoadResult ParseDifficulties(const std::string& Json, std::vector<FAiDifficulty>& OutRows);
-	FLoadResult ParseTactics(const std::string& Json, FAiTactics& OutTactics);
+	PADELCORE_API FLoadResult ParseDifficulties(const std::string& Json, std::vector<FAiDifficulty>& OutRows);
+	PADELCORE_API FLoadResult ParseTactics(const std::string& Json, FAiTactics& OutTactics);
 }

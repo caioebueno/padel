@@ -6,7 +6,7 @@
 #pragma once
 
 #include "AI/AiBallModel.h"
-#include "AI/AiRng.h"
+#include "AI/AiRandom.h"
 #include "CourtSpec.h"
 
 #include <cmath>
@@ -36,7 +36,7 @@ namespace Padel::AI::Test
 		}
 
 		// Rng adds the mesh's randomness (GDD 2: +-15 degrees, +-20% speed) in live play.
-		std::vector<FAiContact> StepWith(FAiBall& Ball, double Dt, FAiRng* Rng) const
+		std::vector<FAiContact> StepWith(FAiBall& Ball, double Dt, FPadelRng* Rng) const
 		{
 			using namespace Court;
 			std::vector<FAiContact> Out;
@@ -88,7 +88,7 @@ namespace Padel::AI::Test
 		}
 
 	private:
-		static void Bounce(double& Normal, double& TangentA, double& TangentB, Court::ESurface S, FAiRng* Rng)
+		static void Bounce(double& Normal, double& TangentA, double& TangentB, Court::ESurface S, FPadelRng* Rng)
 		{
 			const bool bMesh = S == Court::ESurface::Mesh;
 			Normal = -Normal * (bMesh ? 0.30 : 0.68);

@@ -8,6 +8,7 @@
 #include <map>
 
 using namespace Padel::AI;
+using Padel::FPadelRng;
 
 namespace
 {
@@ -26,7 +27,7 @@ namespace
 
 	std::map<EAiShot, int> Count(const FShotContext& C, const char* Level, int Runs = 1000)
 	{
-		FAiRng Rng(5);
+		FPadelRng Rng(5);
 		std::map<EAiShot, int> Out;
 		for (int I = 0; I < Runs; ++I)
 		{
@@ -84,7 +85,7 @@ TEST_CASE("Ai.ShotChoice: against a split pair, the drive goes through the middl
 	const FAiTactics& T = TestData::Tactics();
 	const FShotContext C = Context(EContactKind::Groundstroke, 7.0, 1.0, 2.5, 8.5);
 	CHECK(ShotChooser::ReadOpponents(C, T) == EOpponentShape::Split);
-	FAiRng Rng(1);
+	FPadelRng Rng(1);
 	const FAiVec Target = ShotChooser::IntendedTarget(EAiShot::Drive, C, T, TestData::Difficulty("Hard"), Rng);
 	// Opponents at Y = -2 and +2: the gap is the middle.
 	CHECK(std::abs(Target.Y) < 0.5);
@@ -95,7 +96,7 @@ TEST_CASE("Ai.ShotChoice: targets land on the opponents' half, lobs deep, chiqui
 {
 	const FAiTactics& T = TestData::Tactics();
 	const FShotContext C = Context(EContactKind::Groundstroke, 7.0, 0.8, 2.5, 2.5);
-	FAiRng Rng(2);
+	FPadelRng Rng(2);
 	for (int I = 0; I < 50; ++I)
 	{
 		const FAiVec Lob = ShotChooser::IntendedTarget(EAiShot::Lob, C, T, TestData::Difficulty("Medium"), Rng);
@@ -109,7 +110,7 @@ TEST_CASE("Ai.ShotChoice: targets land on the opponents' half, lobs deep, chiqui
 TEST_CASE("Ai.ShotChoice: the serve goes diagonally into the box (GDD 3.2)")
 {
 	const FAiTactics& T = TestData::Tactics();
-	FAiRng Rng(4);
+	FPadelRng Rng(4);
 	for (int H : { 1, -1 })
 	{
 		for (double ServerY : { -1.5, 1.5 })
@@ -129,7 +130,7 @@ TEST_CASE("Ai.Timing: grades follow the difficulty and offsets sit in their wind
 	for (const char* Level : { "Easy", "Medium", "Hard" })
 	{
 		const FAiDifficulty& D = TestData::Difficulty(Level);
-		FAiRng Rng(9);
+		FPadelRng Rng(9);
 		std::map<EAiTimingGrade, int> Grades;
 		const int Runs = 5000;
 		for (int I = 0; I < Runs; ++I)
@@ -158,10 +159,10 @@ TEST_CASE("Ai.ShotChoice: extra aim scatter grows from Hard to Easy (GDD 8)")
 	const FAiTactics& T = TestData::Tactics();
 	// A volley against a pair at the back has one option and a fixed intended target.
 	const FShotContext C = Context(EContactKind::Volley, 3.0, 1.0, 8.5, 8.5);
-	FAiRng TargetRng(1);
+	FPadelRng TargetRng(1);
 	const FAiVec Intended = ShotChooser::IntendedTarget(EAiShot::Volley, C, T, TestData::Difficulty("Medium"), TargetRng);
 	auto MeanMiss = [&](const char* Level) {
-		FAiRng Rng(8);
+		FPadelRng Rng(8);
 		double Sum = 0.0;
 		for (int I = 0; I < 2000; ++I)
 		{

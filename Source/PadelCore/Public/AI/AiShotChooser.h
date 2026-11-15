@@ -5,8 +5,10 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiPlayerProfile.h"
-#include "AI/AiRng.h"
+#include "AI/AiRandom.h"
 
 #include <vector>
 
@@ -42,24 +44,24 @@ namespace Padel::AI
 
 	namespace ShotChooser
 	{
-		EOpponentShape ReadOpponents(const FShotContext& Context, const FAiTactics& Tactics);
+		PADELCORE_API EOpponentShape ReadOpponents(const FShotContext& Context, const FAiTactics& Tactics);
 
 		// The weighted options for a rally shot, before the pick. Exposed for tests.
-		std::vector<FShotOption> Options(const FShotContext& Context, const FAiTactics& Tactics, const FAiDifficulty& Difficulty);
+		PADELCORE_API std::vector<FShotOption> Options(const FShotContext& Context, const FAiTactics& Tactics, const FAiDifficulty& Difficulty);
 
 		// The intended landing point for a shot, before the aim scatter.
-		FAiVec IntendedTarget(EAiShot Shot, const FShotContext& Context, const FAiTactics& Tactics, const FAiDifficulty& Difficulty,
-			FAiRng& Rng);
+		PADELCORE_API FAiVec IntendedTarget(EAiShot Shot, const FShotContext& Context, const FAiTactics& Tactics, const FAiDifficulty& Difficulty,
+			FPadelRng& Rng);
 
-		FAiShotDecision ChooseRallyShot(const FShotContext& Context, const FAiTactics& Tactics, const FAiDifficulty& Difficulty,
-			FAiRng& Rng);
+		PADELCORE_API FAiShotDecision ChooseRallyShot(const FShotContext& Context, const FAiTactics& Tactics, const FAiDifficulty& Difficulty,
+			FPadelRng& Rng);
 
 		// GDD 3.2: diagonally into the receiver's box. Server is where the server stands.
-		FAiShotDecision ChooseServe(int HalfSign, const FAiVec& Server, const FAiTactics& Tactics, const FAiDifficulty& Difficulty,
-			FAiRng& Rng);
+		PADELCORE_API FAiShotDecision ChooseServe(int HalfSign, const FAiVec& Server, const FAiTactics& Tactics, const FAiDifficulty& Difficulty,
+			FPadelRng& Rng);
 
 		// GDD 5.1 timing, from the difficulty's grade distribution.
-		void SampleTiming(const FAiTactics& Tactics, const FAiDifficulty& Difficulty, FAiRng& Rng, EAiTimingGrade& OutGrade,
+		PADELCORE_API void SampleTiming(const FAiTactics& Tactics, const FAiDifficulty& Difficulty, FPadelRng& Rng, EAiTimingGrade& OutGrade,
 			double& OutOffsetS);
 	}
 }

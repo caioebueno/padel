@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiBallPredictor.h"
 #include "AI/AiPlayerProfile.h"
 
@@ -38,11 +40,11 @@ namespace Padel::AI
 	namespace InterceptPlanner
 	{
 		// Constant acceleration up to top speed, then cruise.
-		double TimeToCover(double Distance, double TopSpeed, double AccelTime);
+		PADELCORE_API double TimeToCover(double Distance, double TopSpeed, double AccelTime);
 
 		// The best reachable sample, or the one the player misses by the least when
 		// none is reachable (they still chase it). Empty when no sample is playable.
-		std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples, const FInterceptQuery& Query,
+		PADELCORE_API std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples, const FInterceptQuery& Query,
 			const FAiPlayerProfile& Profile, const FAiTactics& Tactics);
 	}
 }

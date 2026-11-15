@@ -38,7 +38,7 @@ namespace
 
 	// Intended target, then the GDD 8 extra aim scatter. The scatter is not clamped
 	// back inside the court: on Easy some of it lands out, which is the point.
-	FAiShotDecision Finish(EAiShot Shot, FAiVec Target, const FAiTactics& T, const FAiDifficulty& D, FAiRng& Rng)
+	FAiShotDecision Finish(EAiShot Shot, FAiVec Target, const FAiTactics& T, const FAiDifficulty& D, FPadelRng& Rng)
 	{
 		const double Angle = Rng.Range(0.0, 6.283185307179586);
 		const double Radius = T.AimScatterBaseM * D.AimScatterMult * std::sqrt(Rng.NextDouble());
@@ -151,7 +151,7 @@ std::vector<FShotOption> Options(const FShotContext& C, const FAiTactics& T, con
 	return Out;
 }
 
-FAiVec IntendedTarget(EAiShot Shot, const FShotContext& C, const FAiTactics& T, const FAiDifficulty& D, FAiRng& Rng)
+FAiVec IntendedTarget(EAiShot Shot, const FShotContext& C, const FAiTactics& T, const FAiDifficulty& D, FPadelRng& Rng)
 {
 	const std::vector<FAiVec2> Opp = OpponentsLocal(C);
 	double MeanX = 0.0;
@@ -169,7 +169,7 @@ FAiVec IntendedTarget(EAiShot Shot, const FShotContext& C, const FAiTactics& T, 
 			Front = P;
 		}
 	}
-	const bool bTactical = Rng.Chance(D.TacticalWeight);
+	const bool bTactical = Random::Chance(Rng, D.TacticalWeight);
 	const double AwaySide = MeanX >= 0.0 ? -1.0 : 1.0;
 	const EOpponentShape Shape = ReadOpponents(C, T);
 
@@ -210,7 +210,7 @@ FAiVec IntendedTarget(EAiShot Shot, const FShotContext& C, const FAiTactics& T, 
 	}
 }
 
-FAiShotDecision ChooseRallyShot(const FShotContext& C, const FAiTactics& T, const FAiDifficulty& D, FAiRng& Rng)
+FAiShotDecision ChooseRallyShot(const FShotContext& C, const FAiTactics& T, const FAiDifficulty& D, FPadelRng& Rng)
 {
 	const std::vector<FShotOption> Opts = Options(C, T, D);
 	std::vector<double> Weights;
@@ -218,23 +218,23 @@ FAiShotDecision ChooseRallyShot(const FShotContext& C, const FAiTactics& T, cons
 	{
 		Weights.push_back(O.Weight);
 	}
-	const EAiShot Shot = Opts.empty() ? EAiShot::Drive : Opts[static_cast<size_t>(Rng.WeightedIndex(Weights))].Shot;
+	const EAiShot Shot = Opts.empty() ? EAiShot::Drive : Opts[static_cast<size_t>(Random::WeightedIndex(Rng, Weights))].Shot;
 	return Finish(Shot, IntendedTarget(Shot, C, T, D, Rng), T, D, Rng);
 }
 
-FAiShotDecision ChooseServe(int HalfSign, const FAiVec& Server, const FAiTactics& T, const FAiDifficulty& D, FAiRng& Rng)
+FAiShotDecision ChooseServe(int HalfSign, const FAiVec& Server, const FAiTactics& T, const FAiDifficulty& D, FPadelRng& Rng)
 {
 	// Diagonal: the target is on the other side of the centre line from the server.
 	const double ServerSide = SignOf(Server.Y);
 	FAiVec Target = { -HalfSign * T.ServeDepthM, -ServerSide * T.ServeSideM, 0.0 };
-	const EAiShot Shot = Rng.Chance(T.KickServeChance * D.TacticalWeight) ? EAiShot::ServeKick : EAiShot::ServeFlat;
+	const EAiShot Shot = Random::Chance(Rng, T.KickServeChance * D.TacticalWeight) ? EAiShot::ServeKick : EAiShot::ServeFlat;
 	return Finish(Shot, Target, T, D, Rng);
 }
 
-void SampleTiming(const FAiTactics& T, const FAiDifficulty& D, FAiRng& Rng, EAiTimingGrade& OutGrade, double& OutOffsetS)
+void SampleTiming(const FAiTactics& T, const FAiDifficulty& D, FPadelRng& Rng, EAiTimingGrade& OutGrade, double& OutOffsetS)
 {
-	const int Grade = Rng.WeightedIndex({ D.TimingWeightPerfect, D.TimingWeightGood, D.TimingWeightEarlyLate, D.TimingWeightMiss });
-	const double Sign = Rng.Chance(0.5) ? -1.0 : 1.0;
+	const int Grade = Random::WeightedIndex(Rng, { D.TimingWeightPerfect, D.TimingWeightGood, D.TimingWeightEarlyLate, D.TimingWeightMiss });
+	const double Sign = Random::Chance(Rng, 0.5) ? -1.0 : 1.0;
 	double Lo = 0.0;
 	double Hi = T.WindowPerfectS;
 	switch (Grade)

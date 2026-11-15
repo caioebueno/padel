@@ -6,8 +6,10 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include "AI/AiInterceptPlanner.h"
-#include "AI/AiRng.h"
+#include "AI/AiRandom.h"
 
 #include <array>
 #include <optional>
@@ -28,7 +30,7 @@ namespace Padel::AI
 		int Teamwork = 50;
 	};
 
-	class FAiPairTactics
+	class PADELCORE_API FAiPairTactics
 	{
 	public:
 		explicit FAiPairTactics(const FAiTactics& InTactics);
@@ -58,7 +60,7 @@ namespace Padel::AI
 		// forehand of the left-side player by default, unless the partner is clearly
 		// better placed. Teamwork decides how cleanly that works. Exactly one slot is
 		// returned, so a pair never plays the ball twice.
-		int ChooseTaker(const FTakerQuery& Query, FAiRng& Rng) const;
+		int ChooseTaker(const FTakerQuery& Query, FPadelRng& Rng) const;
 
 	private:
 		const FAiTactics& Tactics;
