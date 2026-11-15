@@ -27,19 +27,20 @@ CLAUDE.md
 docs/        GDD.md, PLAYTEST.md, decisions/ (one short .md per decision)
 Source/
   PadelCore/        ball sim, court geometry, referee, score (plain C++, no UObjects); module tests in Private/Tests/
-  Padel/
-    Court/         APadelCourt, built at runtime from PadelCore's CourtSpec.h
+  Padel/            each area below has Public/<Area>/*.h and Private/<Area>/*.cpp; engine tests in Private/Tests/
+    Court/         APadelCourt, built from PadelCore's CourtLayout (derived from CourtSpec.h)
     Gameplay/      player pawn, movement, shot system, input (PadelInputConfig.cpp creates the IA_* actions and IMC_Match in C++)
     AI/            prediction, pair tactics, shot choice, difficulty
     UI/            HUD, menus, stats screen (UMG + CommonUI, logic in C++)
-    Presentation/  camera, audio, replays, the UPadelMatchEvents subsystem and its listeners
+    Presentation/  camera (APadelBroadcastCamera), audio, replays, the UPadelMatchEvents subsystem and its listeners
     Data/          USTRUCT row types for the data tables (FShotRow, FPlayerRow, FDifficultyRow...)
   Padel.Target.cs, PadelEditor.Target.cs
 Content/Padel/     Maps/, Court/, Characters/, Animations/, UI/, Audio/, Data/ (imported DataTables)
 Data/              Shots.json, Players.json, Teams.json, Difficulty.json, Physics.json, Camera.json (the source of truth)
 Config/            DefaultEngine.ini, DefaultInput.ini, DefaultGame.ini
-Tools/             build and test scripts (RunUnrealTests.sh), the asset pipeline (Python, Blender, Unreal Python import)
+Tools/             build and test scripts (RunNativeTests.sh, RunUnrealTests.sh/.ps1), the asset pipeline (Python, Blender, Unreal Python import)
 Tests/Native/      plain C++ tests for PadelCore (CMake + doctest), outside Source/ so the engine build skips them
+ThirdParty/        vendored code (doctest), each with its licence
 ```
 
 ## Coordinates and units
@@ -64,17 +65,23 @@ Unreal Automation tests (`IMPLEMENT_SIMPLE_AUTOMATION_TEST` and Automation Spec)
 
 Input Actions and `IMC_Match` are created in C++ from a binding table, not stored as `.uasset` files, so bindings stay diffable text.
 
-Exact commands: **TBD by the setup agent**. They will follow this shape:
+Commands:
 
 ```
-# all tests, headless
-UnrealEditor-Cmd Padel.uproject -ExecCmds="Automation RunTests Padel.; Quit" -unattended -nullrhi -nosplash -log
+# native PadelCore tests (any OS with CMake and a C++20 compiler; no engine needed)
+Tools/RunNativeTests.sh                       # all
+Tools/RunNativeTests.sh -tc="Court.Layout*"   # one group (doctest filters)
+
+# Unreal Automation tests, headless: builds PadelEditor, runs Padel.*, reads the report
+Tools/RunUnrealTests.sh                       # macOS / Linux; UE_ROOT defaults to /Users/Shared/Epic Games/UE_5.8 on a Mac
+Tools/RunUnrealTests.sh Padel.Court           # one area
+Tools\RunUnrealTests.ps1                      # Windows; UE_ROOT defaults to C:\Program Files\Epic Games\UE_5.8
 
 # AI soak test (100 matches, fixed seeds), once Agent 4 adds it
-UnrealEditor-Cmd Padel.uproject -ExecCmds="Automation RunTests Padel.Soak; Quit" -unattended -nullrhi
+Tools/RunUnrealTests.sh Padel.Soak
 ```
 
-CI runs the native tests on every PR. A PR merges only with green CI.
+CI (`.github/workflows/tests.yml`) runs the native tests on Linux and Apple Silicon and checks the project files on every PR. The Unreal Automation job runs only on a self-hosted runner labelled `unreal` when the repository variable `UNREAL_RUNNER` is `true`; until then, run `Tools/RunUnrealTests.sh` on a Mac before merging. A PR merges only with green CI.
 
 ## Git and PRs
 

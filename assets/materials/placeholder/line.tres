@@ -1,6 +1,0 @@
-[gd_resource type="StandardMaterial3D" format=3]
-
-[resource]
-resource_name = "placeholder_line"
-albedo_color = Color(0.95686275, 0.9647059, 0.972549, 1)
-roughness = 0.8

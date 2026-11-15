@@ -6,10 +6,16 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[*.gd]
+[*.{h,cpp,cs}]
 indent_style = tab
 indent_size = 4
 
-[*.{yml,yaml,json,md}]
+[*.{yml,yaml,json,md,uproject,txt}]
 indent_style = space
 indent_size = 2
+
+[*.uproject]
+indent_style = tab
+
+[*.{bat,ps1}]
+end_of_line = crlf

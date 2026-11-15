@@ -1,6 +1,6 @@
 # 0001: Engine version, test runner and generated court
 
-**Date:** 2026-11-15 · **Status:** accepted
+**Date:** 2026-11-15 · **Status:** superseded by [0002](0002-unreal-project-setup.md) (engine switched to Unreal Engine 5)
 
 - **Godot 4.7.2-stable**, the latest stable 4.x when the project was set up. Pinned in `project.godot` (`config/features`) and in `.github/workflows/tests.yml` (`GODOT_VERSION`). Upgrade both together, in their own PR.
 - **GUT 9.7.1** (the GUT release for Godot 4.7), vendored in `addons/gut/`. MIT licence, see `addons/gut/LICENSE.md`.

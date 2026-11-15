@@ -1,15 +1,27 @@
-# Godot 4
-.godot/
-/android/
-*.tmp
-# Exports
+# Unreal generated folders
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/
+.vs/
+.vscode/
+.idea/
+*.xcworkspace
+*.xcodeproj
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+compile_commands.json
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+
+# Native test build
 /build/
-/exports/
-export_credentials.cfg
-# GUT output
-/test_results/
-.gut_editor_config.json
-.gut_editor_shortcuts.cfg
+
 # OS
 .DS_Store
 Thumbs.db
