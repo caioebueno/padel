@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "PadelCoreApi.h"
+
 #include <cstdint>
 
 namespace Padel
@@ -125,9 +127,9 @@ namespace Padel
 	}
 
 	// The GDD 3.3 code, e.g. "DOUBLE_BOUNCE". The UI and stats read reasons by these names.
-	const char* PointReasonCode(EPointReason Reason);
-	const char* ServeFaultCode(EServeFault Fault);
+	PADELCORE_API const char* PointReasonCode(EPointReason Reason);
+	PADELCORE_API const char* ServeFaultCode(EServeFault Fault);
 	// Row id in Data/Shots.json, e.g. "bandeja".
-	const char* ShotTypeName(EShotType Shot);
-	const char* TimingGradeName(ETimingGrade Grade);
+	PADELCORE_API const char* ShotTypeName(EShotType Shot);
+	PADELCORE_API const char* TimingGradeName(ETimingGrade Grade);
 }

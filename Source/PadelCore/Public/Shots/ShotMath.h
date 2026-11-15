@@ -6,11 +6,7 @@
 
 #include "CourtLayout.h"
 
-// UnrealBuildTool defines PADELCORE_API (dll export/import) inside the engine build;
-// the standalone native tests build PadelCore statically and need nothing.
-#ifndef PADELCORE_API
-#define PADELCORE_API
-#endif
+#include "PadelCoreApi.h"
 
 #include <cmath>
 
