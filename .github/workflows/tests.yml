@@ -1,0 +1,63 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned engine version. Keep in sync with project.godot (config/features)
+  # and CLAUDE.md.
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  gut:
+    name: GUT (headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          chmod +x ~/godot/godot
+
+      - name: Godot version
+        run: ~/godot/godot --headless --version
+
+      - name: Import project
+        # The first import builds .godot/ (class names, resource cache).
+        # Godot can exit non-zero here on a fresh project; the test step is the real gate.
+        run: ~/godot/godot --headless --path . --import || true
+
+      - name: Check scripts parse (static typing enforced)
+        run: GODOT=~/godot/godot tools/check_scripts.sh
+
+      - name: Run tests
+        run: GODOT=~/godot/godot tools/run_tests.sh
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gut-results
+          path: test_results/
+          if-no-files-found: ignore
