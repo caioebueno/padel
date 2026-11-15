@@ -12,6 +12,7 @@
 #include "PadelLog.h"
 #include "Presentation/PadelBroadcastCamera.h"
 #include "Presentation/PadelMatchAudio.h"
+#include "Presentation/PadelMatchEvents.h"
 #include "UI/Model/PadelUiCodes.h"
 #include "UI/Model/PadelUiGlyphs.h"
 #include "UI/Model/PadelUiRoster.h"
@@ -86,7 +87,22 @@ void APadelHUD::BeginPlay()
 	MenuWidget->OnOptionCycled.AddUObject(this, &APadelHUD::HandleMenuCycle);
 	MenuWidget->OnBack.AddUObject(this, &APadelHUD::HandleMenuBack);
 
+	if (UWorld* World = GetWorld())
+	{
+		if (UPadelMatchEvents* Events = World->GetSubsystem<UPadelMatchEvents>())
+		{
+			MatchEvents.Bind(*Events, *this, Setup.bGoldenPoint);
+		}
+	}
+
 	ShowScreen(EPadelScreen::MainMenu);
+}
+
+void APadelHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	MatchEvents.Unbind();
+	DemoMatch.Reset();
+	Super::EndPlay(EndPlayReason);
 }
 
 void APadelHUD::Tick(float DeltaSeconds)
@@ -275,7 +291,7 @@ void APadelHUD::HandleMenuOption(int32 Index)
 		}
 		else
 		{
-			DemoMatch.Reset();
+			CloseMatch();
 			ShowScreen(EPadelScreen::MainMenu);
 		}
 		break;
@@ -350,23 +366,38 @@ void APadelHUD::StartMatch()
 		Camera->SetHumanEnd(1);
 	}
 
-	// Stand-in until the simulation lands (Agent 2): a scripted match on the same events.
+	// A restart closes the old match first, so the owner never holds two.
+	CloseMatch();
+	MatchEvents.SetGoldenPointRule(Setup.bGoldenPoint);
+	ShowScreen(EPadelScreen::Match);
+	HudWidget->UpdateScore(LastScore);
+
+	OnMatchRequested.Broadcast(Setup);
+	if (MatchEvents.HasLiveMatch())
+	{
+		return;
+	}
+	// No match owner attached a simulation: a scripted match on the same events instead.
+	UE_LOG(LogPadel, Log, TEXT("No match simulation attached; playing the demo match."));
 	Padel::Ui::FDemoMatchOptions Options;
 	Options.SetsToWin = Setup.SetsToWin;
 	Options.bGoldenPoint = Setup.bGoldenPoint;
 	Options.Seed = 1000u + (++MatchCount);
 	DemoMatch = MakeUnique<Padel::Ui::FDemoMatch>(Options, *this);
-
-	ShowScreen(EPadelScreen::Match);
-	HudWidget->UpdateScore(LastScore);
 	DemoMatch->Start();
 }
 
 void APadelHUD::EndMatch()
 {
+	CloseMatch();
+	ShowScreen(EPadelScreen::Stats);
+}
+
+void APadelHUD::CloseMatch()
+{
 	MatchEndCountdown = -1.0f;
 	DemoMatch.Reset();
-	ShowScreen(EPadelScreen::Stats);
+	OnMatchClosed.Broadcast();
 }
 
 void APadelHUD::OnServeStarted(int ServerId)
@@ -502,10 +533,14 @@ void APadelHUD::OnGoldenPointStarted(int ReceivingTeam)
 
 void APadelHUD::HandleGoldenReceiver(int32 PlayerId)
 {
-	// Agent 2: FMatchSimulation::ChooseGoldenPointReceiver(PlayerId) once the sim is wired.
+	// GDD 3.1: the match owner passes this to FMatchSimulation::ChooseGoldenPointReceiver.
 	if (DemoMatch)
 	{
 		DemoMatch->ChooseGoldenPointReceiver(PlayerId);
+	}
+	else
+	{
+		OnGoldenReceiverPicked.Broadcast(PlayerId);
 	}
 	HudWidget->ShowMessage(EPadelHudMessage::Callout,
 		FText::Format(LOCTEXT("Receives", "{0} receives"), Txt(Padel::Ui::Surname(PlayerId))), PadelUiStyle::Accent, CalloutSeconds);

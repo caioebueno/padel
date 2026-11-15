@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
 #include "Gameplay/PadelInputConfig.h"
+#include "UI/PadelMatchEventBinder.h"
 #include "Templates/UniquePtr.h"
 #include "UI/Model/PadelUiDemoMatch.h"
 #include "UI/Model/PadelUiEventSink.h"
@@ -17,6 +18,13 @@ class UPadelHudWidget;
 class UPadelMatchAudio;
 class UPadelMenuWidget;
 struct FInputActionInstance;
+
+/** Start match was chosen: the match owner builds an FMatchSimulation from Setup and attaches it. */
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnPadelMatchRequested, const Padel::Ui::FMatchSetup& /*Setup*/);
+/** The match is over or was quit: the match owner detaches and drops its simulation. */
+DECLARE_MULTICAST_DELEGATE(FOnPadelMatchClosed);
+/** GDD 3.1: the human picked the golden point receiver; the owner calls ChooseGoldenPointReceiver. */
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnPadelGoldenReceiverPicked, int32 /*PlayerId*/);
 
 UENUM()
 enum class EPadelScreen : uint8
@@ -33,10 +41,11 @@ enum class EPadelScreen : uint8
  * mode 1, GDD 12 item 1), and the one place where match events reach the UI, camera and
  * audio (GDD 3.4).
  *
- * It implements IUiEventSink, which mirrors PadelCore's IMatchEventListener. Until the
- * match simulation and UPadelMatchEvents land (Agent 2), a scripted FDemoMatch feeds it,
- * so the whole flow can be played. Swapping in the real events is the adapter in
- * BindMatchEvents; nothing else here changes.
+ * It implements IUiEventSink and hears the real match through UPadelMatchEvents
+ * (FPadelMatchEventBinder). The HUD doesn't own the match: on Start match it broadcasts
+ * OnMatchRequested, and whoever owns the simulation builds it and attaches it to the
+ * subsystem. If nothing is attached by then, a scripted FDemoMatch plays instead, so the
+ * flow stays playable until a match owner exists.
  */
 UCLASS()
 class PADEL_API APadelHUD : public AHUD, public FPadelUiEventSink
@@ -47,6 +56,7 @@ public:
 	APadelHUD();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	void ShowScreen(EPadelScreen NewScreen);
@@ -74,6 +84,13 @@ public:
 	/** Partner command pressed (GDD 8): shows the prompt. The partner AI binds the action itself. */
 	void ShowPartnerCommand(EPadelInputAction Action);
 
+	FOnPadelMatchRequested OnMatchRequested;
+	FOnPadelMatchClosed OnMatchClosed;
+	FOnPadelGoldenReceiverPicked OnGoldenReceiverPicked;
+
+	/** True while the scripted stand-in plays because no real match was attached. */
+	bool IsPlayingDemo() const { return DemoMatch.IsValid(); }
+
 	/** Seconds the end-of-match card stays up before the stats screen. */
 	static constexpr float MatchEndDelaySeconds = 4.0f;
 
@@ -85,6 +102,7 @@ protected:
 private:
 	void StartMatch();
 	void EndMatch();
+	void CloseMatch();
 	void SetMenuInput(bool bMenu);
 	void BuildMainMenu();
 	void BuildSetupMenu();
@@ -115,6 +133,7 @@ private:
 	Padel::Ui::FMatchStats Stats;
 	Padel::Ui::FScoreView LastScore;
 	TUniquePtr<Padel::Ui::FDemoMatch> DemoMatch;
+	FPadelMatchEventBinder MatchEvents;
 	uint32 MatchCount = 0;
 	float MatchEndCountdown = -1.0f;
 	/** Title for the score card, shown when the next score arrives. */
