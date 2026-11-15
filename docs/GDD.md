@@ -102,8 +102,8 @@ Partners hit alternately or not at all: only **one touch per team**, and either 
 |---|---|
 | `DOUBLE_BOUNCE` | The ball bounces twice on its ground before it plays the ball |
 | `INTO_NET` | Its shot doesn't clear the net |
-| `WALL_BEFORE_BOUNCE` | Its shot hits the opponents' glass, mesh or any wall before bouncing on the opponents' ground (often called hitting it "glass on the fly"; this includes going straight out) |
-| `OUT_DIRECT` | Its shot leaves the court or hits the ceiling, lights or post without bouncing in first |
+| `WALL_BEFORE_BOUNCE` | Its shot hits the opponents' glass or mesh before bouncing on the opponents' ground (often called hitting it "glass on the fly"). Only contact with the opponents' walls counts here. |
+| `OUT_DIRECT` | Its shot leaves the court without bouncing on the opponents' ground first (over the walls, through an exit door, or wide of the court), or hits the ceiling, lights or a post. If the ball touches the opponents' wall on its way out, the first contact decides: wall first is `WALL_BEFORE_BOUNCE`. |
 | `OWN_SIDE` | Its shot bounces on its own ground, or hits its own mesh or wall and doesn't come back over |
 | `BODY_HIT` | The ball hits one of its players' bodies or clothing before the second bounce (whether it's in play or a shot heading out) |
 | `DOUBLE_HIT` | One of its players hits the ball twice, or both partners touch it |
