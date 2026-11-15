@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://03aqu3t1au3u"
+
+[deps]
+
+files=["res://assets/manifest.source.translation", "res://assets/manifest.licence.translation", "res://assets/manifest.notes.translation"]
+
+source_file="res://assets/manifest.csv"
+dest_files=["res://assets/manifest.source.translation", "res://assets/manifest.licence.translation", "res://assets/manifest.notes.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
