@@ -1,0 +1,83 @@
+{
+	"_comment": "Menu UI tokens (docs/ui/MENU_SPEC.md sections 4, 5 and 9). Read at startup into Padel::Ui::FUiTheme; every key also has a built-in default in PadelUiTheme.cpp, so a missing file still shows the menus (spec 7.12). Colours are hex plus alpha; sizes are px at 1080p; times are seconds.",
+	"Colour": {
+		"Bg.Deep":           { "Hex": "#070B14", "Alpha": 1.0 },
+		"Bg.Scrim":          { "Hex": "#070B14", "Alpha": 0.55 },
+		"Bg.ScrimPause":     { "Hex": "#070B14", "Alpha": 0.70 },
+		"Bg.ScrimTitle":     { "Hex": "#070B14", "Alpha": 0.35 },
+		"Bg.ScrimDialog":    { "Hex": "#070B14", "Alpha": 0.60 },
+		"Bg.Vignette":       { "Hex": "#000000", "Alpha": 0.60 },
+		"Glass.Fill":        { "Hex": "#111A2B", "Alpha": 0.72 },
+		"Glass.FillRaised":  { "Hex": "#1A2540", "Alpha": 0.82 },
+		"Glass.Edge":        { "Hex": "#FFFFFF", "Alpha": 0.10 },
+		"Glass.EdgeTop":     { "Hex": "#FFFFFF", "Alpha": 0.22 },
+		"Glass.Shadow":      { "Hex": "#000000", "Alpha": 0.45 },
+		"Surface.Charcoal":  { "Hex": "#151922", "Alpha": 0.94 },
+		"Accent":            { "Hex": "#C8F03C", "Alpha": 1.0 },
+		"Accent.Pressed":    { "Hex": "#A6CC22", "Alpha": 1.0 },
+		"Accent.Glow":       { "Hex": "#C8F03C", "Alpha": 0.35 },
+		"OnAccent":          { "Hex": "#0A1020", "Alpha": 1.0 },
+		"Text.Primary":      { "Hex": "#F4F1E8", "Alpha": 1.0 },
+		"Text.Secondary":    { "Hex": "#F4F1E8", "Alpha": 0.68 },
+		"Text.Disabled":     { "Hex": "#F4F1E8", "Alpha": 0.34 },
+		"Team.Lagoon":       { "Hex": "#2EC4B6", "Alpha": 1.0 },
+		"Team.Ember":        { "Hex": "#FF7A3D", "Alpha": 1.0 },
+		"State.Good":        { "Hex": "#7CFF6B", "Alpha": 1.0 },
+		"State.Warning":     { "Hex": "#FFB347", "Alpha": 1.0 },
+		"State.Danger":      { "Hex": "#FF5D5D", "Alpha": 1.0 },
+		"Lock":              { "Hex": "#8C95A8", "Alpha": 1.0 }
+	},
+	"Type": {
+		"Hero":      { "Face": "CondensedExtraBoldItalic", "Size": 120, "LineHeight": 108, "Tracking": -1, "Upper": true,  "Scales": false },
+		"Display":   { "Face": "CondensedBold",            "Size": 72,  "LineHeight": 72,  "Tracking": 0,  "Upper": true,  "Scales": false },
+		"Score":     { "Face": "CondensedBoldTabular",     "Size": 96,  "LineHeight": 96,  "Tracking": 0,  "Upper": false, "Scales": false },
+		"Title":     { "Face": "CondensedSemiBold",        "Size": 44,  "LineHeight": 48,  "Tracking": 1,  "Upper": true,  "Scales": false },
+		"Heading":   { "Face": "CondensedSemiBold",        "Size": 32,  "LineHeight": 36,  "Tracking": 2,  "Upper": true,  "Scales": false },
+		"Body":      { "Face": "Medium",                   "Size": 28,  "LineHeight": 36,  "Tracking": 0,  "Upper": false, "Scales": true },
+		"BodySmall": { "Face": "Medium",                   "Size": 26,  "LineHeight": 34,  "Tracking": 0,  "Upper": false, "Scales": true },
+		"Label":     { "Face": "CondensedBold",            "Size": 26,  "LineHeight": 30,  "Tracking": 8,  "Upper": true,  "Scales": true },
+		"Stat":      { "Face": "CondensedBoldTabular",     "Size": 40,  "LineHeight": 40,  "Tracking": 0,  "Upper": false, "Scales": false },
+		"Overall":   { "Face": "CondensedExtraBoldTabular","Size": 88,  "LineHeight": 80,  "Tracking": -2, "Upper": false, "Scales": false }
+	},
+	"TextScale": { "Default": 1.0, "Large": 1.15, "Largest": 1.3 },
+	"Layout": {
+		"Space.1": 8, "Space.2": 16, "Space.3": 24, "Space.4": 32, "Space.5": 48, "Space.6": 64, "Space.7": 96, "Space.8": 128,
+		"Safe.X": 96, "Safe.Y": 64,
+		"Grid.Columns": 12, "Grid.Column": 122, "Grid.Gutter": 24,
+		"Header.Height": 96, "HintBar.Height": 56, "HintBar.PauseStrip": 88, "Band.Gap": 24,
+		"Radius.Panel": 12, "Radius.Control": 8, "Radius.Pill": 999,
+		"Shadow.OffsetY": 12, "Shadow.Blur": 32,
+		"Focus.Ring": 3, "Focus.Gap": 2, "Focus.GlowBlur": 12, "Focus.Scale": 1.03, "Focus.RowSlide": 8, "Focus.RowBar": 6, "Focus.RowBarPressed": 10,
+		"Press.Scale": 0.98, "Press.ScaleTile": 0.99, "Press.ScaleArrow": 0.85,
+		"Blur.Strength": 10
+	},
+	"Motion": {
+		"Focus": 0.12, "FocusOut": 0.08, "Press": 0.08, "Value": 0.14,
+		"ScreenIn": 0.24, "ScreenOut": 0.20, "ScreenSlideIn": 48, "ScreenSlideOut": 32,
+		"Stagger": 0.04, "StaggerMax": 6,
+		"DialogIn": 0.16, "DialogOut": 0.10, "DialogScaleFrom": 0.96,
+		"Pulse": 1.6, "PushIn": 6.0, "PushInScale": 1.04,
+		"ReduceMotionFade": 0.16,
+		"ToastSeconds": 2.5, "ToastFade": 0.2,
+		"HintFlash": 0.12
+	},
+	"Input": {
+		"EntryLock": 0.12,
+		"RepeatDelay": 0.4, "RepeatRate": 0.11,
+		"SliderRepeatRate": 0.06, "SliderFastAfter": 1.0, "SliderStep": 5, "SliderFineStep": 1,
+		"StickDeadZone": 0.5,
+		"PressMinimum": 0.08,
+		"StatsConfirmLockSeconds": 1.0,
+		"GoldenPromptLockSeconds": 0.5,
+		"CursorHideSeconds": 3.0,
+		"LoadingIndicatorAfter": 0.3,
+		"VersusSeconds": 2.5,
+		"MatchStartTimeout": 20.0
+	},
+	"PlayerCardStats": {
+		"Attack":   ["Overhead", "Bandeja", "Vibora", "Power"],
+		"Defence":  ["WallPlay", "Lob", "Drive", "Backhand"],
+		"Net":      ["Volley", "Touch", "Anticipation", "Positioning"],
+		"Movement": ["Speed", "Acceleration", "Agility", "Stamina"]
+	}
+}

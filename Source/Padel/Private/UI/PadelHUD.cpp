@@ -17,7 +17,7 @@
 #include "UI/Model/PadelUiGlyphs.h"
 #include "UI/Model/PadelUiRoster.h"
 #include "UI/PadelHudWidget.h"
-#include "UI/PadelMenuWidget.h"
+#include "UI/Screens/PadelMenuRoot.h"
 #include "UI/PadelUiStyle.h"
 
 #define LOCTEXT_NAMESPACE "PadelHUD"
@@ -28,12 +28,6 @@ namespace
 	constexpr float CueSeconds = 0.9f;
 	constexpr float CommandSeconds = 1.6f;
 	constexpr float CardSeconds = 3.0f;
-
-	// Menu option indices, per screen.
-	enum EMainOption : int32 { MainQuickMatch, MainQuit };
-	enum ESetupOption : int32 { SetupDifficulty, SetupLength, SetupGolden, SetupPlayer, SetupStart, SetupBack };
-	enum EPauseOption : int32 { PauseResume, PauseRestart, PauseQuit };
-	enum EStatsOption : int32 { StatsPlayAgain, StatsMainMenu };
 
 	FText Txt(const std::string& Text)
 	{
@@ -74,18 +68,17 @@ void APadelHUD::BeginPlay()
 		return;
 	}
 	HudWidget = CreateWidget<UPadelHudWidget>(PC, UPadelHudWidget::StaticClass());
-	MenuWidget = CreateWidget<UPadelMenuWidget>(PC, UPadelMenuWidget::StaticClass());
-	if (!HudWidget || !MenuWidget)
+	MenuRoot = CreateWidget<UPadelMenuRoot>(PC, UPadelMenuRoot::StaticClass());
+	if (!HudWidget || !MenuRoot)
 	{
 		UE_LOG(LogPadel, Error, TEXT("Could not create the HUD widgets."));
 		return;
 	}
 	HudWidget->AddToViewport(10);
-	MenuWidget->AddToViewport(20);
+	MenuRoot->AddToViewport(20);
 	HudWidget->OnGoldenReceiverChosen.AddUObject(this, &APadelHUD::HandleGoldenReceiver);
-	MenuWidget->OnOptionChosen.AddUObject(this, &APadelHUD::HandleMenuOption);
-	MenuWidget->OnOptionCycled.AddUObject(this, &APadelHUD::HandleMenuCycle);
-	MenuWidget->OnBack.AddUObject(this, &APadelHUD::HandleMenuBack);
+	MenuRoot->SetHost(this);
+	MenuRoot->OnScreenChanged.AddUObject(this, &APadelHUD::HandleScreenChanged);
 
 	if (UWorld* World = GetWorld())
 	{
@@ -95,7 +88,8 @@ void APadelHUD::BeginPlay()
 		}
 	}
 
-	ShowScreen(EPadelScreen::MainMenu);
+	// Spec 7.1: the game opens on the title, which learns the player's device.
+	ShowScreen(EPadelScreen::Title);
 }
 
 void APadelHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -134,55 +128,51 @@ void APadelHUD::Tick(float DeltaSeconds)
 
 void APadelHUD::ShowScreen(EPadelScreen NewScreen)
 {
+	if (MenuRoot)
+	{
+		// The root broadcasts the change back to HandleScreenChanged.
+		MenuRoot->ShowScreen(NewScreen);
+	}
+	else
+	{
+		Screen = NewScreen;
+	}
+}
+
+void APadelHUD::HandleScreenChanged(EPadelScreen NewScreen)
+{
 	Screen = NewScreen;
-	if (!MenuWidget || !HudWidget)
+	if (!HudWidget)
 	{
 		return;
 	}
-	APlayerController* PC = GetOwningPlayerController();
-	const bool bMenu = NewScreen != EPadelScreen::Match;
-	if (PC)
+	const bool bMenu = Padel::Ui::IsMenuScreen(ToUiScreen(NewScreen));
+	const bool bPaused = NewScreen == EPadelScreen::Paused || NewScreen == EPadelScreen::PracticePaused;
+	if (APlayerController* PC = GetOwningPlayerController())
 	{
-		PC->SetPause(NewScreen == EPadelScreen::Paused);
+		PC->SetPause(bPaused);
 	}
-	HudWidget->SetVisibility(NewScreen == EPadelScreen::Match || NewScreen == EPadelScreen::Paused
+	// The score bug stays under the pause scrim, so the paused match still reads (spec 7.5).
+	HudWidget->SetVisibility(NewScreen == EPadelScreen::Match || bPaused
 		? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
-	MenuWidget->SetVisibility(bMenu ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-
-	switch (NewScreen)
-	{
-	case EPadelScreen::MainMenu:
-		BuildMainMenu();
-		break;
-	case EPadelScreen::MatchSetup:
-		BuildSetupMenu();
-		break;
-	case EPadelScreen::Paused:
-		BuildPauseMenu();
-		break;
-	case EPadelScreen::Stats:
-		BuildStatsScreen();
-		break;
-	case EPadelScreen::Match:
-		break;
-	}
 	SetMenuInput(bMenu);
 }
 
 void APadelHUD::SetMenuInput(bool bMenu)
 {
 	APlayerController* PC = GetOwningPlayerController();
-	if (!PC)
+	if (!PC || !MenuRoot)
 	{
 		return;
 	}
 	PC->SetShowMouseCursor(bMenu);
 	if (bMenu)
 	{
+		// The root keeps keyboard focus and routes every key itself (spec 5).
 		FInputModeUIOnly Mode;
-		Mode.SetWidgetToFocus(MenuWidget->TakeWidget());
+		Mode.SetWidgetToFocus(MenuRoot->TakeWidget());
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		PC->SetInputMode(Mode);
-		MenuWidget->FocusOption(0);
 	}
 	else
 	{
@@ -190,167 +180,31 @@ void APadelHUD::SetMenuInput(bool bMenu)
 	}
 }
 
-void APadelHUD::BuildMainMenu()
+void APadelHUD::MenuStartMatch()
 {
-	// "Padel Street" is the working title (GDD 13 decision 2).
-	MenuWidget->SetTitle(LOCTEXT("Title", "PADEL STREET"));
-	MenuWidget->SetBody(LOCTEXT("MainBody", "2v2 padel. You and an AI partner against two AI players."));
-	MenuWidget->SetTable({});
-	MenuWidget->SetOptions({LOCTEXT("QuickMatch", "Quick Match"), LOCTEXT("Quit", "Quit")});
+	StartMatch();
 }
 
-void APadelHUD::BuildSetupMenu()
+void APadelHUD::MenuResumeMatch()
 {
-	MenuWidget->SetTitle(LOCTEXT("SetupTitle", "QUICK MATCH"));
-	MenuWidget->SetBody(FText::Format(LOCTEXT("SetupBody", "{0} vs {1}. Left and right change an option."),
-		Txt(Padel::Ui::TeamName(0)), Txt(Padel::Ui::TeamName(1))));
-	MenuWidget->SetTable({});
-	MenuWidget->SetOptions({FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(),
-		LOCTEXT("Start", "Start match"), LOCTEXT("Back", "Back")});
-	RefreshSetupLabels();
+	ShowScreen(Screen == EPadelScreen::PracticePaused ? EPadelScreen::Practice : EPadelScreen::Match);
 }
 
-void APadelHUD::RefreshSetupLabels()
+void APadelHUD::MenuRestartMatch()
 {
-	MenuWidget->SetOptionLabel(SetupDifficulty, FText::Format(LOCTEXT("Difficulty", "Difficulty: {0}"), Txt(Setup.DifficultyLabel())));
-	MenuWidget->SetOptionLabel(SetupLength, FText::Format(LOCTEXT("Length", "Match: {0}"), Txt(Setup.LengthLabel())));
-	MenuWidget->SetOptionLabel(SetupGolden, FText::Format(LOCTEXT("Golden", "Golden point: {0}"), Txt(Setup.GoldenPointLabel())));
-	MenuWidget->SetOptionLabel(SetupPlayer, FText::Format(LOCTEXT("Player", "You play: {0}"), Txt(Setup.PlayerLabel())));
+	StartMatch();
 }
 
-void APadelHUD::BuildPauseMenu()
+void APadelHUD::MenuQuitMatch()
 {
-	MenuWidget->SetTitle(LOCTEXT("PausedTitle", "PAUSED"));
-	MenuWidget->SetBody(Txt(Padel::Ui::SummaryLine(LastScore)));
-	MenuWidget->SetTable({});
-	MenuWidget->SetOptions({LOCTEXT("Resume", "Resume"), LOCTEXT("Restart", "Restart match"), LOCTEXT("QuitToMenu", "Quit to main menu")});
+	// Spec 7.10: quitting drops the match; no stats screen.
+	CloseMatch();
+	ShowScreen(EPadelScreen::MainMenu);
 }
 
-void APadelHUD::BuildStatsScreen()
+void APadelHUD::MenuQuitGame()
 {
-	const int32 Winner = Stats.MatchWinner;
-	MenuWidget->SetTitle(Winner >= 0
-		? FText::Format(LOCTEXT("StatsWinner", "{0} WIN"), Txt(Padel::Ui::TeamName(Winner)))
-		: LOCTEXT("StatsTitle", "MATCH STATS"));
-	MenuWidget->SetBody(FText::Format(LOCTEXT("StatsBody", "{0}  -  average rally {1} shots  -  {2}% of points had a shot off the glass"),
-		Txt(Padel::Ui::FinalLine(Stats.FinalSets)),
-		FText::AsNumber(FMath::RoundToInt(Stats.AverageRally() * 10.0) / 10.0),
-		FText::AsNumber(FMath::RoundToInt(Stats.GlassPointShare() * 100.0))));
-
-	TArray<TArray<FText>> Rows;
-	Rows.Add({FText::GetEmpty(), Txt(Padel::Ui::PairLabel(0)), Txt(Padel::Ui::PairLabel(1))});
-	for (const Padel::Ui::FStatRow& Row : Stats.SummaryRows())
-	{
-		Rows.Add({Txt(Row.Label), FText::AsNumber(Row.TeamA), FText::AsNumber(Row.TeamB)});
-	}
-	// "How the points ended" (Agent 7 brief), labelled from the reason codes.
-	for (const Padel::Ui::FStatRow& Row : Stats.EndingRows())
-	{
-		Rows.Add({FText::Format(LOCTEXT("WonBy", "Won by: {0}"), Txt(Row.Label)), FText::AsNumber(Row.TeamA), FText::AsNumber(Row.TeamB)});
-	}
-	MenuWidget->SetTable(Rows);
-	MenuWidget->SetOptions({LOCTEXT("PlayAgain", "Play again"), LOCTEXT("MainMenu", "Main menu")});
-}
-
-void APadelHUD::HandleMenuOption(int32 Index)
-{
-	switch (Screen)
-	{
-	case EPadelScreen::MainMenu:
-		if (Index == MainQuickMatch)
-		{
-			ShowScreen(EPadelScreen::MatchSetup);
-		}
-		else if (Index == MainQuit)
-		{
-			UKismetSystemLibrary::QuitGame(this, GetOwningPlayerController(), EQuitPreference::Quit, false);
-		}
-		break;
-	case EPadelScreen::MatchSetup:
-		if (Index <= SetupPlayer)
-		{
-			HandleMenuCycle(Index, 1);
-		}
-		else if (Index == SetupStart)
-		{
-			StartMatch();
-		}
-		else
-		{
-			ShowScreen(EPadelScreen::MainMenu);
-		}
-		break;
-	case EPadelScreen::Paused:
-		if (Index == PauseResume)
-		{
-			ShowScreen(EPadelScreen::Match);
-		}
-		else if (Index == PauseRestart)
-		{
-			StartMatch();
-		}
-		else
-		{
-			CloseMatch();
-			ShowScreen(EPadelScreen::MainMenu);
-		}
-		break;
-	case EPadelScreen::Stats:
-		if (Index == StatsPlayAgain)
-		{
-			StartMatch();
-		}
-		else
-		{
-			ShowScreen(EPadelScreen::MainMenu);
-		}
-		break;
-	case EPadelScreen::Match:
-		break;
-	}
-}
-
-void APadelHUD::HandleMenuCycle(int32 Index, int32 Step)
-{
-	if (Screen != EPadelScreen::MatchSetup)
-	{
-		return;
-	}
-	switch (Index)
-	{
-	case SetupDifficulty:
-		Setup.CycleDifficulty(Step);
-		break;
-	case SetupLength:
-		Setup.CycleLength();
-		break;
-	case SetupGolden:
-		Setup.ToggleGoldenPoint();
-		break;
-	case SetupPlayer:
-		Setup.CyclePlayer();
-		break;
-	default:
-		return;
-	}
-	RefreshSetupLabels();
-}
-
-void APadelHUD::HandleMenuBack()
-{
-	switch (Screen)
-	{
-	case EPadelScreen::MatchSetup:
-	case EPadelScreen::Stats:
-		ShowScreen(EPadelScreen::MainMenu);
-		break;
-	case EPadelScreen::Paused:
-		ShowScreen(EPadelScreen::Match);
-		break;
-	case EPadelScreen::MainMenu:
-	case EPadelScreen::Match:
-		break;
-	}
+	UKismetSystemLibrary::QuitGame(this, GetOwningPlayerController(), EQuitPreference::Quit, false);
 }
 
 // --- Match -------------------------------------------------------------------
@@ -576,9 +430,17 @@ void APadelHUD::TryBindInput()
 
 void APadelHUD::HandlePausePressed(const FInputActionInstance& Instance)
 {
-	if (Screen == EPadelScreen::Match)
+	// Spec 7.5: Start pauses only during play, not over the golden point prompt or the
+	// end-of-match card. In menus the menu root hears Start itself.
+	if (!MenuRoot)
 	{
-		ShowScreen(EPadelScreen::Paused);
+		return;
+	}
+	const bool bGoldenPrompt = HudWidget && HudWidget->IsGoldenPromptOpen();
+	const bool bEndCard = MatchEndCountdown > 0.0f;
+	if (MenuRoot->GetFlow().CanOpenPause(bGoldenPrompt, bEndCard))
+	{
+		ShowScreen(Screen == EPadelScreen::Practice ? EPadelScreen::PracticePaused : EPadelScreen::Paused);
 	}
 }
 
