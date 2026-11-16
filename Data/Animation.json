@@ -3,7 +3,7 @@
 		"Name": "default",
 		"WalkMinMps": 0.3,
 		"SprintMinMps": 4.8,
-		"RunClipSpeedMps": 4.0,
+		"RunClipSpeedMps": 3.75,
 		"SprintClipSpeedMps": 6.0,
 		"StrideRateMin": 0.75,
 		"StrideRateMax": 1.3,
@@ -56,7 +56,7 @@
 			"/Game/Padel/Animations/Locomotion/A_Jog_Left",
 			"/Game/Padel/Animations/Locomotion/A_Jog_Right"
 		],
-		"WalkClipSpeedMps": 1.6,
+		"WalkClipSpeedMps": 1.65,
 		"ArmReadyAlpha": 0.6
 	}
 ]

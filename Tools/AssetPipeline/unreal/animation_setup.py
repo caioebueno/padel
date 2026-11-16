@@ -1,19 +1,25 @@
-"""Retargets Epic's UE5 mannequin idle, walk and jog clips onto the placeholder skeleton,
-for the C++ player pose (docs/decisions/0006-metahuman-players.md). Runs inside the Unreal
-Editor after import_assets.py:
+"""Retargets athletic stand-in clips onto the placeholder skeleton, for the C++ player pose
+(docs/decisions/0006-metahuman-players.md, phase 0 of the movement plan). Runs inside the
+Unreal Editor after import_assets.py:
 
   Output Log (Python): exec(open("<repo>/Tools/AssetPipeline/unreal/animation_setup.py").read())
   or headless: UnrealEditor-Cmd Padel.uproject -run=pythonscript -script=<this file>
 
-The source clips come from the engine's Third Person template (TemplateResources), which
-the script copies into /Game/Characters/Mannequins first (git-ignored: Epic content, rebuilt
-from the engine install). It creates, from text like the rest of the pipeline:
+The clips are Epic's Game Animation Sample (free on Fab under its Standard License; Epic content for Unreal Engine projects only): crouched
+loops for the low adjustment and side-shuffle steps, run loops for the faster movement.
+gasp_export.py, run in the sample project, writes them as FBX to SourceArt/_incoming/GASP/
+(git-ignored). This script imports them onto the UE5 mannequin skeleton (the bone names
+match), into /Game/Characters/GASP (git-ignored), then retargets them. The mannequin itself
+comes from the engine's Third Person template, copied into /Game/Characters/Mannequins. It
+creates, from text like the rest of the pipeline:
 
   /Game/Padel/Animations/Retarget/IK_PadelMannequin, IK_PadelPlaceholder
   /Game/Padel/Animations/Retarget/RTG_Mannequin_To_Placeholder
   /Game/Padel/Animations/Locomotion/A_Idle, A_Walk_{Fwd,Bwd,Left,Right}, A_Jog_{...}
 
-the clip paths Data/Animation.json names (IdleAsset, WalkAssets, JogAssets).
+the clip paths Data/Animation.json names (IdleAsset, WalkAssets, JogAssets). The clips
+carry root motion; the pose plays them in place (root locked) and the game moves the pawn,
+so each clip's root speed is logged for WalkClipSpeedMps and RunClipSpeedMps.
 Log lines start with [padel-anim]; the last one is "[padel-anim] done" or "... FAILED".
 """
 
@@ -35,18 +41,24 @@ MANNEQUIN_RIG = f"{RETARGET_DIR}/IK_PadelMannequin"
 PLACEHOLDER_RIG = f"{RETARGET_DIR}/IK_PadelPlaceholder"
 RETARGETER = f"{RETARGET_DIR}/RTG_Mannequin_To_Placeholder"
 STAGING = "/Game/Padel/Animations/Locomotion/_Staging"
-ANIMS = "/Game/Characters/Mannequins/Anims/Unarmed"
-# Source clip -> the name Animation.json expects.
+INCOMING = PROJECT / "SourceArt" / "_incoming" / "GASP"
+GASP_DIR = "/Game/Characters/GASP"
+# Game Animation Sample clip (FBX in INCOMING, imported into GASP_DIR) -> the name
+# Animation.json expects. Biomechanics doc 2.1 to 2.4: a ready stance with bent knees, low
+# adjustment steps forward and back, a low side shuffle, then an athletic run and strafe.
+# The "Relaxed" sets are used because every direction in them moves at the same root speed
+# (crouch 1.65 m/s, run 3.75 m/s), and the pose plays all four directions at one rate:
+# WalkClipSpeedMps and RunClipSpeedMps in Data/Animation.json.
 CLIPS = {
-    f"{ANIMS}/MM_Idle": "A_Idle",
-    f"{ANIMS}/Walk/MF_Unarmed_Walk_Fwd": "A_Walk_Fwd",
-    f"{ANIMS}/Walk/MF_Unarmed_Walk_Bwd": "A_Walk_Bwd",
-    f"{ANIMS}/Walk/MF_Unarmed_Walk_Left": "A_Walk_Left",
-    f"{ANIMS}/Walk/MF_Unarmed_Walk_Right": "A_Walk_Right",
-    f"{ANIMS}/Jog/MF_Unarmed_Jog_Fwd": "A_Jog_Fwd",
-    f"{ANIMS}/Jog/MF_Unarmed_Jog_Bwd": "A_Jog_Bwd",
-    f"{ANIMS}/Jog/MF_Unarmed_Jog_Left": "A_Jog_Left",
-    f"{ANIMS}/Jog/MF_Unarmed_Jog_Right": "A_Jog_Right",
+    f"{GASP_DIR}/M_Neutral_Crouch_Idle_Loop": "A_Idle",
+    f"{GASP_DIR}/M_Relaxed_Crouch_Loop_F": "A_Walk_Fwd",
+    f"{GASP_DIR}/M_Relaxed_Crouch_Loop_B": "A_Walk_Bwd",
+    f"{GASP_DIR}/M_Relaxed_Crouch_Loop_LL": "A_Walk_Left",
+    f"{GASP_DIR}/M_Relaxed_Crouch_Loop_RR": "A_Walk_Right",
+    f"{GASP_DIR}/M_Relaxed_Run_Loop_F": "A_Jog_Fwd",
+    f"{GASP_DIR}/M_Relaxed_Run_Loop_B": "A_Jog_Bwd",
+    f"{GASP_DIR}/M_Relaxed_Run_Loop_LL": "A_Jog_Left",
+    f"{GASP_DIR}/M_Relaxed_Run_Loop_RR_offset": "A_Jog_Right",
 }
 ASSETS = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
@@ -73,6 +85,8 @@ def object_path(path: str) -> str:
 def fresh_asset(path: str, asset_class, factory):
     if ASSETS.does_asset_exist(path):
         ASSETS.delete_asset(path)
+        # The deleted package stays in memory until collected, and blocks the new asset.
+        unreal.SystemLibrary.collect_garbage()
     folder, name = path.rsplit("/", 1)
     return TOOLS.create_asset(name, folder, asset_class, factory)
 
@@ -88,9 +102,59 @@ def copy_template() -> bool:
     return True
 
 
+def import_gasp_clips(skeleton: unreal.Skeleton) -> bool:
+    """Imports the exported Game Animation Sample FBX onto the mannequin skeleton."""
+    tasks = []
+    for path in CLIPS:
+        name = path.rsplit("/", 1)[-1]
+        fbx = INCOMING / f"{name}.fbx"
+        if not fbx.is_file():
+            fail(f"missing {fbx}: run gasp_export.py in the Game Animation Sample project first")
+            return False
+        ui = unreal.FbxImportUI()
+        ui.set_editor_property("import_mesh", False)
+        ui.set_editor_property("import_animations", True)
+        ui.set_editor_property("import_materials", False)
+        ui.set_editor_property("import_textures", False)
+        ui.set_editor_property("skeleton", skeleton)
+        ui.set_editor_property("mesh_type_to_import", unreal.FBXImportType.FBXIT_ANIMATION)
+        task = unreal.AssetImportTask()
+        task.set_editor_property("filename", str(fbx))
+        task.set_editor_property("destination_path", GASP_DIR)
+        task.set_editor_property("destination_name", name)
+        task.set_editor_property("automated", True)
+        task.set_editor_property("replace_existing", True)
+        task.set_editor_property("save", True)
+        task.set_editor_property("options", ui)
+        tasks.append(task)
+    TOOLS.import_asset_tasks(tasks)
+    missing = [p for p in CLIPS if not ASSETS.does_asset_exist(p)]
+    for p in missing:
+        fail(f"{p} did not import")
+    if not missing:
+        log(f"imported {len(CLIPS)} Game Animation Sample clips into {GASP_DIR}")
+    return not missing
+
+
+def root_speed_mps(seq: unreal.AnimSequence) -> float:
+    """Horizontal root speed over the whole loop, in metres a second."""
+    length = seq.get_play_length()
+    lib = unreal.AnimationLibrary
+    start = lib.get_bone_pose_for_time(seq, "root", 0.0, False).translation
+    end = lib.get_bone_pose_for_time(seq, "root", length, False).translation
+    return ((end.x - start.x) ** 2 + (end.y - start.y) ** 2) ** 0.5 / 100.0 / max(length, 1e-3)
+
+
 def auto_rig(path: str, mesh: unreal.SkeletalMesh) -> unreal.IKRigDefinition | None:
-    rig = fresh_asset(path, unreal.IKRigDefinition, unreal.IKRigDefinitionFactory())
+    # Reuse the rig if it exists: UE 5.8 can't replace one the retargeter still holds.
+    rig = unreal.load_asset(path) if ASSETS.does_asset_exist(path) else None
+    if not isinstance(rig, unreal.IKRigDefinition):
+        rig = fresh_asset(path, unreal.IKRigDefinition, unreal.IKRigDefinitionFactory())
     ctrl = unreal.IKRigController.get_controller(rig)
+    for chain in list(ctrl.get_retarget_chains()) if hasattr(ctrl, "get_retarget_chains") else []:
+        ctrl.remove_retarget_chain(chain.get_editor_property("chain_name"))
+    while hasattr(ctrl, "get_num_solvers") and ctrl.get_num_solvers() > 0:
+        ctrl.remove_solver(0)
     if not ctrl.set_skeletal_mesh(mesh) or not ctrl.apply_auto_generated_retarget_definition():
         fail(f"{path}: could not generate retarget chains for {mesh.get_path_name()}")
         return None
@@ -119,12 +183,18 @@ def main() -> None:
         fail(f"no mannequin mesh at {MANNY}")
         return
 
+    if not import_gasp_clips(manny.get_editor_property("skeleton")):
+        return
+
     source = auto_rig(MANNEQUIN_RIG, manny)
     target = auto_rig(PLACEHOLDER_RIG, placeholder)
     if not source or not target:
         return
-    rtg = fresh_asset(RETARGETER, unreal.IKRetargeter, unreal.IKRetargetFactory())
+    rtg = unreal.load_asset(RETARGETER) if ASSETS.does_asset_exist(RETARGETER) else None
+    if not isinstance(rtg, unreal.IKRetargeter):
+        rtg = fresh_asset(RETARGETER, unreal.IKRetargeter, unreal.IKRetargetFactory())
     ctrl = unreal.IKRetargeterController.get_controller(rtg)
+    ctrl.remove_all_ops()
     ctrl.set_ik_rig(SOURCE, source)
     ctrl.set_ik_rig(TARGET, target)
     ctrl.set_preview_mesh(SOURCE, manny)
@@ -171,10 +241,15 @@ def main() -> None:
         if not ASSETS.rename_asset(asset.get_path_name(), dest):
             fail(f"could not move {src_name} to {dest}")
     for path in wanted:
-        if not ASSETS.does_asset_exist(object_path(path)):
+        seq = unreal.load_asset(object_path(path))
+        if not isinstance(seq, unreal.AnimSequence):
             fail(f"{path} was not made")
-        else:
-            ASSETS.save_asset(object_path(path), only_if_is_dirty=False)
+            continue
+        speed = root_speed_mps(seq)
+        # In place: the game moves the pawn, the clip only moves the limbs.
+        seq.set_editor_property("force_root_lock", True)
+        log(f"{path.rsplit('/', 1)[-1]}: {seq.get_play_length():.2f} s, root speed {speed:.2f} m/s")
+        ASSETS.save_asset(object_path(path), only_if_is_dirty=False)
     if ASSETS.does_directory_exist(STAGING):
         ASSETS.delete_directory(STAGING)
     log("FAILED" if failures else "done")
