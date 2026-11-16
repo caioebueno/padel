@@ -77,6 +77,13 @@ namespace Padel::Shots
 		double GetPhaseTimeS() const { return PhaseTimeS; }
 		double GetCharge() const { return Charge; }
 		EShotButton GetButton() const { return Button; }
+		// For animation (Agent 6) to pick the windup clip before the shot is known.
+		bool IsAttackHeld() const { return bAttack; }
+		bool IsTouchHeld() const { return bTouch; }
+		bool IsServing() const { return bServing; }
+		bool IsIdealBounced() const { return bIdealBounced; }
+		const FPlayerRatings& GetRatings() const { return *Ratings; }
+		const FShotLibrary& GetLibrary() const { return *Library; }
 		bool HasIdealMoment() const { return bHasIdeal; }
 		// Seconds from now to the ideal contact moment (negative once it has passed).
 		double TimeToIdealS() const { return IdealTimeS - NowS; }

@@ -1,0 +1,44 @@
+[
+	{
+		"Name": "default",
+		"WalkMinMps": 0.3,
+		"SprintMinMps": 4.8,
+		"RunClipSpeedMps": 4.0,
+		"SprintClipSpeedMps": 6.0,
+		"StrideRateMin": 0.75,
+		"StrideRateMax": 1.3,
+		"ReadyBallWindowS": 1.5,
+		"PlantedMaxSpeedMps": 0.8,
+		"FullBodyBlendPerS": 8.0,
+		"SwingBlendInS": 0.08,
+		"ClipCrossfadeS": 0.08,
+		"CelebrationS": 1.8,
+		"CelebrationBlendS": 0.25,
+		"ReadyRacketRightM": 0.35,
+		"ReadyRacketForwardM": 0.35,
+		"ReadyRacketUpM": 1.05,
+		"TrajectoryTimesS": [
+			-0.4,
+			-0.2,
+			0.0,
+			0.2,
+			0.4,
+			0.6
+		],
+		"CelebrateAssets": [
+			"/Game/Padel/Animations/Celebrations/A_Celebrate_FistPump",
+			"/Game/Padel/Animations/Celebrations/A_Celebrate_RacketTap",
+			"/Game/Padel/Animations/Celebrations/A_Celebrate_Shout"
+		],
+		"DejectedAssets": [
+			"/Game/Padel/Animations/Celebrations/A_Dejected_HeadDown",
+			"/Game/Padel/Animations/Celebrations/A_Dejected_RacketDrop"
+		],
+		"TeamMeshes": [
+			"/Game/Padel/Characters/SK_PlayerPlaceholderA",
+			"/Game/Padel/Characters/SK_PlayerPlaceholderB"
+		],
+		"AnimClass": "/Game/Padel/Animations/ABP_PadelPlayer.ABP_PadelPlayer_C",
+		"RacketBone": "hand_r"
+	}
+]
