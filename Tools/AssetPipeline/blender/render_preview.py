@@ -115,7 +115,11 @@ def main() -> None:
         racket.location = body.matrix_world @ (Vector((-0.42 * h, -0.12, 0.95 * h)))
         objects += [body, racket]
     ball_entry = next(e for e in entries.values() if e["builder"] == "ball")
-    ball = build_equipment.build_ball(_job(ball_entry, job))[0]
+    balls, lods = build_equipment.build_ball(_job(ball_entry, job))
+    for lod in lods:
+        bpy.data.objects.remove(lod)
+    ball = balls[0]
+    build_equipment.apply_ball_preview_materials(ball, job["palette"], Path(job["textures_dir"]))
     ball.location = (2.0, 0.8, 1.4)
     ball.scale = (3, 3, 3)  # exaggerated so it reads at preview resolution
 

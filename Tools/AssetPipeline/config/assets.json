@@ -95,7 +95,31 @@
         "diameter_m": 0.065
       },
       "nanite": false,
-      "budget_tris": 1200
+      "budget_tris": 6400,
+      "lods": [
+        {
+          "ratio": 0.16,
+          "screen_size": 0.12
+        },
+        {
+          "ratio": 0.05,
+          "screen_size": 0.035
+        }
+      ],
+      "_note": "The match ball (GDD 2, GDD 10): felt sphere plus a fuzz shell at LOD0, plain spheres at LOD1 and LOD2 (the broadcast camera sees about ten pixels of it). Seam, felt, printed mark and LOD sizes in config/ball.json, colours in palette.json 'ball'. Not Nanite: it is tiny, moves every frame, and the fuzz shell is masked."
+    },
+    {
+      "id": "BallTrail",
+      "kind": "static",
+      "category": "Equipment",
+      "source": "procedural",
+      "builder": "ball_trail",
+      "size": {
+        "diameter_m": 0.065
+      },
+      "nanite": false,
+      "budget_tris": 300,
+      "_note": "The ball's speed trail: a tapered tube 1 m long along -X, stretched and aimed by APadelBall. Translucent, so not Nanite."
     },
     {
       "id": "RacketPlaceholder",

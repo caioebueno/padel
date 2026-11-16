@@ -8,8 +8,8 @@
 #include "Shots/PracticeBall.h"
 #include "PadelPracticeDirector.generated.h"
 
+class APadelBall;
 class APadelPlayerPawn;
-class UStaticMeshComponent;
 
 /** What the debug overlay shows (GDD 7: the target only in the debug overlay). */
 struct FPadelShotDebugInfo
@@ -43,6 +43,7 @@ public:
 	APadelPracticeDirector();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	const FPadelShotDebugInfo& GetDebugInfo() const { return DebugInfo; }
@@ -68,8 +69,9 @@ private:
 	void TogglePause();
 	void FeedNow();
 
-	UPROPERTY(VisibleAnywhere, Category = "Practice")
-	TObjectPtr<UStaticMeshComponent> BallMesh;
+	/** The ball the camera sees (Presentation/PadelBall.h), spawned in BeginPlay. */
+	UPROPERTY(Transient)
+	TObjectPtr<APadelBall> BallView;
 
 	UPROPERTY()
 	TObjectPtr<APadelPlayerPawn> PlayerPawn;

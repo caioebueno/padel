@@ -17,6 +17,9 @@ namespace Padel::Shots
 		double T = 0.0;
 		FVec3 Position;
 		FVec3 Velocity;
+		// Angular velocity, rad/s, world axes (FBallState::Spin). Zero for a ball that
+		// models no spin (the practice ball). Presentation uses it to turn the ball's mesh.
+		FVec3 Spin;
 		// Ground bounces on the half the ball is on, since the last hit.
 		int GroundBounces = 0;
 		// Touched a wall after bouncing on this half (GDD 4: off the glass).

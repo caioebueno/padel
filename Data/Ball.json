@@ -1,0 +1,13 @@
+{
+	"Visual": {
+		"_comment": "How the ball looks in motion (GDD 10: always readable, a subtle motion trail at high speed, a seam that shows spin). Cosmetic only: the flight is BallSim's. Seconds, metres, radians. Read by APadelBall; the maths is in Source/Padel/Public/Presentation/Model/PadelBallVisual.h and the seam's on-screen width is in the material (Tools/AssetPipeline/unreal/ball_material.py). See docs/decisions/0007-ball.md.",
+		"SpinScale": 1.0,
+		"MaxShownRadPerFrame": 0.9,
+		"TrailMinSpeedMps": 15.0,
+		"TrailFullSpeedMps": 30.0,
+		"TrailSeconds": 0.04,
+		"TrailMaxLengthM": 1.1,
+		"TrailMaxOpacity": 0.35,
+		"TeleportDistanceM": 1.5
+	}
+}
