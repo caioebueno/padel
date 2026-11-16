@@ -103,7 +103,7 @@ Physics tests are tolerance tests at a fixed step. Values come from `Data/Physic
 | P-06 | Net | Ball hitting the tape loses most energy; can roll over |
 | P-07 | Determinism | Same seed and inputs give a bit-identical trajectory over 10 s, run twice in one process |
 | P-08 | Step independence | 120 Hz vs 240 Hz land within a few cm of each other (catches integrator bugs) |
-| P-12 | Cross-platform determinism | The same seeded trajectory gives the same landing point (to 1e-9 m) on the Linux/GCC and macOS/Clang CI runners: a native test prints a checksum and both jobs compare it with a value stored in the test |
+| P-12 | Cross-platform determinism | **gate:** `QA.Determinism` in `Tests/Native/QaDeterminismTests.cpp` plays 12 seeded AI-vs-AI points and compares an FNV-1a checksum of every hit, bounce and point ending with a recorded value, on the Linux/GCC and macOS/Clang CI runners |
 | P-09 | No tunnelling | A 140 km/h smash at the glass never passes through it at the fixed step |
 | P-10 | Energy | No bounce gains energy |
 | P-11 | Launch solver | Given a target, speed and spin, the ball lands within 5 cm of the target with zero scatter |
