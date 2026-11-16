@@ -35,13 +35,13 @@ TEST_CASE("Contracts.Realism: a speed fraction left out of Movement.json is caug
 	CHECK_FALSE(M.Validate().empty());
 }
 
-TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral (GDD 8)")
+TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by their lane (GDD 8)")
 {
 	const Padel::AI::FAiTactics& T = Padel::AI::TestData::Tactics();
-	CHECK(T.NetStaggerM == Approx(0.0));
-	// One spacing until the AI widens it with the ball: today's 4.5 m.
-	CHECK(T.PartnerSpacingMinM == Approx(4.5));
-	CHECK(T.PartnerSpacingMaxM == Approx(4.5));
+	// A2 (movement doc 5.4): the stagger and the spacing by ball width.
+	CHECK(T.NetStaggerM == Approx(0.75));
+	CHECK(T.PartnerSpacingMinM == Approx(3.5));
+	CHECK(T.PartnerSpacingMaxM == Approx(5.0));
 	CHECK(T.SideSwitchMinLobDepthM == Approx(0.0));
 	CHECK(T.FirstStepExtraS == Approx(0.0));
 }

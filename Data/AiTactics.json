@@ -1,11 +1,11 @@
 [
 	{
 		"Name": "Default",
-		"NetDepthM": 2.5,
+		"NetDepthM": 3.0,
 		"BackDepthM": 8.5,
-		"PartnerSpacingMinM": 4.5,
-		"PartnerSpacingMaxM": 4.5,
-		"NetStaggerM": 0.0,
+		"PartnerSpacingMinM": 3.5,
+		"PartnerSpacingMaxM": 5.0,
+		"NetStaggerM": 0.75,
 		"SideSwitchMinLobDepthM": 0.0,
 		"BallShiftFactor": 0.35,
 		"MaxLateralShiftM": 1.5,

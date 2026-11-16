@@ -49,7 +49,8 @@ TEST_CASE("Ai.Tuning: AiTactics.json loads every field and keeps GDD 8 distances
 	CHECK(T.NetDepthM <= 3.0);
 	CHECK(Padel::Court::HalfLength - T.BackDepthM >= 1.0);
 	CHECK(Padel::Court::HalfLength - T.BackDepthM <= 2.0);
-	CHECK(T.PartnerSpacingMinM >= 4.0);
+	// Movement doc 2.12: 3.5 to 5 m, narrow with the ball central.
+	CHECK(T.PartnerSpacingMinM >= 3.5);
 	CHECK(T.PartnerSpacingMaxM <= 5.0);
 	CHECK(T.PartnerSpacingMinM <= T.PartnerSpacingMaxM);
 	// GDD 6.1 physical ranges.
