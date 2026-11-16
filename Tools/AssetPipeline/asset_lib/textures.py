@@ -1,4 +1,4 @@
-"""Procedural textures: the mask texture for the net, and the
+"""Procedural textures: the mask texture for the knotted net (with its normal map), and the
 ball's felt with its seam (the seam is what makes spin readable, GDD 10).
 
 Pure Python (no numpy or Pillow) so the pipeline runs with only Blender and the
@@ -46,6 +46,55 @@ def _grid_mask(size: int, wire_px: float) -> Callable[[int, int], tuple[int]]:
     return pixel
 
 
+def _net_height(size: int, cord_px: float, knot_px: float) -> Callable[[float, float], float]:
+    """Height field of one cell of knotted net, 0..1: a round cord along each tile
+    edge (so tiles join seamlessly), twisted, with a knot where they cross."""
+    r = cord_px / 2
+
+    def cord(d: float, along: float) -> float:
+        # Three-strand twist: the cord's edge ripples slightly along its length.
+        twist = 1.0 + 0.12 * math.cos(2 * math.pi * along / (cord_px * 1.6))
+        k = d / (r * twist)
+        return math.sqrt(max(0.0, 1.0 - k * k))
+
+    def height(x: float, y: float) -> float:
+        dx = min(x, size - x)  # distance to the vertical cord on the tile edge
+        dy = min(y, size - y)
+        h = max(cord(dx, y), cord(dy, x))
+        knot = math.hypot(dx, dy) / (knot_px / 2)
+        if knot < 1.0:
+            h = max(h, math.sqrt(1.0 - knot * knot) * 1.15)
+        return min(h, 1.0)
+    return height
+
+
+def net_mask(size: int = 128, cord_px: float = 8.0, knot_px: float = 18.0) -> Callable[[int, int], tuple[int]]:
+    """Opacity of the knotted net cell (4.5 cm, so 8 px of 128 is a 2.8 mm cord)."""
+    height = _net_height(size, cord_px, knot_px)
+
+    def pixel(x: int, y: int) -> tuple[int]:
+        # 2x2 supersampling for a soft, alias-free edge.
+        cover = sum(1.0 for sx in (0.25, 0.75) for sy in (0.25, 0.75) if height(x + sx, y + sy) > 0.0) / 4
+        return (int(round(255 * cover)),)
+    return pixel
+
+
+def net_normal(size: int = 128, cord_px: float = 8.0, knot_px: float = 18.0) -> Callable[[int, int], tuple[int, int, int]]:
+    """Tangent-space normal map from the same height field, so the cord looks round."""
+    height = _net_height(size, cord_px, knot_px)
+    strength = cord_px / 2
+
+    def pixel(x: int, y: int) -> tuple[int, int, int]:
+        cx, cy = x + 0.5, y + 0.5
+        gx = (height(cx + 0.5, cy) - height(cx - 0.5, cy)) * strength
+        # Row 0 is the top of the image and Unreal's V runs down, so +y is -V.
+        gy = (height(cx, cy - 0.5) - height(cx, cy + 0.5)) * strength
+        n = (-gx, -gy, 1.0)
+        length = math.sqrt(sum(c * c for c in n))
+        return tuple(int(round((c / length * 0.5 + 0.5) * 255)) for c in n)  # type: ignore[return-value]
+    return pixel
+
+
 def _hex(color: str) -> tuple[int, int, int]:
     c = color.lstrip("#")
     return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
@@ -82,7 +131,8 @@ def generate_all(palette: dict, out_dir: Path = TEXTURE_DIR) -> list[Path]:
     from . import metal_textures  # imported here: it builds on write_png above
     felt = palette["ball"]["Felt"]
     return [
-        write_png(out_dir / "T_NetGrid_Mask.png", 64, 64, 1, _grid_mask(64, 6.0)),
+        write_png(out_dir / "T_NetGrid_Mask.png", 128, 128, 1, net_mask()),
+        write_png(out_dir / "T_NetGrid_Normal.png", 128, 128, 3, net_normal()),
         ball_felt(out_dir / "T_Ball_Felt.png", felt["color"], felt.get("seam_color", "#ffffff")),
         *metal_textures.generate_all(out_dir),
     ]

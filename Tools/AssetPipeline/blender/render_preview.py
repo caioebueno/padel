@@ -22,12 +22,16 @@ import bl_common as bc  # noqa: E402
 import build_character  # noqa: E402
 import build_court  # noqa: E402
 import build_court_frame  # noqa: E402
+import build_court_glass  # noqa: E402
+import build_court_surface  # noqa: E402
 import build_equipment  # noqa: E402
+import build_net  # noqa: E402
 
 
 def _job(entry: dict, job: dict, part: str | None = None) -> dict:
     out = dict(entry)
     out.update({"id": entry["id"], "spec": job["spec"], "palette": job["palette"],
+                "surface": job.get("surface"), "textures_dir": job.get("textures_dir"),
                 "palette_group": entry.get("palette", ""), "part": part or entry.get("part", "solid")})
     out.setdefault("size", {})
     out.setdefault("body", {})
@@ -42,6 +46,12 @@ def main() -> None:
     for entry in entries.values():
         if entry["builder"] == "court":
             objects += build_court.build(_job(entry, job))
+        elif entry["builder"] == "court_glass":
+            objects += build_court_glass.build(_job(entry, job))
+        elif entry["builder"] == "net":
+            objects += build_net.build(_job(entry, job))
+        elif entry["builder"] == "court_surface":
+            objects += build_court_surface.build(_job(entry, job))
         elif entry["builder"] == "court_frame":
             objects += build_court_frame.build(_job(entry, job))[0]
 

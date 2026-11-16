@@ -8,8 +8,10 @@ config/palette.json and the FBX/PNG files), like the input actions in
 PadelInputConfig.cpp, so never edit these assets by hand: change the config and
 run it again.
 
-  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive,
-                                            and Metal, WireMesh from metal_materials.py)
+  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid,
+                                            and Metal, WireMesh from metal_materials.py); M_PadelGlass is
+                                            built by glass_material.py
+  /Game/Padel/Materials/MPC_NetReaction     the net hit reaction's parameters (written by UPadelNetReactionSubsystem)
   /Game/Padel/Materials/MI_<Group>_<Name>   one instance per palette entry
   /Game/Padel/Materials/T_*                 textures
   /Game/Padel/<Category>/SM_* and SK_*      meshes, with their slots set to the MIs above
@@ -27,8 +29,11 @@ import unreal
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
 
 from asset_lib import SOURCE_ART_DIR, catalogue  # noqa: E402
+import glass_material  # noqa: E402
+import turf_material  # noqa: E402
 
 sys.path.insert(0, str(HERE))
 import metal_materials  # noqa: E402  (court steel and welded mesh masters)
@@ -38,6 +43,10 @@ MEL = unreal.MaterialEditingLibrary
 ASSETS = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 WHITE = "/Engine/EngineResources/WhiteSquareTexture"
+FLAT_NORMAL = "/Engine/EngineMaterials/FlatNormal"
+NET_MPC = "MPC_NetReaction"
+# Vector parameters of MPC_NetReaction, in the order the HLSL takes them (see NetReaction.hlsl).
+NET_MPC_VECTORS = ("Impact0", "Impact1", "Shape", "Motion", "Net", "Extra")
 failures: list[str] = []
 
 
@@ -97,6 +106,17 @@ def import_textures() -> None:
         if png.stem.endswith("_Mask"):
             tex.set_editor_property("srgb", False)
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
+        elif png.stem.endswith(("_N", "_Normal")):
+            tex.set_editor_property("srgb", False)
+            tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
+        elif png.stem.endswith("_Masks"):
+            # Packed linear data (turf_textures.py), not colour.
+            tex.set_editor_property("srgb", False)
+            tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
+        if png.stem.startswith("T_CourtSurface_"):
+            # Covers the court once: clamp, or the far edge bleeds into the near one.
+            tex.set_editor_property("address_x", unreal.TextureAddress.TA_CLAMP)
+            tex.set_editor_property("address_y", unreal.TextureAddress.TA_CLAMP)
         ASSETS.save_loaded_asset(tex)
         log(f"texture {MATERIAL_DIR}/{png.stem}")
 
@@ -145,6 +165,68 @@ def _scalars(mat, names_defaults: dict[str, float], props: dict[str, unreal.Mate
     return out
 
 
+def build_net_mpc():
+    """MPC_NetReaction: six vectors the net materials read for the hit reaction. All
+    zero (no hit) until UPadelNetReactionSubsystem writes them."""
+    path = f"{MATERIAL_DIR}/{NET_MPC}"
+    if ASSETS.does_asset_exist(path):
+        mpc = unreal.load_asset(path)
+    else:
+        mpc = TOOLS.create_asset(NET_MPC, MATERIAL_DIR, unreal.MaterialParameterCollection,
+                                 unreal.MaterialParameterCollectionFactoryNew())
+    vectors = []
+    for name in NET_MPC_VECTORS:
+        param = unreal.CollectionVectorParameter()
+        param.set_editor_property("parameter_name", name)
+        param.set_editor_property("default_value", unreal.LinearColor(0, 0, 0, 0))
+        vectors.append(param)
+    mpc.set_editor_property("vector_parameters", vectors)
+    ASSETS.save_loaded_asset(mpc)
+    log(f"{path}")
+    return mpc
+
+
+def _net_reaction(mat, mpc) -> None:
+    """World Position Offset for the net hit reaction: the HLSL in NetReaction.hlsl,
+    fed by MPC_NetReaction, gives an offset along the net's local X."""
+    P = unreal.MaterialProperty
+    custom = _node(mat, unreal.MaterialExpressionCustom, -400, 700)
+    custom.set_editor_property("code", (HERE / "NetReaction.hlsl").read_text(encoding="utf-8"))
+    custom.set_editor_property("output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT1)
+    custom.set_editor_property("description", "NetReaction")
+    inputs = []
+    for name in ("P",) + NET_MPC_VECTORS:
+        item = unreal.CustomInput()
+        item.set_editor_property("input_name", name)
+        inputs.append(item)
+    custom.set_editor_property("inputs", inputs)
+    # Local position in cm: the net is built in court space, so this is court Y and Z.
+    local_cls = getattr(unreal, "MaterialExpressionLocalPosition", None)
+    if local_cls is not None:
+        local = _node(mat, local_cls, -900, 650)
+    else:
+        world = _node(mat, unreal.MaterialExpressionWorldPosition, -1100, 650)
+        local = _node(mat, unreal.MaterialExpressionTransformPosition, -900, 650)
+        local.set_editor_property("transform_source_type", unreal.MaterialPositionTransformSource.TRANSFORMPOSSOURCE_WORLD)
+        local.set_editor_property("transform_type", unreal.MaterialPositionTransformSource.TRANSFORMPOSSOURCE_LOCAL)
+        MEL.connect_material_expressions(world, "", local, "")
+    MEL.connect_material_expressions(local, "", custom, "P")
+    for i, name in enumerate(NET_MPC_VECTORS):
+        param = _node(mat, unreal.MaterialExpressionCollectionParameter, -900, 750 + 70 * i)
+        param.set_editor_property("collection", mpc)
+        param.set_editor_property("parameter_name", name)
+        MEL.connect_material_expressions(param, "", custom, name)
+    zeros = _node(mat, unreal.MaterialExpressionConstant2Vector, -400, 900)
+    offset = _node(mat, unreal.MaterialExpressionAppendVector, -200, 750)
+    MEL.connect_material_expressions(custom, "", offset, "A")
+    MEL.connect_material_expressions(zeros, "", offset, "B")
+    to_world = _node(mat, unreal.MaterialExpressionTransform, -50, 750)
+    to_world.set_editor_property("transform_source_type", unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_LOCAL)
+    to_world.set_editor_property("transform_type", unreal.MaterialVectorCoordTransform.TRANSFORM_WORLD)
+    MEL.connect_material_expressions(offset, "", to_world, "")
+    MEL.connect_material_property(to_world, "", P.MP_WORLD_POSITION_OFFSET)
+
+
 def build_masters() -> None:
     P = unreal.MaterialProperty
     standard = {"Roughness": P.MP_ROUGHNESS, "Metallic": P.MP_METALLIC, "Specular": P.MP_SPECULAR}
@@ -160,44 +242,18 @@ def build_masters() -> None:
     MEL.connect_material_property(emissive, "", P.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
 
-    # Turf: blue artificial grass with sand showing through (GDD 10), broken up by
-    # world-space noise so the surface doesn't look like flat paint from the high camera.
-    mat = _material("M_PadelTurf")
-    color, mul = _base_color(mat)
-    sand = _param(mat, unreal.MaterialExpressionVectorParameter, "SandColor", -700, 0, unreal.LinearColor(0.6, 0.5, 0.35, 1))
-    amount = _param(mat, unreal.MaterialExpressionScalarParameter, "SandAmount", -700, 100, 0.15)
-    noise = _node(mat, unreal.MaterialExpressionNoise, -700, 200)
-    set_first(noise, ["scale"], 0.08)
-    weight = _node(mat, unreal.MaterialExpressionMultiply, -450, 150)
-    MEL.connect_material_expressions(noise, "", weight, "A")
-    MEL.connect_material_expressions(amount, "", weight, "B")
-    lerp = _node(mat, unreal.MaterialExpressionLinearInterpolate, -250, -100)
-    MEL.connect_material_expressions(mul, "", lerp, "A")
-    MEL.connect_material_expressions(sand, "", lerp, "B")
-    MEL.connect_material_expressions(weight, "", lerp, "Alpha")
-    MEL.connect_material_property(lerp, "", P.MP_BASE_COLOR)
-    _scalars(mat, {"Roughness": 0.9, "Specular": 0.3}, standard, 400)
-    MEL.recompile_material(mat)
+    # Turf: the playing surface, its fibres, sand, wear and lines (unreal/turf_material.py).
+    turf_material.build(_material("M_PadelTurf"), MATERIAL_DIR)
 
-    # Glass: translucent, with a Fresnel edge highlight so panels read without hiding the ball.
-    mat = _material("M_PadelGlass")
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-    set_first(mat, ["translucency_lighting_mode"], unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
-    color = _param(mat, unreal.MaterialExpressionVectorParameter, "BaseColor", -700, -300, unreal.LinearColor(0.9, 0.95, 1, 1))
-    edge = _param(mat, unreal.MaterialExpressionVectorParameter, "EdgeTint", -700, -150, unreal.LinearColor(0.2, 0.45, 0.4, 1))
-    fresnel = _node(mat, unreal.MaterialExpressionFresnel, -700, 0)
-    tint = _node(mat, unreal.MaterialExpressionLinearInterpolate, -350, -250)
-    MEL.connect_material_expressions(color, "", tint, "A")
-    MEL.connect_material_expressions(edge, "", tint, "B")
-    MEL.connect_material_expressions(fresnel, "", tint, "Alpha")
-    MEL.connect_material_property(tint, "", P.MP_BASE_COLOR)
-    s = _scalars(mat, {"Opacity": 0.08, "EdgeOpacity": 0.45, "Roughness": 0.02, "Specular": 0.6}, standard, 150)
-    opacity = _node(mat, unreal.MaterialExpressionLinearInterpolate, -350, 150)
-    MEL.connect_material_expressions(s["Opacity"], "", opacity, "A")
-    MEL.connect_material_expressions(s["EdgeOpacity"], "", opacity, "B")
-    MEL.connect_material_expressions(fresnel, "", opacity, "Alpha")
-    MEL.connect_material_property(opacity, "", P.MP_OPACITY)
-    MEL.recompile_material(mat)
+    # Glass: translucent tempered glass with reflections, edge tint and dirt (unreal/glass_material.py).
+    def glass_texture(name: str):
+        path = f"{MATERIAL_DIR}/{name}"
+        if not ASSETS.does_asset_exist(path):
+            fail(f"M_PadelGlass: texture {name} not imported")
+            return None
+        return unreal.load_asset(path)
+
+    glass_material.build(_material("M_PadelGlass"), glass_texture, linear)
 
     # Masked: welded mesh and the net, cut out by a mask texture. UVs are in
     # metres divided by the cell size (Blender sets them), so one tile = one cell.
@@ -213,6 +269,34 @@ def build_masters() -> None:
     _scalars(mat, {"Roughness": 0.5, "Metallic": 1.0}, standard, 200)
     MEL.recompile_material(mat)
 
+    # Net: the knotted cord, cut out by its mask, with a normal map so the cord reads
+    # round, and the hit reaction. Two-sided: it is seen from both ends of the court.
+    mpc = build_net_mpc()
+    mat = _material("M_PadelNet")
+    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    mat.set_editor_property("two_sided", True)
+    color, mul = _base_color(mat)
+    MEL.connect_material_property(mul, "", P.MP_BASE_COLOR)
+    mask = _param(mat, unreal.MaterialExpressionTextureSampleParameter2D, "Mask", -700, 0)
+    mask.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_GRAYSCALE)
+    mask.set_editor_property("texture", unreal.load_asset(WHITE))
+    MEL.connect_material_property(mask, "R", P.MP_OPACITY_MASK)
+    normal = _param(mat, unreal.MaterialExpressionTextureSampleParameter2D, "NormalMap", -700, 450)
+    normal.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
+    normal.set_editor_property("texture", unreal.load_asset(FLAT_NORMAL))
+    MEL.connect_material_property(normal, "RGB", P.MP_NORMAL)
+    _scalars(mat, {"Roughness": 0.8, "Metallic": 0.0, "Specular": 0.5}, standard, 150)
+    _net_reaction(mat, mpc)
+    MEL.recompile_material(mat)
+
+    # NetSolid: the tape and bands, opaque fabric that moves with the net.
+    mat = _material("M_PadelNetSolid")
+    color, mul = _base_color(mat)
+    MEL.connect_material_property(mul, "", P.MP_BASE_COLOR)
+    _scalars(mat, {"Roughness": 0.75, "Metallic": 0.0, "Specular": 0.5}, standard, 200)
+    _net_reaction(mat, mpc)
+    MEL.recompile_material(mat)
+
     # Emissive: the arena light panels.
     mat = _material("M_PadelEmissive")
     mat.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
@@ -224,12 +308,19 @@ def build_masters() -> None:
     MEL.connect_material_property(emissive, "", P.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
 
-    for name in ("M_PadelOpaque", "M_PadelTurf", "M_PadelGlass", "M_PadelMasked", "M_PadelEmissive"):
+    for name in ("M_PadelOpaque", "M_PadelTurf", "M_PadelGlass", "M_PadelMasked", "M_PadelEmissive",
+                 "M_PadelNet", "M_PadelNetSolid"):
         ASSETS.save_asset(f"{MATERIAL_DIR}/{name}", only_if_is_dirty=False)
     log("master materials built")
 
 
 # --- Material instances ------------------------------------------------------------
+
+# palette.json keys of the turf entries -> M_PadelTurf parameters (turf_material.py).
+TURF_SCALARS = {"worn_roughness": "WornRoughness", "sand_roughness": "SandRoughness", "blade_tint": "BladeTint",
+                "roll_tint": "RollTint", "wear_strength": "WearStrength", "drift_strength": "DriftStrength",
+                "normal_strength": "NormalStrength", "fibre_tile_m": "FibreTile",
+                "detail_fade_start_m": "DetailFadeStart", "detail_fade_end_m": "DetailFadeEnd"}
 
 def build_instances(palette: dict) -> None:
     for group, entries in palette.items():
@@ -247,15 +338,20 @@ def build_instances(palette: dict) -> None:
             MEL.set_material_instance_parent(mi, master)
             MEL.set_material_instance_vector_parameter_value(mi, "BaseColor", linear(settings["color"]))
             scalars = {"roughness": "Roughness", "metallic": "Metallic", "specular": "Specular",
-                       "opacity": "Opacity", "emission": "EmissiveStrength", "sand_amount": "SandAmount"}
+                       "opacity": "Opacity", "emission": "EmissiveStrength", "sand_amount": "SandAmount",
+                       **TURF_SCALARS}
             for key, param in scalars.items():
                 if key in settings:
                     MEL.set_material_instance_scalar_parameter_value(mi, param, float(settings[key]))
             if "sand_color" in settings:
                 MEL.set_material_instance_vector_parameter_value(mi, "SandColor", linear(settings["sand_color"]))
+            if "worn_color" in settings:
+                MEL.set_material_instance_vector_parameter_value(mi, "WornColor", linear(settings["worn_color"]))
             if "edge_tint" in settings:
                 MEL.set_material_instance_vector_parameter_value(mi, "EdgeTint", linear(settings["edge_tint"]))
-            for key, param in (("mask", "Mask"), ("texture", "BaseTexture")):
+            if settings["master"] == "Glass":
+                glass_material.apply_instance(mi, settings, linear)
+            for key, param in (("mask", "Mask"), ("texture", "BaseTexture"), ("normal", "NormalMap")):
                 if key in settings:
                     tex = unreal.load_asset(f"{MATERIAL_DIR}/{settings[key]}")
                     if tex is None:
@@ -310,6 +406,16 @@ def _set_nanite(mesh: unreal.StaticMesh, enabled: bool) -> None:
         mesh.set_editor_property("nanite_settings", settings)
 
 
+def _set_bounds_extension(mesh: unreal.StaticMesh, metres) -> None:
+    """Grows the bounds of a mesh whose material moves its vertices (the net), so it
+    isn't culled or shadow-clipped while it bulges."""
+    if not metres:
+        return
+    extent = unreal.Vector(*(float(m) * 100.0 for m in metres))
+    mesh.set_editor_property("positive_bounds_extension", extent)
+    mesh.set_editor_property("negative_bounds_extension", extent)
+
+
 def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
     subsystem = unreal.get_editor_subsystem(unreal.SkeletalMeshEditorSubsystem)
     importer = getattr(subsystem, "import_lod", None) or getattr(unreal.EditorSkeletalMeshLibrary, "import_lod", None)
@@ -328,6 +434,17 @@ def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
     mesh.set_editor_property("lod_info", lod_info)
 
 
+def _keep_uv1(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
+    """The court surface carries its court-space UVs in channel 1. Lightmap UV
+    generation would write over that channel, and Lumen needs no lightmaps."""
+    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    if hasattr(subsystem, "set_generate_lightmap_uv"):
+        subsystem.set_generate_lightmap_uv(mesh, False)
+    channels = subsystem.get_num_uv_channels(mesh, 0) if hasattr(subsystem, "get_num_uv_channels") else 2
+    if channels < 2:
+        fail(f"{asset.asset_name}: expected 2 UV channels (metres, court), got {channels}")
+
+
 def import_mesh(asset: catalogue.Asset) -> None:
     if not asset.fbx_path.is_file():
         log(f"{asset.asset_name}: no {asset.fbx_path.name} yet, skipped")
@@ -342,7 +459,10 @@ def import_mesh(asset: catalogue.Asset) -> None:
         return
     _assign_materials(mesh)
     if asset.kind == "static":
+        if asset.raw.get("keep_uv1"):
+            _keep_uv1(asset, mesh)
         _set_nanite(mesh, asset.nanite)
+        _set_bounds_extension(mesh, asset.raw.get("bounds_extension_m"))
     elif asset.lods:
         _import_skeletal_lods(asset, mesh)
     ASSETS.save_loaded_asset(mesh)
