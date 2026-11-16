@@ -59,6 +59,9 @@ public:
 	/** The placeholder skeleton: shown, or hidden and driving a MetaHuman. */
 	USkeletalMeshComponent* GetDriverBody() const { return Body; }
 
+	/** Racket in the left hand (set from the player's Handedness on the first step). */
+	bool IsLeftHanded() const { return bLeftHanded; }
+
 	/** The MetaHuman shown for this player, or null when the placeholder (or the shapes) are shown. */
 	AActor* GetMetaHuman() const { return MetaHuman; }
 
@@ -81,6 +84,14 @@ private:
 
 	/** Attaches the racket to To's racket bone, in the palm (RacketGrip.h). */
 	void AttachRacket(USkeletalMeshComponent* To);
+
+	/** Moves the racket, its grip and the contact warp to the left (or back to the right) arm. */
+	void SetLeftHanded(bool bLeft);
+
+	/** A right-side bone name ("hand_r") on the racket side: "hand_l" for a left-hander. */
+	FName OnRacketSide(FName RightSideBone) const;
+
+	bool bLeftHanded = false;
 
 	UPROPERTY()
 	TObjectPtr<USkeletalMeshComponent> Body;

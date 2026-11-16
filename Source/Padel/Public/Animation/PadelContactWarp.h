@@ -58,6 +58,25 @@ struct PADEL_API FPadelWarpTuning
 	double MaxReachShare = 0.98;
 };
 
+/**
+ * The forearm twist bones of a MetaHuman (lowerarm_twist_01/02, both arms) and how much of
+ * the hand's roll each takes. The placeholder skeleton has none, so the retarget leaves them
+ * in their reference pose and a rolled wrist candy-wraps; this spreads the roll up the forearm.
+ */
+struct PADEL_API FPadelTwistBones
+{
+	struct FArm
+	{
+		FCompactPoseBoneIndex Hand = FCompactPoseBoneIndex(INDEX_NONE);
+		TArray<FCompactPoseBoneIndex> Twist;
+		/** Share of the hand's roll per twist bone: how far it sits from the elbow to the wrist. */
+		TArray<float> Share;
+	};
+	FArm Arms[2];
+
+	void Cache(const FBoneContainer& Bones);
+};
+
 /** One frame's warp request, in the skeletal mesh component's space (Unreal units). */
 struct PADEL_API FPadelWarpInput
 {
@@ -73,6 +92,12 @@ struct PADEL_API FPadelWarpInput
 
 namespace PadelContactWarp
 {
+	/** Gives each forearm twist bone its share of the hand's roll about the forearm (local space). */
+	PADEL_API void DistributeForearmTwist(FCompactPose& Pose, const FPadelTwistBones& Bones);
+
+	/** The hand's roll about the forearm axis in Pose, radians (for the tests). */
+	PADEL_API double HandRoll(const FCompactPose& Pose, FCompactPoseBoneIndex Hand);
+
 	/** Warps Pose in place. Does nothing when ArmAlpha and BodyAlpha are both 0. */
 	PADEL_API void Apply(FCompactPose& Pose, const FPadelWarpBones& Bones, const FPadelWarpInput& In, const FPadelWarpTuning& Tuning);
 

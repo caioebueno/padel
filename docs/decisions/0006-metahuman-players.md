@@ -63,6 +63,13 @@ At contact the racket's face centre, not the hand, meets the ball (shots doc 4.2
 - A clip with contact fields also brings in the body. Its weight rises over the forward swing, peaks at `ContactS` and falls over the follow-through (`PadelContactWarp::BodyWeight`). Below the face, the pelvis drops and the feet stay planted (leg IK). The trunk turns the racket shoulder towards the ball, and the spine bends sideways and forward. If the ball is still out of reach, the spine bends on, up to its limit, and the arm reaches again. The shares and limits are `Data/Animation.json`'s `Warp*` fields (metres and degrees, converted to Unreal units once, in `FPadelAnimData`).
 - `Padel.Animation.ContactWarp` checks that the face centre is within 5 cm of the target across heights and both sides: the arm alone from 0.9 to 1.8 m, and with the body down to 0.4 m forehand and 0.5 m backhand. It drives the clip path by giving `ApplyFrame` a clip row with contact fields, because no swing clip has them yet.
 
+## The MetaHuman's arms (movement plan N4)
+
+- **Left-handers** (Players.json `Handedness: Left`, Ruben): on the first step, the anim component moves the racket to `hand_l` and mirrors the grip bones (`_r` to `_l`). The contact warp (`FPadelWarpBones`, `bLeftHanded`) then uses the left arm on the placeholder and on the MetaHuman. The racket target was already mirrored by `ForehandSign`.
+- **Forearm twist:** the placeholder skeleton has no twist bones, so the retarget can't drive the MetaHuman's `lowerarm_twist_01/02`. A MetaHuman assembled with its post-process AnimBP spreads the hand's roll up the forearm itself: measured on Ilan, the twist bones carry 80% and 20% of the roll. Without that AnimBP, `PadelContactWarp::DistributeForearmTwist` does it after the warp, each bone in proportion to how far it sits towards the wrist. `Padel.Animation.MetaHumanArms` checks on an overhead that both twist bones turn with the hand (no candy-wrap).
+- **Hand IK at the broadcast distance:** the contact warp runs on the MetaHuman whatever its LOD, separately from the retargeter's own IK pass (`MetaHumanIkLodThreshold`). The test forces LOD 1 and 2 and checks that the racket face still meets the ball within 5 cm.
+- **Not yet checked:** the 60 fps budget with four MetaHumans and a left-handed MetaHuman. Only Ilan is assembled on the Mac, so these are re-run once all four exist.
+
 ## Not covered yet
 
 - Swing clips (0005's list); until then the swing is the arm reaching for the racket target.

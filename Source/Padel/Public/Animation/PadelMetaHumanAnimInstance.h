@@ -33,6 +33,9 @@ struct FAnimNode_PadelMetaHumanWarp : public FAnimNode_Base
 
 private:
 	FPadelWarpBones Bones;
+	FPadelTwistBones TwistBones;
+	/** The MetaHuman's own post-process AnimBP drives its twist bones; ours only spreads the roll without one. */
+	bool bPostProcessTwist = false;
 	FPadelWarpInput Request;
 	FPadelWarpTuning Tuning;
 };

@@ -81,6 +81,9 @@ public:
 	/** The racket face centre in the racket hand's bone space, cm (set by the component; zero = the hand). */
 	FVector RacketFaceInHand = FVector::ZeroVector;
 
+	/** The racket arm is the left one (a left-hander); the pose's warp mirrors to it. */
+	bool bLeftHanded = false;
+
 	/** Contact warp tuning from Animation.json (set once by the component). */
 	FPadelWarpTuning WarpTuning;
 

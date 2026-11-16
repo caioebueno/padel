@@ -113,7 +113,7 @@ void FAnimNode_PadelPlayerPose::CacheBones_AnyThread(const FAnimationCacheBonesC
 		UpperBodyMask[Compact] = (RootMesh != INDEX_NONE && Mesh == RootMesh) ? 1.0f : 0.0f;
 	}
 
-	WarpBones.Cache(Bones, false);
+	WarpBones.Cache(Bones, bLeftHanded);
 }
 
 void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
@@ -145,6 +145,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	bWarp = Anim->bWarpThisBody;
 	FaceInHand = Anim->RacketFaceInHand;
 	WarpTuning = Anim->WarpTuning;
+	bLeftHanded = Anim->bLeftHanded;
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
@@ -248,6 +249,10 @@ void FAnimNode_PadelPlayerPose::ApplyArmReach(FPoseContext& Output) const
 	if (!bWarp)
 	{
 		return;
+	}
+	if (WarpBones.bLeftHanded != bLeftHanded)
+	{
+		WarpBones.Cache(Output.AnimInstanceProxy->GetRequiredBones(), bLeftHanded);
 	}
 	FPadelWarpInput In;
 	In.TargetCS = RacketTargetComponent;

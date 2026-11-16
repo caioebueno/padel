@@ -79,8 +79,86 @@ void FPadelWarpBones::Cache(const FBoneContainer& Bones, bool bInLeftHanded)
 	Foot[1] = Find(TEXT("foot_r"));
 }
 
+void FPadelTwistBones::Cache(const FBoneContainer& Bones)
+{
+	const FReferenceSkeleton& Ref = Bones.GetReferenceSkeleton();
+	const TArray<FTransform>& RefPose = Ref.GetRefBonePose();
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		FArm& Arm = Arms[Side];
+		Arm = FArm();
+		const TCHAR* Suffix = Side == 0 ? TEXT("_l") : TEXT("_r");
+		const int32 HandMesh = Ref.FindBoneIndex(FName(FString(TEXT("hand")) + Suffix));
+		if (HandMesh == INDEX_NONE)
+		{
+			continue;
+		}
+		// The hand's offset from the elbow, in the forearm's space: the twist axis and length.
+		const FVector Forearm = RefPose[HandMesh].GetLocation();
+		const double Length = Forearm.Size();
+		for (const TCHAR* Twist : { TEXT("lowerarm_twist_01"), TEXT("lowerarm_twist_02") })
+		{
+			const int32 Mesh = Ref.FindBoneIndex(FName(FString(Twist) + Suffix));
+			if (Mesh == INDEX_NONE || Ref.GetParentIndex(Mesh) != Ref.GetParentIndex(HandMesh) || Length < KINDA_SMALL_NUMBER)
+			{
+				continue;
+			}
+			const FCompactPoseBoneIndex Compact = Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(Mesh));
+			if (Compact.GetInt() == INDEX_NONE)
+			{
+				continue; // not in this LOD
+			}
+			Arm.Twist.Add(Compact);
+			Arm.Share.Add(static_cast<float>(FMath::Clamp(FVector::DotProduct(RefPose[Mesh].GetLocation(), Forearm) / (Length * Length), 0.0, 1.0)));
+		}
+		Arm.Hand = Arm.Twist.Num() > 0 ? Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(HandMesh)) : FCompactPoseBoneIndex(INDEX_NONE);
+	}
+}
+
 namespace PadelContactWarp
 {
+	double HandRoll(const FCompactPose& Pose, FCompactPoseBoneIndex Hand)
+	{
+		if (Hand.GetInt() == INDEX_NONE)
+		{
+			return 0.0;
+		}
+		const FTransform& Local = Pose[Hand];
+		const FVector Axis = Local.GetLocation().GetSafeNormal();
+		if (Axis.IsNearlyZero())
+		{
+			return 0.0;
+		}
+		// Relative to the reference pose, in the forearm's space.
+		FQuat Swing, Twist;
+		(Local.GetRotation() * Pose.GetRefPose(Hand).GetRotation().Inverse()).ToSwingTwist(Axis, Swing, Twist);
+		return Twist.GetTwistAngle(Axis);
+	}
+
+	void DistributeForearmTwist(FCompactPose& Pose, const FPadelTwistBones& Bones)
+	{
+		for (const FPadelTwistBones::FArm& Arm : Bones.Arms)
+		{
+			if (Arm.Hand.GetInt() == INDEX_NONE)
+			{
+				continue;
+			}
+			const FTransform& HandLocal = Pose[Arm.Hand];
+			const FVector Axis = HandLocal.GetLocation().GetSafeNormal();
+			if (Axis.IsNearlyZero())
+			{
+				continue;
+			}
+			const double Roll = HandRoll(Pose, Arm.Hand);
+			for (int32 I = 0; I < Arm.Twist.Num(); ++I)
+			{
+				const FCompactPoseBoneIndex Bone = Arm.Twist[I];
+				const FQuat Base = Pose.GetRefPose(Bone).GetRotation();
+				Pose[Bone].SetRotation(FQuat(Axis, Roll * Arm.Share[I]) * Base);
+			}
+		}
+	}
+
 	float BodyWeight(double SwingProgress)
 	{
 		using namespace PadelContactWarpDetail;

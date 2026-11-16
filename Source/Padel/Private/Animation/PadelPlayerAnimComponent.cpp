@@ -270,7 +270,8 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	{
 		return;
 	}
-	Racket->AttachToComponent(To, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Data->RacketBone);
+	const FName RacketBone = OnRacketSide(Data->RacketBone);
+	Racket->AttachToComponent(To, FAttachmentTransformRules::SnapToTargetNotIncludingScale, RacketBone);
 	// The placeholder skeleton is hidden under a MetaHuman; the racket must not inherit that.
 	Racket->SetVisibility(true);
 	Racket->SetHiddenInGame(false);
@@ -284,14 +285,14 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	// Solve the grip once from the reference pose (RacketGrip.h); the hand bone then carries it.
 	using namespace PadelAnimComponentDetail;
 	const FReferenceSkeleton& Skeleton = Mesh->GetRefSkeleton();
-	const int32 HandIndex = Skeleton.FindBoneIndex(Data->RacketBone);
-	const int32 ForearmIndex = Skeleton.FindBoneIndex(FName(UTF8_TO_TCHAR(RacketSettings.ForearmBone.c_str())));
+	const int32 HandIndex = Skeleton.FindBoneIndex(RacketBone);
+	const int32 ForearmIndex = Skeleton.FindBoneIndex(OnRacketSide(FName(UTF8_TO_TCHAR(RacketSettings.ForearmBone.c_str()))));
 	if (HandIndex == INDEX_NONE)
 	{
-		UE_LOG(LogPadel, Warning, TEXT("%s has no bone %s: the racket sits on the body's origin."), *Mesh->GetName(), *Data->RacketBone.ToString());
+		UE_LOG(LogPadel, Warning, TEXT("%s has no bone %s: the racket sits on the body's origin."), *Mesh->GetName(), *RacketBone.ToString());
 		return;
 	}
-	const int32 KnuckleIndex = Skeleton.FindBoneIndex(FName(UTF8_TO_TCHAR(RacketSettings.KnuckleBone.c_str())));
+	const int32 KnuckleIndex = Skeleton.FindBoneIndex(OnRacketSide(FName(UTF8_TO_TCHAR(RacketSettings.KnuckleBone.c_str()))));
 	const FTransform HandCS = RefPoseComponentSpace(Skeleton, HandIndex);
 	const int32 ParentIndex = Skeleton.GetParentIndex(HandIndex);
 	const int32 ArmIndex = ForearmIndex != INDEX_NONE ? ForearmIndex : ParentIndex;
@@ -307,7 +308,7 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	const Padel::Animation::FRacketGripFrame Grip = Padel::Animation::SolveRacketGrip(In, RacketSettings);
 	if (!Grip.bValid)
 	{
-		UE_LOG(LogPadel, Warning, TEXT("%s: the hand bones are degenerate, the racket sits on %s."), *Mesh->GetName(), *Data->RacketBone.ToString());
+		UE_LOG(LogPadel, Warning, TEXT("%s: the hand bones are degenerate, the racket sits on %s."), *Mesh->GetName(), *RacketBone.ToString());
 		return;
 	}
 	const auto Axis = [](const Padel::FVec3& V) { return FVector(V.X, V.Y, V.Z); };
@@ -316,7 +317,7 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	Relative.SetScale3D(FVector::OneVector);
 	Racket->SetRelativeTransform(Relative);
 	UE_LOG(LogPadel, Log, TEXT("Racket in %s's %s: grip %.1f cm from the bone (%s finger bones)."), *Mesh->GetName(),
-		*Data->RacketBone.ToString(), Relative.GetLocation().Size(), In.bHasKnuckle ? TEXT("with") : TEXT("no"));
+		*RacketBone.ToString(), Relative.GetLocation().Size(), In.bHasKnuckle ? TEXT("with") : TEXT("no"));
 
 	// The contact warp aims this face centre, on this body's arm, at the ball (PadelContactWarp.h).
 	const FVector FaceInHand = PadelContactWarp::FaceInHand(Relative, Padel::ToWorld(Padel::FVec3{ 0.0, 0.0, RacketSettings.FaceCentreM }).Z);
@@ -329,7 +330,7 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	}
 	else if (UPadelMetaHumanAnimInstance* MetaAnim = Cast<UPadelMetaHumanAnimInstance>(To->GetAnimInstance()))
 	{
-		MetaAnim->SetRacketFace(FaceInHand, false);
+		MetaAnim->SetRacketFace(FaceInHand, bLeftHanded);
 	}
 }
 
@@ -356,8 +357,39 @@ void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& 
 {
 	if (Model)
 	{
+		// Left-handers (Players.json Handedness) hold the racket and reach with the left arm.
+		const bool bLeft = Controller.GetRatings().ForehandSign() < 0.0;
+		if (bLeft != bLeftHanded)
+		{
+			SetLeftHanded(bLeft);
+		}
 		Model->Step(Padel::Animation::FPlayerAnimInput::FromController(Controller, Events, bRallyLive), Dt);
 		bStepped = true;
+	}
+}
+
+FName UPadelPlayerAnimComponent::OnRacketSide(FName RightSideBone) const
+{
+	FString Name = RightSideBone.ToString();
+	if (bLeftHanded && Name.EndsWith(TEXT("_r")))
+	{
+		Name.LeftChopInline(2);
+		Name += TEXT("_l");
+	}
+	return FName(*Name);
+}
+
+void UPadelPlayerAnimComponent::SetLeftHanded(bool bLeft)
+{
+	bLeftHanded = bLeft;
+	if (UPadelPlayerAnimInstance* Anim = Body ? Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()) : nullptr)
+	{
+		Anim->bLeftHanded = bLeft;
+	}
+	// Re-grip on the racket hand of whichever body holds it now (the MetaHuman, or the placeholder).
+	if (USkeletalMeshComponent* Holder = Racket ? Cast<USkeletalMeshComponent>(Racket->GetAttachParent()) : nullptr)
+	{
+		AttachRacket(Holder);
 	}
 }
 

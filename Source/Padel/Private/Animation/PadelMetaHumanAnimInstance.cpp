@@ -26,6 +26,7 @@ void FAnimNode_PadelMetaHumanWarp::CacheBones_AnyThread(const FAnimationCacheBon
 		Retarget->CacheBones_AnyThread(Context);
 	}
 	Bones.Cache(Context.AnimInstanceProxy->GetRequiredBones(), bLeftHanded);
+	TwistBones.Cache(Context.AnimInstanceProxy->GetRequiredBones());
 }
 
 void FAnimNode_PadelMetaHumanWarp::Update_AnyThread(const FAnimationUpdateContext& Context)
@@ -46,6 +47,7 @@ void FAnimNode_PadelMetaHumanWarp::PreUpdate(const UAnimInstance* InAnimInstance
 	const USkeletalMeshComponent* Driver = Source.Get();
 	const UPadelPlayerAnimInstance* Anim = Driver ? Cast<UPadelPlayerAnimInstance>(Driver->GetAnimInstance()) : nullptr;
 	const USkeletalMeshComponent* Mesh = InAnimInstance ? InAnimInstance->GetSkelMeshComponent() : nullptr;
+	bPostProcessTwist = Mesh && Mesh->GetPostProcessInstance() != nullptr;
 	if (!Anim || !Mesh)
 	{
 		return;
@@ -68,6 +70,13 @@ void FAnimNode_PadelMetaHumanWarp::Evaluate_AnyThread(FPoseContext& Output)
 		Output.ResetToRefPose();
 	}
 	PadelContactWarp::Apply(Output.Pose, Bones, Request, Tuning);
+	// After the warp, so the rolled racket hand pulls the forearm round with it. A MetaHuman
+	// assembled with its post-process AnimBP spreads the roll itself (its twist correctives run
+	// after this graph), so this is the fallback for one without.
+	if (!bPostProcessTwist)
+	{
+		PadelContactWarp::DistributeForearmTwist(Output.Pose, TwistBones);
+	}
 }
 
 void UPadelMetaHumanAnimInstance::Configure(USkeletalMeshComponent* Source, UIKRetargeter* Retargeter, int32 IkLodThreshold)
