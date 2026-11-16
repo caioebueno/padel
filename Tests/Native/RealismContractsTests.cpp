@@ -43,7 +43,8 @@ TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by
 	CHECK(T.NetStaggerM == Approx(0.75));
 	CHECK(T.PartnerSpacingMinM == Approx(3.5));
 	CHECK(T.PartnerSpacingMaxM == Approx(5.0));
-	CHECK(T.SideSwitchMinLobDepthM == Approx(0.0));
+	// A4 (movement doc 2.12): the side switch on lobs landing past 7 m.
+	CHECK(T.SideSwitchMinLobDepthM == Approx(7.0));
 	CHECK(T.FirstStepExtraS == Approx(0.0));
 }
 
