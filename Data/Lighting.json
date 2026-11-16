@@ -1,0 +1,223 @@
+{
+	"_doc": "Lighting presets (GDD 10: realistic, televised indoor padel). Physically based: spot lights in candela, the sun in lux, colour in kelvin, a fixed broadcast exposure in EV100 (no eye adaptation, so the picture never pumps when the camera moves). Metres and degrees on the court axes. APadelVenueLighting applies a preset; Padel::Presentation::Lighting builds the fixtures and the native tests check every preset for court illuminance, uniformity and glare at the broadcast camera. See docs/decisions/0006-lighting-and-venue.md.",
+	"Default": "IndoorClub",
+	"FixtureMesh": "/Game/Padel/Venue/SM_FloodlightHead",
+	"Presets": {
+		"IndoorClub": {
+			"_comment": "The slice court (GDD 12) in the arena of docs/art/ARENA_SPEC.md section 6: ten LED floodlights in the long sides of a box truss at Y = +-7 whose underside is the 8 m ceiling the referee uses (GDD 2), none on the end trusses (they face the camera) or over the court (a lob never meets a light). About 1,100 lux at 0.75 uniformity. House lights on the roof trusses light the stands at about a fifth of the court.",
+			"Venue": "Indoor",
+			"FloodlightsOn": true,
+			"TargetAverageLux": 1000.0,
+			"TargetUniformity": 0.7,
+			"MaxShadowedFixtures": 2,
+			"Sun": {
+				"Enabled": false
+			},
+			"Sky": {
+				"Atmosphere": false,
+				"SkyLightIntensity": 0.25,
+				"RealTimeCapture": false,
+				"LowerHemisphereIsBlack": true
+			},
+			"Fog": {
+				"Density": 0.003,
+				"HeightFalloff": 0.15,
+				"Volumetric": true,
+				"VolumetricScattering": 0.35,
+				"VolumetricAlbedo": 0.85
+			},
+			"FixtureRows": [
+				{
+					"_comment": "Mirrored to both sides. Lenses just above the truss underside; each fixture aims 1 m short of the centre line on its own side, pulled 30% toward the net along X so the ends get light from inside the court.",
+					"Role": "Court",
+					"Count": 5,
+					"StartX": -11.0,
+					"EndX": 11.0,
+					"OffsetY": 7.0,
+					"HeightM": 8.05,
+					"AimOwnSideM": 1.0,
+					"AimXScale": 0.7,
+					"IntensityCd": 28500.0,
+					"InnerConeDeg": 40.0,
+					"OuterConeDeg": 55.0,
+					"TemperatureK": 5600.0,
+					"SourceRadiusM": 0.22,
+					"LensLuminanceNits": 60000.0
+				},
+				{
+					"_comment": "House lights for the stands, on the roof trusses (12 m) straight over the seats: 3,500 K, no shadows.",
+					"Role": "House",
+					"Count": 5,
+					"StartX": -12.0,
+					"EndX": 12.0,
+					"OffsetY": 15.0,
+					"HeightM": 12.0,
+					"AimOwnSideM": 15.0,
+					"AimXScale": 1.0,
+					"IntensityCd": 7500.0,
+					"InnerConeDeg": 50.0,
+					"OuterConeDeg": 60.0,
+					"TemperatureK": 3500.0,
+					"SourceRadiusM": 0.15,
+					"LensLuminanceNits": 20000.0
+				}
+			],
+			"Stands": {
+				"_comment": "One side's seats (mirrored): docs/art/ARENA_SPEC.md 5.1, rows from Y 10.8, seat height 0.95 m at the front to 4.55 m at the back. Spec 6.2: 150 to 250 lux.",
+				"MinX": -14.0,
+				"MaxX": 14.0,
+				"FrontY": 10.8,
+				"BackY": 19.3,
+				"FrontZ": 0.95,
+				"BackZ": 4.55,
+				"TargetMinLux": 150.0,
+				"TargetMaxLux": 250.0
+			},
+			"Post": {
+				"ExposureEV100": 8.5,
+				"ShutterSpeed": 100.0,
+				"ISO": 100.0,
+				"WhiteBalanceK": 5600.0,
+				"WhiteTint": 0.0,
+				"Contrast": 1.04,
+				"Saturation": 1.06,
+				"BloomIntensity": 0.35,
+				"VignetteIntensity": 0.22,
+				"MotionBlurAmount": 0.25,
+				"MotionBlurMax": 2.0,
+				"LocalExposureHighlightContrast": 0.85,
+				"LocalExposureShadowContrast": 0.9,
+				"FilmGrain": 0.0,
+				"ChromaticAberration": 0.0,
+				"LensFlareIntensity": 0.0
+			}
+		},
+		"OutdoorDay": {
+			"_comment": "Open-air club court in summer daylight. Physical sun and sky; the masts are there but switched off. Sun from behind the near-left of the broadcast camera, so shadows fall away from it and the players read as lit.",
+			"Venue": "Outdoor",
+			"FloodlightsOn": false,
+			"TargetAverageLux": 0.0,
+			"TargetUniformity": 0.0,
+			"MaxShadowedFixtures": 0,
+			"Sun": {
+				"Enabled": true,
+				"IlluminanceLux": 100000.0,
+				"ElevationDeg": 55.0,
+				"AzimuthDeg": 35.0,
+				"TemperatureK": 6200.0,
+				"SourceAngleDeg": 0.53
+			},
+			"Sky": {
+				"Atmosphere": true,
+				"SkyLightIntensity": 1.0,
+				"RealTimeCapture": true,
+				"LowerHemisphereIsBlack": false,
+				"SkyIlluminanceLux": 15000.0
+			},
+			"Fog": {
+				"Density": 0.008,
+				"HeightFalloff": 0.2,
+				"Volumetric": false,
+				"VolumetricScattering": 0.2,
+				"VolumetricAlbedo": 0.9
+			},
+			"FixtureRows": [
+				{
+					"_comment": "The same masts as OutdoorNight (one venue, one set of masts), switched off.",
+					"Role": "Court",
+					"Count": 5,
+					"StartX": -11.0,
+					"EndX": 11.0,
+					"OffsetY": 5.6,
+					"HeightM": 7.0,
+					"AimOwnSideM": 2.0,
+					"AimXScale": 0.8,
+					"IntensityCd": 15000.0,
+					"InnerConeDeg": 40.0,
+					"OuterConeDeg": 60.0,
+					"TemperatureK": 5000.0,
+					"SourceRadiusM": 0.22,
+					"LensLuminanceNits": 40000.0
+				}
+			],
+			"Post": {
+				"ExposureEV100": 14.8,
+				"ShutterSpeed": 100.0,
+				"ISO": 100.0,
+				"WhiteBalanceK": 6200.0,
+				"WhiteTint": 0.0,
+				"Contrast": 1.05,
+				"Saturation": 1.04,
+				"BloomIntensity": 0.2,
+				"VignetteIntensity": 0.18,
+				"MotionBlurAmount": 0.25,
+				"MotionBlurMax": 2.0,
+				"LocalExposureHighlightContrast": 0.8,
+				"LocalExposureShadowContrast": 0.85,
+				"FilmGrain": 0.0,
+				"ChromaticAberration": 0.0,
+				"LensFlareIntensity": 0.0
+			}
+		},
+		"OutdoorNight": {
+			"_comment": "The same open-air court at night: ten floodlights on 7 m masts just outside the side walls (the end pair behind the back-glass corners), club-level light (about 730 lux).",
+			"Venue": "Outdoor",
+			"FloodlightsOn": true,
+			"TargetAverageLux": 500.0,
+			"TargetUniformity": 0.7,
+			"MaxShadowedFixtures": 2,
+			"Sun": {
+				"Enabled": false
+			},
+			"Sky": {
+				"Atmosphere": true,
+				"SkyLightIntensity": 0.03,
+				"RealTimeCapture": true,
+				"LowerHemisphereIsBlack": true
+			},
+			"Fog": {
+				"Density": 0.004,
+				"HeightFalloff": 0.2,
+				"Volumetric": true,
+				"VolumetricScattering": 0.3,
+				"VolumetricAlbedo": 0.85
+			},
+			"FixtureRows": [
+				{
+					"Role": "Court",
+					"Count": 5,
+					"StartX": -11.0,
+					"EndX": 11.0,
+					"OffsetY": 5.6,
+					"HeightM": 7.0,
+					"AimOwnSideM": 2.0,
+					"AimXScale": 0.8,
+					"IntensityCd": 15000.0,
+					"InnerConeDeg": 40.0,
+					"OuterConeDeg": 60.0,
+					"TemperatureK": 5000.0,
+					"SourceRadiusM": 0.22,
+					"LensLuminanceNits": 40000.0
+				}
+			],
+			"Post": {
+				"ExposureEV100": 7.7,
+				"ShutterSpeed": 100.0,
+				"ISO": 100.0,
+				"WhiteBalanceK": 5000.0,
+				"WhiteTint": 0.0,
+				"Contrast": 1.06,
+				"Saturation": 1.04,
+				"BloomIntensity": 0.4,
+				"VignetteIntensity": 0.25,
+				"MotionBlurAmount": 0.25,
+				"MotionBlurMax": 2.0,
+				"LocalExposureHighlightContrast": 0.85,
+				"LocalExposureShadowContrast": 0.9,
+				"FilmGrain": 0.0,
+				"ChromaticAberration": 0.0,
+				"LensFlareIntensity": 0.0
+			}
+		}
+	}
+}

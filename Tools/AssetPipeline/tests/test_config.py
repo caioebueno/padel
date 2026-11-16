@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from asset_lib import catalogue, court_spec, manifest, originality, textures
+from asset_lib import REPO_ROOT, catalogue, court_spec, lighting, manifest, originality, textures
 
 
 class CourtSpecTest(unittest.TestCase):
@@ -101,6 +101,42 @@ class CatalogueTest(unittest.TestCase):
             self.assertIn(group, palette)
         self.assertNotEqual(palette["team_a"]["Shirt"]["color"], palette["team_b"]["Shirt"]["color"])
         self.assertEqual(catalogue.material_name("team_a", "Shirt"), "MI_TeamA_Shirt")
+
+    def test_venue_palette_is_physically_plausible(self) -> None:
+        # Realistic lighting needs real albedos (decision 0006): nothing blacker than
+        # charcoal or whiter than fresh paint, and only bare metal is metallic.
+        venue = catalogue.load_palette()["venue"]
+        for name, settings in venue.items():
+            if settings["master"] == "Emissive":
+                continue
+            value = settings["color"].lstrip("#")
+            linear = [(c / 255 / 12.92) if c / 255 <= 0.04045 else ((c / 255 + 0.055) / 1.055) ** 2.4
+                      for c in (int(value[i:i + 2], 16) for i in (0, 2, 4))]
+            luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+            self.assertGreaterEqual(luminance, 0.015, name)
+            self.assertLessEqual(luminance, 0.85, name)
+            self.assertEqual(settings.get("metallic", 0.0) > 0.0, name == "Aluminium", name)
+
+    def test_venue_rigs_come_from_the_lighting_presets(self) -> None:
+        rigs = lighting.venue_rigs()
+        spec = court_spec.load()
+        self.assertEqual(set(rigs), {"Indoor", "Outdoor"})
+        for venue, positions in rigs.items():
+            self.assertTrue(positions, venue)
+            # Mirrored across the court's width, so both sides are lit alike.
+            self.assertEqual(sorted((x, -y, z, r) for x, y, z, r in positions), sorted(positions))
+            for x, y, z, role in positions:
+                self.assertIn(role, ("Court", "House"))
+                self.assertGreater(abs(y), spec["HalfWidth"])
+                if venue == "Indoor":
+                    self.assertGreaterEqual(z, spec["CeilingHeight"])
+        # The look-dev stage lists every venue mesh the catalogue builds.
+        lookdev = json.loads((REPO_ROOT / "Data" / "LookDev.json").read_text(encoding="utf-8"))
+        listed = {m.rsplit("/", 1)[-1] for part in lookdev["Parts"] for m in part["Meshes"]}
+        built = {a.asset_name for a in catalogue.load().assets if a.category == "Venue" and a.raw.get("part") != "floodlight"}
+        self.assertLessEqual(built, listed)
+        data = lighting.load()
+        self.assertTrue(data["FixtureMesh"].endswith("/" + catalogue.load().get("FloodlightHead").asset_name))
 
     def test_ai_prompts_render_and_ask_for_realism_without_branding(self) -> None:
         cat = catalogue.load()

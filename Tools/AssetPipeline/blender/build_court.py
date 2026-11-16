@@ -27,7 +27,6 @@ RAIL_RADIUS = 0.025
 FLOOR_THICKNESS = 0.02
 NET_POST_SIZE = 0.08
 NET_TAPE = 0.05
-LIGHT_HEIGHT = 7.6
 
 
 def net_height_at(spec: dict, y: float) -> float:
@@ -37,7 +36,7 @@ def net_height_at(spec: dict, y: float) -> float:
 
 def build(job: dict) -> list:
     spec, pal = job["spec"], job["palette"]["court"]
-    names = ["Turf", "Line", "Runoff", "Frame", "Mesh", "Net", "NetTape", "LightPanel", "Glass"]
+    names = ["Turf", "Line", "Runoff", "Frame", "Mesh", "Net", "NetTape", "Glass"]
     mats = [bc.material(f"MI_Court_{n}", pal[n]) for n in names]
     idx = {n: i for i, n in enumerate(names)}
     hl, hw = spec["HalfLength"], spec["HalfWidth"]
@@ -129,11 +128,6 @@ def build(job: dict) -> list:
     for sy in (-1, 1):
         bc.add_box(solid, (0, sy * (hw - NET_POST_SIZE / 2), spec["NetPostHeight"] / 2),
                    (NET_POST_SIZE, NET_POST_SIZE, spec["NetPostHeight"]), idx["Frame"])
-
-    # --- Arena light panels over the court ---
-    for x in (-6.0, -2.0, 2.0, 6.0):
-        for y in (-3.2, 3.2):
-            bc.add_box(solid, (x, y, LIGHT_HEIGHT), (1.4, 0.35, 0.08), idx["LightPanel"])
 
     keep, drop = (glass, solid) if job["part"] == "glass" else (solid, glass)
     drop.free()

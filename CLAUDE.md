@@ -32,15 +32,15 @@ Source/
     Gameplay/      player pawn, movement, shot system, input (PadelInputConfig.cpp creates the IA_* actions and IMC_Match in C++)
     AI/            prediction, pair tactics, shot choice, difficulty
     UI/            HUD, menus, stats screen (UMG + CommonUI, logic in C++)
-    Presentation/  camera (APadelBroadcastCamera), audio, replays, the UPadelMatchEvents subsystem and its listeners
+    Presentation/  camera (APadelBroadcastCamera), venue lighting (APadelVenueLighting), the look-dev stage, audio, replays, the UPadelMatchEvents subsystem and its listeners
     Animation/     the player anim instance and component; Model/ holds the engine-free animation model (docs/decisions/0005-player-animation.md)
     Data/          USTRUCT row types for the data tables (FShotRow, FPlayerRow, FDifficultyRow...)
   Padel.Target.cs, PadelEditor.Target.cs
-Content/Padel/     Maps/, Court/, Equipment/, Characters/, Materials/, Animations/, UI/, Audio/, Data/ (imported DataTables)
+Content/Padel/     Maps/, Court/, Venue/, Equipment/, Characters/, Materials/, Animations/, UI/, Audio/, Data/ (imported DataTables)
 SourceArt/         FBX and PNG sources for Content/Padel, built by Tools/AssetPipeline (procedural ones are rebuilt, not committed); manifest.csv (source + licence for every asset)
-Data/              Shots.json, Players.json, Teams.json, Difficulty.json, Physics.json, Camera.json (the source of truth)
-Config/            DefaultEngine.ini, DefaultInput.ini, DefaultGame.ini
-Tools/             build and test scripts (RunNativeTests.sh, RunUnrealTests.sh/.ps1); AssetPipeline/ (Python, Blender, Unreal Python import; see its README)
+Data/              Shots.json, Players.json, Teams.json, Difficulty.json, Physics.json, Camera.json, Lighting.json, LookDev.json (the source of truth)
+Config/            DefaultEngine.ini, DefaultInput.ini, DefaultGame.ini, DefaultDeviceProfiles.ini (per-platform rendering budgets)
+Tools/             build and test scripts (RunNativeTests.sh, RunUnrealTests.sh/.ps1, RunLookDev.sh/.ps1 for the shared look-dev level); AssetPipeline/ (Python, Blender, Unreal Python import; see its README)
 Tests/Native/      plain C++ tests for PadelCore (CMake + doctest), outside Source/ so the engine build skips them
 ThirdParty/        vendored code (doctest), each with its licence
 ```

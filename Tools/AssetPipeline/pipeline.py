@@ -6,7 +6,7 @@
     python3 Tools/AssetPipeline/pipeline.py build Ball       # just some assets
     python3 Tools/AssetPipeline/pipeline.py generate PlayerGenA   # call the AI service (costs credits)
     python3 Tools/AssetPipeline/pipeline.py unreal           # import SourceArt into Content/Padel
-    python3 Tools/AssetPipeline/pipeline.py preview out.png  # render the procedural assets in Blender
+    python3 Tools/AssetPipeline/pipeline.py preview out.png  # render the procedural assets in Blender (--preset, --camera)
     python3 Tools/AssetPipeline/pipeline.py check            # validate config, prompts and names (no Blender)
 
 See Tools/AssetPipeline/README.md for setup (Blender, API keys, Unreal).
@@ -27,11 +27,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from asset_lib import INCOMING_DIR, RAW_DIR, REPO_ROOT, SOURCE_ART_DIR, UNREAL_DIR  # noqa: E402
-from asset_lib import blender_runner, catalogue, court_spec, manifest, providers, textures  # noqa: E402
+from asset_lib import blender_runner, catalogue, court_spec, lighting, manifest, providers, textures  # noqa: E402
 from asset_lib.catalogue import Asset  # noqa: E402
 
 PROCEDURAL_SCRIPTS = {"court": "build_court", "ball": "build_equipment", "racket": "build_equipment",
-                      "character": "build_character"}
+                      "character": "build_character", "venue": "build_venue"}
 
 
 def log(msg: str) -> None:
@@ -100,6 +100,9 @@ def build_asset(asset: Asset, spec: dict, palette: dict, allow_generate: bool) -
         job.update({"builder": builder, "spec": spec, "palette": palette,
                     "palette_group": asset.raw.get("palette", ""), "part": asset.raw.get("part", "solid"),
                     "body": asset.raw.get("body", {})})
+        if builder == "venue":
+            # Trusses and masts carry the fixtures Data/Lighting.json lights (decision 0006).
+            job["rigs"] = lighting.venue_rigs()
         report = blender_runner.run(PROCEDURAL_SCRIPTS[builder], job)
         source = f"procedural: Tools/AssetPipeline/blender/{PROCEDURAL_SCRIPTS[builder]}.py"
         licence = "original (this repo)"
@@ -224,6 +227,14 @@ def cmd_preview(args: argparse.Namespace) -> None:
     job = {"spec": court_spec.load(), "palette": catalogue.load_palette(),
            "assets": [a.raw for a in cat.assets if a.source == "procedural"],
            "out": str(Path(args.out).resolve()), "samples": args.samples, "resolution": [1280, 720]}
+    # Lit like the game: the preset's fixtures, sun and exposure, from a look-dev camera.
+    name, preset = lighting.preset(args.preset)
+    cameras = json.loads((REPO_ROOT / "Data" / "LookDev.json").read_text(encoding="utf-8"))["Cameras"]
+    camera = next((c for c in cameras if c["Name"] == args.camera), None)
+    if camera is None:
+        raise SystemExit(f"no camera '{args.camera}' in Data/LookDev.json")
+    job.update({"preset_name": name, "preset": preset, "fixtures": lighting.fixtures(preset),
+                "rigs": lighting.venue_rigs(), "camera": camera})
     blender_runner.run("render_preview", job)
     log(f"preview written to {args.out}")
 
@@ -256,6 +267,8 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("preview", help="render a Blender preview of the procedural assets")
     p.add_argument("out")
     p.add_argument("--samples", type=int, default=24)
+    p.add_argument("--preset", default=None, help="Data/Lighting.json preset (default: the file's Default)")
+    p.add_argument("--camera", default="Broadcast", help="Data/LookDev.json camera name")
     p.set_defaults(func=cmd_preview)
     p = sub.add_parser("check", help="validate the catalogue, palette, prompts and names")
     p.set_defaults(func=cmd_check)

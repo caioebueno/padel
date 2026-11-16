@@ -3,7 +3,10 @@
 without opening Unreal. Not used by the game.
 
 Job keys: spec, palette, assets (catalogue entries of the procedural assets),
-out (PNG path), samples, resolution, report.
+out (PNG path), samples, resolution, report; and from Data/Lighting.json and
+Data/LookDev.json (pipeline.py preview): preset_name, preset, fixtures, rigs, camera.
+The lights use the game's physical values (candela, lux, kelvin, EV100), converted to
+Blender's watts at 683 lm/W, so the picture is a fair preview of the Unreal lighting.
 """
 
 from __future__ import annotations
@@ -22,6 +25,19 @@ import bl_common as bc  # noqa: E402
 import build_character  # noqa: E402
 import build_court  # noqa: E402
 import build_equipment  # noqa: E402
+import build_venue  # noqa: E402
+
+
+def kelvin_rgb(kelvin: float) -> tuple[float, float, float]:
+    """Approximate linear RGB of a black body, normalised to its brightest channel."""
+    t = kelvin / 100.0
+    r = 255.0 if t <= 66 else 329.698727446 * (t - 60) ** -0.1332047592
+    g = 99.4708025861 * math.log(t) - 161.1195681661 if t <= 66 else 288.1221695283 * (t - 60) ** -0.0755148492
+    b = 255.0 if t >= 66 else (0.0 if t <= 19 else 138.5177312231 * math.log(t - 10) - 305.0447927307)
+    srgb = [min(max(c, 0.0), 255.0) / 255.0 for c in (r, g, b)]
+    lin = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in srgb]
+    top = max(lin) or 1.0
+    return tuple(c / top for c in lin)
 
 
 def _job(entry: dict, job: dict, part: str | None = None) -> dict:
@@ -38,9 +54,29 @@ def main() -> None:
     bc.reset_scene()
     entries = {a["id"]: a for a in job["assets"]}
     objects = []
+    preset = job.get("preset", {})
+    venue = preset.get("Venue", "Indoor")
+    venue_parts = {"Indoor": {"hall", "truss", "stands", "boards"}, "Outdoor": {"ground", "masts", "stands", "boards"}}
     for entry in entries.values():
         if entry["builder"] == "court":
             objects += build_court.build(_job(entry, job))
+        elif entry["builder"] == "venue" and entry.get("part") in venue_parts.get(venue, set()):
+            objects += build_venue.build(dict(_job(entry, job), rigs=job.get("rigs", {})))
+    head_entry = next((e for e in entries.values() if e.get("part") == "floodlight"), None)
+    lights_on = preset.get("FloodlightsOn", False)
+    if head_entry:
+        for i, f in enumerate(job.get("fixtures", [])):
+            head = build_venue.build(dict(_job(head_entry, job), id=f"Head{i}"))[0]
+            head.location = f["position"]
+            head.rotation_mode = "QUATERNION"
+            head.rotation_quaternion = Vector(f["direction"]).to_track_quat("X", "Z")
+            for slot in head.material_slots:
+                if slot.material and slot.material.name.endswith("FixtureLens"):
+                    lens = slot.material.copy()
+                    bsdf = lens.node_tree.nodes.get("Principled BSDF")
+                    # Emission strength is radiance in W/m^2/sr: nits / 683.
+                    bsdf.inputs["Emission Strength"].default_value = (f["lens_nits"] / 683.0) if lights_on else 0.0
+                    slot.material = lens
 
     # Two players per team in a typical rally shape: A at the back, B at the net.
     players = [e for e in entries.values() if e["builder"] == "character"]
@@ -76,29 +112,61 @@ def main() -> None:
     scene = bpy.context.scene
     world = bpy.data.worlds.new("World")
     world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.02, 0.022, 0.026, 1)
-    world.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.0
+    background = world.node_tree.nodes["Background"]
+    sky = preset.get("Sky", {})
+    sky_lux = sky.get("SkyIlluminanceLux", 0.0)
+    if sky.get("Atmosphere") and sky_lux > 0:
+        # A uniform sky of luminance L gives pi * L lux on the ground.
+        background.inputs["Color"].default_value = (0.42, 0.62, 1.0, 1)
+        background.inputs["Strength"].default_value = sky_lux / math.pi / 683.0 / 0.6
+    else:
+        background.inputs["Color"].default_value = (0.02, 0.022, 0.026, 1)
+        background.inputs["Strength"].default_value = 0.002
     scene.world = world
-    for x in (-6.0, -2.0, 2.0, 6.0):
-        for y in (-3.2, 3.2):
-            light = bpy.data.objects.new(f"L{x}{y}", bpy.data.lights.new(f"L{x}{y}", "AREA"))
-            light.data.energy = 900
-            light.data.size = 1.4
-            light.data.color = (1.0, 0.95, 0.88)
-            light.location = (x, y, 7.5)
-            scene.collection.objects.link(light)
+    sun = preset.get("Sun", {})
+    if sun.get("Enabled"):
+        lamp = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
+        lamp.data.energy = sun["IlluminanceLux"] / 683.0  # irradiance, W/m^2
+        lamp.data.angle = math.radians(sun.get("SourceAngleDeg", 0.53))
+        lamp.data.color = kelvin_rgb(sun.get("TemperatureK", 6000.0))
+        el, az = math.radians(sun["ElevationDeg"]), math.radians(sun["AzimuthDeg"])
+        travel = Vector((-math.cos(el) * math.cos(az), -math.cos(el) * math.sin(az), -math.sin(el)))
+        lamp.rotation_mode = "QUATERNION"
+        lamp.rotation_quaternion = travel.to_track_quat("-Z", "Y")
+        scene.collection.objects.link(lamp)
+    if lights_on:
+        for i, f in enumerate(job.get("fixtures", [])):
+            spot = bpy.data.objects.new(f"Flood{i}", bpy.data.lights.new(f"Flood{i}", "SPOT"))
+            # Blender spreads a spot's watts like a point light: I = P / (4 pi) at 683 lm/W.
+            spot.data.energy = f["intensity_cd"] * 4.0 * math.pi / 683.0
+            spot.data.spot_size = math.radians(2.0 * f["outer_deg"])
+            spot.data.spot_blend = max(0.0, 1.0 - f["inner_deg"] / f["outer_deg"])
+            spot.data.shadow_soft_size = 0.22
+            spot.data.color = kelvin_rgb(f["kelvin"])
+            spot.location = Vector(f["position"]) + Vector(f["direction"]) * 0.05
+            spot.rotation_mode = "QUATERNION"
+            spot.rotation_quaternion = Vector(f["direction"]).to_track_quat("-Z", "Y")
+            scene.collection.objects.link(spot)
+    view = job.get("camera", {"LocationM": [17.0, 0.0, 8.0], "LookAtM": [-2.0, 0.0, 0.0], "FovDeg": 50.0})
     cam = bpy.data.objects.new("Cam", bpy.data.cameras.new("Cam"))
-    cam.data.lens = 26
-    cam.location = (17.0, 0.0, 8.0)
-    direction = Vector((1.0, 0.0, 0.0)) - cam.location
+    cam.data.sensor_fit = "HORIZONTAL"
+    cam.data.angle = math.radians(view["FovDeg"])  # Unreal's FOV is horizontal too
+    cam.data.clip_end = 400.0
+    cam.location = Vector(view["LocationM"])
+    direction = Vector(view["LookAtM"]) - cam.location
     cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
     scene.collection.objects.link(cam)
     scene.camera = cam
+    # The game's locked exposure: Unreal maps luminance L to L / (1.2 * 2^EV100), Blender's
+    # pixels are L / 683, so the matching exposure is log2(683 / 1.2) - EV100 stops.
+    ev100 = preset.get("Post", {}).get("ExposureEV100", 9.0)
+    scene.view_settings.exposure = math.log2(683.0 / 1.2) - ev100
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
     scene.cycles.samples = int(job.get("samples", 24))
     scene.cycles.use_denoising = True
     scene.view_settings.view_transform = "AgX"
+    scene.cycles.max_bounces = 4
     scene.render.resolution_x, scene.render.resolution_y = job.get("resolution", [1280, 720])
     scene.render.filepath = job["out"]
     bpy.ops.render.render(write_still=True)
