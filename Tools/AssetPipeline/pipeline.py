@@ -27,11 +27,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from asset_lib import INCOMING_DIR, RAW_DIR, REPO_ROOT, SOURCE_ART_DIR, UNREAL_DIR  # noqa: E402
-from asset_lib import blender_runner, catalogue, court_spec, lighting, manifest, providers, textures  # noqa: E402
+from asset_lib import blender_runner, catalogue, court_spec, glass, lighting, manifest, providers, textures, turf_textures  # noqa: E402
 from asset_lib.catalogue import Asset  # noqa: E402
 
-PROCEDURAL_SCRIPTS = {"court": "build_court", "ball": "build_equipment", "racket": "build_equipment",
-                      "character": "build_character", "venue": "build_venue"}
+PROCEDURAL_SCRIPTS = {"court_glass": "build_court_glass", "court_frame": "build_court_frame",
+                      "ball": "build_equipment", "racket": "build_equipment", "character": "build_character",
+                      "net": "build_net", "court_surface": "build_court_surface", "venue": "build_venue"}
 
 
 def log(msg: str) -> None:
@@ -99,7 +100,8 @@ def build_asset(asset: Asset, spec: dict, palette: dict, allow_generate: bool) -
         builder = asset.raw["builder"]
         job.update({"builder": builder, "spec": spec, "palette": palette,
                     "palette_group": asset.raw.get("palette", ""), "part": asset.raw.get("part", "solid"),
-                    "body": asset.raw.get("body", {})})
+                    "body": asset.raw.get("body", {}), "net": asset.raw.get("net", {}),
+                    "surface": turf_textures.load_config(), "textures_dir": str(textures.TEXTURE_DIR)})
         if builder == "venue":
             # Trusses and masts carry the fixtures Data/Lighting.json lights (decision 0006).
             job["rigs"] = lighting.venue_rigs()
@@ -150,10 +152,16 @@ def cmd_build(args: argparse.Namespace) -> None:
     if unknown:
         raise SystemExit(f"unknown asset id(s): {', '.join(sorted(unknown))}")
     rows: list[dict] = []
-    for tex in textures.generate_all(palette):
+    generated = [(tex, "textures.py") for tex in textures.generate_all(palette)]
+    generated += [(tex, "glass.py") for tex in glass.generate_textures()]
+    for tex, script in generated:
         log(f"texture {_rel(tex)}")
-        rows.append({"path": _rel(tex), "source": "procedural: Tools/AssetPipeline/asset_lib/textures.py",
+        rows.append({"path": _rel(tex), "source": f"procedural: Tools/AssetPipeline/asset_lib/{script}",
                      "licence": "original (this repo)", "notes": "texture"})
+    for tex in turf_textures.generate_all(spec, textures.TEXTURE_DIR):
+        log(f"texture {_rel(tex)}")
+        rows.append({"path": _rel(tex), "source": "procedural: Tools/AssetPipeline/asset_lib/turf_textures.py",
+                     "licence": "original (this repo)", "notes": "texture (config/court_surface.json)"})
     for asset in cat.assets:
         if wanted and asset.id not in wanted:
             continue
@@ -224,7 +232,11 @@ def cmd_unreal(args: argparse.Namespace) -> None:
 
 def cmd_preview(args: argparse.Namespace) -> None:
     cat = catalogue.load()
-    job = {"spec": court_spec.load(), "palette": catalogue.load_palette(),
+    spec = court_spec.load()
+    if not (textures.TEXTURE_DIR / "T_Turf_N.png").is_file():
+        turf_textures.generate_all(spec, textures.TEXTURE_DIR)
+    job = {"spec": spec, "palette": catalogue.load_palette(),
+           "surface": turf_textures.load_config(), "textures_dir": str(textures.TEXTURE_DIR),
            "assets": [a.raw for a in cat.assets if a.source == "procedural"],
            "out": str(Path(args.out).resolve()), "samples": args.samples, "resolution": [1280, 720]}
     # Lit like the game: the preset's fixtures, sun and exposure, from a look-dev camera.
@@ -243,6 +255,7 @@ def cmd_check(args: argparse.Namespace) -> None:
     cat = catalogue.load()
     catalogue.load_palette()
     court_spec.load()
+    glass.load_config()
     for asset in cat.assets:
         if asset.source == "ai":
             catalogue.render_prompt(asset)

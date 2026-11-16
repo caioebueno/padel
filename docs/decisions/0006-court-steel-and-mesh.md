@@ -1,0 +1,9 @@
+# 0006: Court steel structure and welded mesh
+
+**Date:** 2026-11-16 · **Status:** proposed (court art, mesh and frame)
+
+- **Two meshes.** `SM_CourtFrame` holds every opaque steel part (posts, panel frames, plates, gussets, bolts) and uses Nanite. `SM_CourtMesh` holds only the mesh openings, one quad each, with the masked `M_PadelWireMesh` material and no Nanite: it is a few dozen triangles, and masked Nanite costs more than it saves here.
+- **Wires are drawn by the material, not modelled.** The court has 84 m² of 50 mm welded mesh. Modelled wires are sub-pixel from the broadcast camera, so they alias badly whatever the triangle budget, and a mask texture with mipmaps either thins out or shimmers. A box-filtered analytic grid gives the exact wire coverage of each pixel at any distance, so the mesh is crisp up close and becomes an even see-through haze far away, which is how it looks on TV. The cost is a few ALU instructions per pixel and no texture.
+- **Post section matches the glass fixings.** 100 × 50 mm posts, centred on each joint, court face 15 mm outside the court limit (12 mm glass and a 3 mm gasket), agreed with the glass work so its through-bolts land on steel. The values live in `Tools/AssetPipeline/config/court_frame.json`; change them together with the glass config.
+- **Physically based materials.** Powder coat is a paint, so the frame is a dielectric (metallic 0, albedo about 0.04), not a dark metal. Galvanised bolts are metallic. Values are real-world ones, because the venue lighting is physically based with fixed exposure.
+- **Layout is plain Python and tested.** `asset_lib/court_frame_layout.py` computes every position from `CourtSpec.h`; `tests/test_court_frame.py` checks that the panels cover exactly the mesh surfaces the referee uses, every glass bolt has steel behind it, nothing enters the court, and the exits are clear.

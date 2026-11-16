@@ -51,7 +51,7 @@
 			"Meshes": ["/Game/Padel/Venue/SM_VenueStands", "/Game/Padel/Venue/SM_VenueBoards"]
 		}
 	],
-	"CourtFallback": ["/Game/Padel/Court/SM_CourtIndoor", "/Game/Padel/Court/SM_CourtIndoorGlass"],
+	"CourtFallback": [],
 	"Cameras": [
 		{
 			"_comment": "The match camera's pose (GDD 9, Data/Camera.json): judge everything here first.",

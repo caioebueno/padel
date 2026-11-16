@@ -23,8 +23,11 @@ from mathutils import Euler, Vector  # noqa: E402
 
 import bl_common as bc  # noqa: E402
 import build_character  # noqa: E402
-import build_court  # noqa: E402
+import build_court_frame  # noqa: E402
+import build_court_glass  # noqa: E402
+import build_court_surface  # noqa: E402
 import build_equipment  # noqa: E402
+import build_net  # noqa: E402
 import build_venue  # noqa: E402
 
 
@@ -43,6 +46,7 @@ def kelvin_rgb(kelvin: float) -> tuple[float, float, float]:
 def _job(entry: dict, job: dict, part: str | None = None) -> dict:
     out = dict(entry)
     out.update({"id": entry["id"], "spec": job["spec"], "palette": job["palette"],
+                "surface": job.get("surface"), "textures_dir": job.get("textures_dir"),
                 "palette_group": entry.get("palette", ""), "part": part or entry.get("part", "solid")})
     out.setdefault("size", {})
     out.setdefault("body", {})
@@ -58,8 +62,14 @@ def main() -> None:
     venue = preset.get("Venue", "Indoor")
     venue_parts = {"Indoor": {"hall", "truss", "stands", "boards"}, "Outdoor": {"ground", "masts", "stands", "boards"}}
     for entry in entries.values():
-        if entry["builder"] == "court":
-            objects += build_court.build(_job(entry, job))
+        if entry["builder"] == "court_glass":
+            objects += build_court_glass.build(_job(entry, job))
+        elif entry["builder"] == "net":
+            objects += build_net.build(_job(entry, job))
+        elif entry["builder"] == "court_surface":
+            objects += build_court_surface.build(_job(entry, job))
+        elif entry["builder"] == "court_frame":
+            objects += build_court_frame.build(_job(entry, job))[0]
         elif entry["builder"] == "venue" and entry.get("part") in venue_parts.get(venue, set()):
             objects += build_venue.build(dict(_job(entry, job), rigs=job.get("rigs", {})))
     head_entry = next((e for e in entries.values() if e.get("part") == "floodlight"), None)

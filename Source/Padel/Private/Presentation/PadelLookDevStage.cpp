@@ -179,7 +179,8 @@ void APadelLookDevStage::Assemble(Padel::Presentation::Lighting::EVenue Venue)
 
 	if (CourtMeshes == 0)
 	{
-		// None of the new court parts yet: the pipeline's one-piece court, then the boxes.
+		// None of the court parts imported yet: anything listed in CourtFallback (empty now that
+		// the one-piece SM_CourtIndoor is gone), then the placeholder boxes.
 		for (const FString& Path : CourtFallback)
 		{
 			UStaticMesh* Mesh = LoadMesh(Path);
