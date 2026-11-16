@@ -34,7 +34,7 @@ TEST_CASE("Ai.Pair: both back and both at the net use the GDD 8 depths and spaci
 	auto Homes = Pair.HomePositions({ 0.0, 5.0 });
 	CHECK(Homes[RightSlot].Y == Approx(T.BackDepthM));
 	CHECK(Homes[LeftSlot].Y == Approx(T.BackDepthM));
-	CHECK(Homes[RightSlot].X - Homes[LeftSlot].X == Approx(T.PartnerSpacingM));
+	CHECK(Homes[RightSlot].X - Homes[LeftSlot].X == Approx(T.PartnerSpacingMinM));
 	CHECK(Homes[RightSlot].X > 0.0);
 	Pair.SetFormation(EFormation::BothNet);
 	Homes = Pair.HomePositions({ 0.0, 5.0 });

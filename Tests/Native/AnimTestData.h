@@ -72,6 +72,7 @@ namespace AnimTestData
 			C.EndS = Num(R, "EndS");
 			C.Backswing = Vec3(R, "Backswing");
 			C.Follow = Vec3(R, "Follow");
+			C.Contact = Vec3(R, "Contact");
 			Lib.Add(C);
 		}
 		return Lib;

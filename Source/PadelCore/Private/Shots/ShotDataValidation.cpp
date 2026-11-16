@@ -16,6 +16,28 @@ namespace Padel::Shots
 				Errors.push_back(std::string(Name) + " must be > 0");
 			}
 		}
+		void NonNegative(std::vector<std::string>& Errors, const char* Name, double Value)
+		{
+			if (!(Value >= 0.0))
+			{
+				Errors.push_back(std::string(Name) + " must be >= 0");
+			}
+		}
+		void UnitRange(std::vector<std::string>& Errors, const char* Name, double Value)
+		{
+			if (!(Value >= 0.0 && Value <= 1.0))
+			{
+				Errors.push_back(std::string(Name) + " must be between 0 and 1");
+			}
+		}
+		// A speed fraction: 0 would freeze the player, so a missing field shows up.
+		void Fraction(std::vector<std::string>& Errors, const char* Name, double Value)
+		{
+			if (!(Value > 0.0 && Value <= 1.0))
+			{
+				Errors.push_back(std::string(Name) + " must be above 0 and at most 1");
+			}
+		}
 		void Ordered(std::vector<std::string>& Errors, const char* Name, double Lo, double Hi)
 		{
 			if (Lo > Hi)
@@ -38,11 +60,15 @@ namespace Padel::Shots
 		Ordered(E, "Good/EarlyLate window", GoodWindowMs, EarlyLateWindowMs);
 		Positive(E, "ContactHeightMaxM", ContactHeightMaxM);
 		Ordered(E, "ContactHeight", ContactHeightMinM, ContactHeightMaxM);
+		NonNegative(E, "ContactHeightPerBodyHeight", ContactHeightPerBodyHeight);
+		Positive(E, "IdealContactSideM", IdealContactSideM);
+		Positive(E, "IdealContactSideBackM", IdealContactSideBackM);
 		Ordered(E, "Depth", DepthShortM, DepthDeepM);
 		if (DepthNeutralM < DepthShortM || DepthNeutralM > DepthDeepM)
 		{
 			E.push_back("DepthNeutralM must be between short and deep");
 		}
+		NonNegative(E, "ForwardS", ForwardS);
 		Positive(E, "FollowThroughS", FollowThroughS);
 		Positive(E, "SwingMoveMult", SwingMoveMult);
 		if (ForehandRating == ERating::Count || BackhandRating == ERating::Count)
@@ -97,6 +123,17 @@ namespace Padel::Shots
 		Positive(E, "SplitWindowS", SplitWindowS);
 		Positive(E, "SplitFirstStepAt99", SplitFirstStepAt99);
 		Positive(E, "HomeArriveM", HomeArriveM);
+		UnitRange(E, "AccelFalloff", AccelFalloff);
+		Fraction(E, "ShuffleSpeedFrac", ShuffleSpeedFrac);
+		Fraction(E, "BackpedalSpeedFrac", BackpedalSpeedFrac);
+		NonNegative(E, "TurnToRunS", TurnToRunS);
+		Positive(E, "CrossoverMinDistM", CrossoverMinDistM);
+		Positive(E, "TurnBackMinDistM", TurnBackMinDistM);
+		Positive(E, "FatigueHardAccelMps2", FatigueHardAccelMps2);
+		NonNegative(E, "FatigueDrainPerHardAccel", FatigueDrainPerHardAccel);
+		NonNegative(E, "FatigueRallyStartS", FatigueRallyStartS);
+		NonNegative(E, "FatigueDrainPerRallyS", FatigueDrainPerRallyS);
+		UnitRange(E, "FatigueTopSpeedLossAtZero", FatigueTopSpeedLossAtZero);
 		return E;
 	}
 }

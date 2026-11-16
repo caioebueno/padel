@@ -39,7 +39,12 @@ namespace Padel::AI
 		// --- Formation (GDD 8 pair tactics) ---
 		double NetDepthM = 0.0;            // both at the net, GDD: 2-3 m from the net
 		double BackDepthM = 0.0;           // both back, GDD: 1-2 m in front of the glass
-		double PartnerSpacingM = 0.0;      // GDD: 4-5 m side to side
+		// GDD 8: 4-5 m side to side, from Min with the ball central to Max with it wide
+		// (BIOMECHANICS_MOVEMENT 5.4). Equal values keep one spacing.
+		double PartnerSpacingMinM = 0.0;
+		double PartnerSpacingMaxM = 0.0;
+		double NetStaggerM = 0.0;          // at the net, the partner away from the ball stands this much deeper
+		double SideSwitchMinLobDepthM = 0.0; // a lob over one player landing deeper than this swaps the partners' sides; 0 = never
 		double BallShiftFactor = 0.0;      // how far the pair's centre follows the ball
 		double MaxLateralShiftM = 0.0;
 		double TakeMiddleShiftM = 0.0;     // extra shift for a player told to take the middle
@@ -70,6 +75,9 @@ namespace Padel::AI
 		double JumpExtraAt99M = 0.0;
 		double AnticipationDelayScaleAt1 = 0.0;
 		double AnticipationDelayScaleAt99 = 0.0;
+		// GDD 8: added to the read delay before the first step, which comes as the
+		// split-step lands (BIOMECHANICS_MOVEMENT 5.4).
+		double FirstStepExtraS = 0.0;
 
 		// --- Prediction (GDD 8) ---
 		double PredictDtS = 0.0;
