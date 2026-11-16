@@ -192,7 +192,10 @@ void APadelHUD::MenuResumeMatch()
 
 void APadelHUD::MenuRestartMatch()
 {
-	StartMatch();
+	// Spec 3 and 7.10: Restart goes through the Versus card, which starts the match again
+	// (MenuStartMatch), so a restart looks like any other match start.
+	CloseMatch();
+	ShowScreen(EPadelScreen::Versus);
 }
 
 void APadelHUD::MenuQuitMatch()
@@ -325,6 +328,7 @@ void APadelHUD::OnPointEnded(int WinningTeam, std::string_view Reason, int LastH
 void APadelHUD::OnScoreChanged(const Padel::Ui::FScoreView& Score)
 {
 	LastScore = Score;
+	Stats.OnScoreChanged(Score);
 	HudWidget->UpdateScore(Score);
 	// The human's team (Team A) is always at the bottom of the screen (GDD 9).
 	if (APadelBroadcastCamera* Camera = FindCamera())
