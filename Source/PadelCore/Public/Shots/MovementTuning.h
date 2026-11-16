@@ -27,8 +27,9 @@ namespace Padel::Shots
 		// top speed for a player square to the net; 1 = as fast as running forward.
 		double ShuffleSpeedFrac = 0.0;
 		double BackpedalSpeedFrac = 0.0;
-		// Hip turn before a crossover or turn-and-run, by GDD 6.1 Agility in the motion code.
-		double TurnToRunS = 0.0;
+		// Hip turn before a crossover or turn-and-run, at GDD 6.1 Agility 1 and 99.
+		double TurnToRunAt1S = 0.0;
+		double TurnToRunAt99S = 0.0;
 		// Moves longer than these turn and run instead of shuffling or backpedalling.
 		double CrossoverMinDistM = 0.0;
 		double TurnBackMinDistM = 0.0;

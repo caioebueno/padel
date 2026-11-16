@@ -29,9 +29,8 @@ namespace Padel::Shots
 
 	double FPlayerMotion::TurnTimeS() const
 	{
-		// GDD 6.1: Agility sets how quickly the player turns to run. TurnToRunS is the turn at
-		// Agility 50; the range runs from half again as long at 1 to half as long at 99.
-		return Tuning->TurnToRunS * (1.5 - Ratings->Unit(ERating::Agility));
+		// GDD 6.1: Agility sets how quickly the player turns to run.
+		return Lerp(Tuning->TurnToRunAt1S, Tuning->TurnToRunAt99S, Ratings->Unit(ERating::Agility));
 	}
 
 	double FPlayerMotion::SquareSpeedFrac(const FVec2& UnitDir) const

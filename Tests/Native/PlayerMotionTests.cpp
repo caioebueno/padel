@@ -482,7 +482,8 @@ TEST_CASE("Shots.Motion: the turn to run costs time, faster with Agility (M2)")
 {
 	const FMovementTuning T = OpenField();
 	FMovementTuning NoTurn = T;
-	NoTurn.TurnToRunS = 0.0;
+	NoTurn.TurnToRunAt1S = 0.0;
+	NoTurn.TurnToRunAt99S = 0.0;
 	const FPlayerRatings R = Rated(77);
 	const auto TimeTo = [&R](const FMovementTuning& Tuning, double Distance)
 	{
@@ -510,7 +511,8 @@ TEST_CASE("Shots.Motion: the turn to run costs time, faster with Agility (M2)")
 	FPlayerRatings Stiff = R;
 	Stiff.Agility = 1;
 	CHECK(FPlayerMotion(&Agile, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() < FPlayerMotion(&Stiff, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS());
-	CHECK(FPlayerMotion(&Stiff, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() <= 0.25 + 1e-9 + T.TurnToRunS);
+	CHECK(FPlayerMotion(&Stiff, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() == Approx(T.TurnToRunAt1S).epsilon(0.01));
+	CHECK(FPlayerMotion(&Agile, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() == Approx(T.TurnToRunAt99S));
 }
 
 TEST_CASE("Shots.Motion: running into the glass or the net brakes instead of stopping dead (M2)")

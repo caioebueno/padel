@@ -18,7 +18,8 @@ TEST_CASE("Contracts.Realism: Movement.json's new fields are neutral (GDD 6.1, 6
 	// M2 turned these on (PlayerMotionTests pins their behaviour).
 	CHECK(M.ShuffleSpeedFrac == Approx(0.65));
 	CHECK(M.BackpedalSpeedFrac == Approx(0.5));
-	CHECK(M.TurnToRunS == Approx(0.18));
+	CHECK(M.TurnToRunAt1S == Approx(0.27));
+	CHECK(M.TurnToRunAt99S == Approx(0.09));
 	CHECK(M.CrossoverMinDistM == Approx(2.5));
 	CHECK(M.TurnBackMinDistM == Approx(1.5));
 	CHECK(M.FatigueHardAccelMps2 == Approx(3.0));

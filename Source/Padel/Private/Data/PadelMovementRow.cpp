@@ -28,7 +28,8 @@ Padel::Shots::FMovementTuning FPadelMovementRow::ToCore() const
 	Out.AccelFalloff = AccelFalloff;
 	Out.ShuffleSpeedFrac = ShuffleSpeedFrac;
 	Out.BackpedalSpeedFrac = BackpedalSpeedFrac;
-	Out.TurnToRunS = TurnToRunS;
+	Out.TurnToRunAt1S = TurnToRunAt1S;
+	Out.TurnToRunAt99S = TurnToRunAt99S;
 	Out.CrossoverMinDistM = CrossoverMinDistM;
 	Out.TurnBackMinDistM = TurnBackMinDistM;
 	Out.FatigueHardAccelMps2 = FatigueHardAccelMps2;
