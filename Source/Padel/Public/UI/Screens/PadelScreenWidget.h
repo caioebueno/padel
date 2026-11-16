@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Blueprint/WidgetTree.h"
 #include "UI/Model/PadelUiGlyphs.h"
 #include "UI/Model/PadelUiNavigation.h"
 #include "UI/Model/PadelUiScreenFlow.h"

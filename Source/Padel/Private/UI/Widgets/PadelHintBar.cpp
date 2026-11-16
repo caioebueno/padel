@@ -1,5 +1,6 @@
 #include "UI/Widgets/PadelHintBar.h"
 
+#include "InputCoreTypes.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"

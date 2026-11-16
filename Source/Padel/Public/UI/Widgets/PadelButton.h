@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UI/Model/PadelUiGlyphs.h"
 #include "UI/Widgets/PadelFocusableWidget.h"
 #include "PadelButton.generated.h"
 

@@ -72,6 +72,7 @@ namespace PadelUiPaint
 					}
 					return Inward >= 0.5f ? 0.0f : SmoothEdge(Inward / 0.5f);
 				});
+			}
 			return Cached.Get();
 		}
 

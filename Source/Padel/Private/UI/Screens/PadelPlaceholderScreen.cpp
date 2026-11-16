@@ -1,5 +1,6 @@
 #include "UI/Screens/PadelPlaceholderScreen.h"
 
+#include "Blueprint/WidgetTree.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "UI/PadelMenuHost.h"

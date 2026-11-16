@@ -1,5 +1,6 @@
 #include "UI/Screens/PadelMenuRoot.h"
 
+#include "InputCoreTypes.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/BackgroundBlur.h"
 #include "Components/Image.h"
