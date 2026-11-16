@@ -7,6 +7,7 @@
 #include "Gameplay/PadelPlayerController.h"
 #include "PadelLog.h"
 #include "Presentation/PadelBroadcastCamera.h"
+#include "Presentation/PadelLookDevStage.h"
 #include "Presentation/PadelVenueLighting.h"
 #include "UI/PadelHUD.h"
 
@@ -37,16 +38,32 @@ void APadelGameMode::SpawnPlaceholderStage()
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	if (!TActorIterator<APadelCourt>(World))
+	// The venue's floodlights, sky and broadcast post-process (GDD 10, Data/Lighting.json).
+	APadelVenueLighting* Lighting = nullptr;
+	if (TActorIterator<APadelVenueLighting> It(World); It)
 	{
-		World->SpawnActor<APadelCourt>(APadelCourt::StaticClass(), FTransform::Identity, Params);
-		UE_LOG(LogPadel, Log, TEXT("No court in the level: spawned the placeholder court."));
+		Lighting = *It;
+	}
+	else
+	{
+		Lighting = World->SpawnActor<APadelVenueLighting>(APadelVenueLighting::StaticClass(), FTransform::Identity, Params);
 	}
 
-	// The venue's floodlights, sky and broadcast post-process (GDD 10, Data/Lighting.json).
-	if (!TActorIterator<APadelVenueLighting>(World))
+	// The court: a level that brings its own keeps it. Otherwise the imported court and venue
+	// meshes from Data/LookDev.json, the same set the look-dev level judges, and only when
+	// none are imported yet the placeholder boxes (the stage spawns APadelCourt itself).
+	if (!TActorIterator<APadelCourt>(World) && !TActorIterator<APadelLookDevStage>(World))
 	{
-		World->SpawnActor<APadelVenueLighting>(APadelVenueLighting::StaticClass(), FTransform::Identity, Params);
+		CourtStage = World->SpawnActor<APadelLookDevStage>(APadelLookDevStage::StaticClass(), FTransform::Identity, Params);
+		if (CourtStage)
+		{
+			CourtStage->Assemble(Lighting ? Lighting->GetActiveVenue() : Padel::Presentation::Lighting::EVenue::Indoor);
+			if (Lighting)
+			{
+				// Indoor and outdoor presets show different venue pieces.
+				Lighting->OnPresetApplied.AddUObject(this, &APadelGameMode::OnLightingPresetApplied);
+			}
+		}
 	}
 
 	// The real match: the HUD's Start match asks this actor for one.
@@ -59,5 +76,17 @@ void APadelGameMode::SpawnPlaceholderStage()
 	{
 		World->SpawnActor<APadelBroadcastCamera>(APadelBroadcastCamera::StaticClass(),
 			APadelBroadcastCamera::GetDefaultTransform(), Params);
+	}
+}
+
+void APadelGameMode::OnLightingPresetApplied(const FString& PresetName)
+{
+	UWorld* World = GetWorld();
+	if (CourtStage && World)
+	{
+		if (TActorIterator<APadelVenueLighting> It(World); It)
+		{
+			CourtStage->Assemble(It->GetActiveVenue());
+		}
 	}
 }
