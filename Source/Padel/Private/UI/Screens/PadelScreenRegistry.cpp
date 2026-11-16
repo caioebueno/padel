@@ -1,6 +1,8 @@
 #include "UI/Screens/PadelScreenRegistry.h"
 
+#include "UI/Screens/PadelControlsScreen.h"
 #include "UI/Screens/PadelPlaceholderScreen.h"
+#include "UI/Screens/PadelSettingsScreen.h"
 
 TSubclassOf<UPadelScreenWidget> PadelScreenRegistry::ScreenClass(EPadelScreen Screen)
 {
@@ -12,8 +14,8 @@ TSubclassOf<UPadelScreenWidget> PadelScreenRegistry::ScreenClass(EPadelScreen Sc
 	case EPadelScreen::MatchSetup:     return UPadelPlaceholderScreen::StaticClass(); // 7.3, workstream B
 	case EPadelScreen::Versus:         return UPadelPlaceholderScreen::StaticClass(); // 7.4, workstream B
 	case EPadelScreen::Paused:         return UPadelPlaceholderScreen::StaticClass(); // 7.5, workstream C
-	case EPadelScreen::Controls:       return UPadelPlaceholderScreen::StaticClass(); // 7.6, workstream D
-	case EPadelScreen::Settings:       return UPadelPlaceholderScreen::StaticClass(); // 7.7, workstream D
+	case EPadelScreen::Controls:       return UPadelControlsScreen::StaticClass();    // 7.6, workstream D
+	case EPadelScreen::Settings:       return UPadelSettingsScreen::StaticClass();    // 7.7, workstream D
 	case EPadelScreen::Stats:          return UPadelPlaceholderScreen::StaticClass(); // 7.8, workstream C
 	case EPadelScreen::Practice:       return UPadelPlaceholderScreen::StaticClass(); // 7.9, workstream A
 	case EPadelScreen::PracticePaused: return UPadelPlaceholderScreen::StaticClass(); // 7.9, workstream A
