@@ -7,10 +7,11 @@ Everything here happens in the editor on the Mac. Nothing you make in these step
 ## Before you start (once)
 
 1. Pull the branch and open `Padel.uproject`. Say **Yes** if it asks to rebuild modules. The MetaHuman Creator plugin is already enabled in the project; if the editor asks to restart for it, restart.
-2. The MetaHumans copy the pose of the placeholder skeleton, so 0005's assets must exist first:
-   - `brew install --cask blender`, then `python3 Tools/AssetPipeline/pipeline.py all` (builds and imports `SK_PlayerPlaceholderA` and `B`).
-   - The placeholder clips and `ABP_PadelPlayer` from [0005](../decisions/0005-player-animation.md#what-needs-a-mac-no-engine-in-ci).
-3. Sign in with your Epic Games account when the Creator asks: auto-rigging and the texture download run on Epic's servers.
+2. The MetaHumans copy the pose of the placeholder skeleton, so it must exist and move first:
+   - `SK_PlayerPlaceholderA` from the asset pipeline (`python3 Tools/AssetPipeline/pipeline.py all`).
+   - The locomotion clips: in the Output Log (Python), `exec(open("/Users/caiobueno/Developer/padel/Tools/AssetPipeline/unreal/animation_setup.py").read())`. It ends with `[padel-anim] done`. No `ABP_PadelPlayer` is needed (0006, "Moving without ABP_PadelPlayer").
+3. If the Creator says **MetaHuman Creator core data is missing**: Epic Games Launcher, **Unreal Engine › Library**, the 5.8 tile's **▾ › Options**, tick **MetaHuman Creator Core Data**, **Apply**.
+4. Sign in with your Epic Games account when the Creator asks: auto-rigging and the texture download run on Epic's servers.
 
 ## Make one player (repeat for each of the four)
 
@@ -29,7 +30,7 @@ Do Selva first, all the way to step 9, then check it in a match before making th
 ## After assembling (each time)
 
 1. In the editor's **Output Log**, switch the input to **Python** and run:
-   `exec(open("Tools/AssetPipeline/unreal/metahuman_setup.py").read())`
+   `exec(open("/Users/caiobueno/Developer/padel/Tools/AssetPipeline/unreal/metahuman_setup.py").read())`
    It builds the retargeter (the first time it needs one assembled MetaHuman, so run it again after Selva), then lists each player as found or still on the placeholder. If it says it found a Blueprint with a different name, put that path in `Data/PlayerBodies.json` (`MetaHumanClass`, ending in `_C`) and tell me, so the PR carries it.
 2. Open the retargeter once (`/Game/Padel/Animations/Retarget/RTG_PadelPlaceholder_To_MetaHuman`), pick an idle or swing clip in its preview and check the arms and feet look right. If the arms are raised or the feet slide, tell me what you see before changing anything: the script makes this asset, so the fix goes in the script.
 3. Play a match. The log line `Player selva_arunde: showing MetaHuman ...` confirms the swap. Type `stat fps` and `stat unit` in the console: the target is 60 fps with all four players on screen.

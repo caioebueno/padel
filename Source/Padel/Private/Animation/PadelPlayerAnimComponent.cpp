@@ -34,19 +34,33 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 	}
 	Model = MakeUnique<Padel::Animation::FPlayerAnimModel>(&Data->Settings, &Data->Clips, Shots);
 
-	// The skeletal body is used only when both the mesh and the AnimBP exist; until the
-	// asset pipeline and the clips have been imported the placeholder shapes stay.
+	// The skeletal body is used only when the mesh and something to animate it exist: the
+	// AnimBP of 0005, or (0006) the C++ pose with its clips. Until then the shapes stay.
+	// A MetaHuman player's hidden driver is always the first placeholder: its skeleton is
+	// the one the clips and the MetaHuman retargeter are made for.
 	bSkeletalBody = false;
-	if (Body && Data->TeamMeshes.IsValidIndex(TeamIndex))
+	const bool bWantsMetaHuman = !PlayerKey.IsNone() && Data->PlayerBodies.Contains(PlayerKey);
+	const int32 MeshIndex = bWantsMetaHuman ? 0 : TeamIndex;
+	if (Body && Data->TeamMeshes.IsValidIndex(MeshIndex))
 	{
-		USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, *Data->TeamMeshes[TeamIndex], nullptr, LOAD_Quiet | LOAD_NoWarn);
+		USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, *Data->TeamMeshes[MeshIndex], nullptr, LOAD_Quiet | LOAD_NoWarn);
 		UClass* AnimClass = LoadObject<UClass>(nullptr, *Data->AnimClass, nullptr, LOAD_Quiet | LOAD_NoWarn);
+		const FPadelLocomotionSet Set = LoadLocomotionSet();
+		if (Mesh && (!AnimClass || !AnimClass->IsChildOf(UPadelPlayerAnimInstance::StaticClass()))
+			&& Set.IsValid() && Set.Idle->GetSkeleton() == Mesh->GetSkeleton())
+		{
+			AnimClass = UPadelPlayerAnimInstance::StaticClass();
+		}
 		if (Mesh && AnimClass && AnimClass->IsChildOf(UPadelPlayerAnimInstance::StaticClass()))
 		{
 			Body->SetSkeletalMeshAsset(Mesh);
 			Body->SetAnimInstanceClass(AnimClass);
 			Body->SetVisibility(true);
 			bSkeletalBody = true;
+			if (UPadelPlayerAnimInstance* Anim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
+			{
+				Anim->LocomotionSet = Set;
+			}
 			if (Racket && !Data->RacketBone.IsNone())
 			{
 				Racket->AttachToComponent(Body, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Data->RacketBone);
@@ -54,8 +68,8 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 		}
 		else
 		{
-			UE_LOG(LogPadel, Log, TEXT("Player animation: %s or %s not imported yet, using the placeholder body."),
-				*Data->TeamMeshes[TeamIndex], *Data->AnimClass);
+			UE_LOG(LogPadel, Log, TEXT("Player animation: %s, or %s and the locomotion clips, not imported yet: using the placeholder body."),
+				*Data->TeamMeshes[MeshIndex], *Data->AnimClass);
 			Body->SetVisibility(false);
 		}
 	}
@@ -72,6 +86,31 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 	{
 		ShowMetaHuman(PlayerKey);
 	}
+}
+
+FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
+{
+	auto Load = [](const FString& Path) -> UAnimSequenceBase*
+	{
+		return Path.IsEmpty() ? nullptr : LoadObject<UAnimSequenceBase>(nullptr, *Path, nullptr, LOAD_Quiet | LOAD_NoWarn);
+	};
+	FPadelLocomotionSet Set;
+	Set.Idle = Load(Data->IdleAsset);
+	for (const FString& Path : Data->WalkAssets)
+	{
+		Set.Walk.Add(Load(Path));
+	}
+	for (const FString& Path : Data->JogAssets)
+	{
+		Set.Jog.Add(Load(Path));
+	}
+	Set.WalkClipSpeedMps = Data->WalkClipSpeedMps;
+	Set.JogClipSpeedMps = Data->Settings.RunClipSpeedMps;
+	Set.WalkMinMps = Data->Settings.WalkMinMps;
+	Set.StrideRateMin = Data->Settings.StrideRateMin;
+	Set.StrideRateMax = Data->Settings.StrideRateMax;
+	Set.ArmReadyAlpha = Data->ArmReadyAlpha;
+	return Set;
 }
 
 bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)

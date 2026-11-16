@@ -22,7 +22,7 @@ public class Padel : ModuleRules
 			"Json",
 		});
 
-		// MetaHuman players: the runtime IK retarget node (docs/decisions/0006-metahuman-players.md).
-		PrivateDependencyModuleNames.AddRange(new string[] { "IKRig" });
+		// MetaHuman players: the runtime IK retarget node and the C++ pose's arm IK (docs/decisions/0006-metahuman-players.md).
+		PrivateDependencyModuleNames.AddRange(new string[] { "IKRig", "AnimationCore" });
 	}
 }
