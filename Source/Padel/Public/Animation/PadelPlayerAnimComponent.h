@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Animation/Model/PlayerAnimModel.h"
+#include "Animation/Model/RacketGrip.h"
 // Complete type: the generated vtable-helper constructor destroys the TUniquePtr below.
 #include "Animation/PadelAnimData.h"
 #include "PadelPlayerAnimComponent.generated.h"
@@ -23,6 +24,10 @@ class USkeletalMeshComponent;
  * - When the player also has a MetaHuman in Data/PlayerBodies.json and it is on disk,
  *   the placeholder skeleton keeps running ABP_PadelPlayer hidden and the MetaHuman is
  *   shown in its place, retargeted from it every frame (docs/decisions/0006-metahuman-players.md).
+ *
+ * The racket is SM_Racket from Data/Racket.json once the asset pipeline has imported it
+ * (docs/decisions/0008-racket.md). On a skeletal body it sits in the palm, placed from
+ * the hand's joints in the reference pose (Animation/Model/RacketGrip.h).
  */
 UCLASS(ClassGroup = (Padel), meta = (BlueprintSpawnableComponent))
 class PADEL_API UPadelPlayerAnimComponent : public UActorComponent
@@ -64,6 +69,12 @@ private:
 	bool ShowMetaHuman(FName PlayerKey);
 	void RemoveMetaHuman();
 
+	/** Puts SM_Racket on the racket component when it's imported; keeps the placeholder otherwise. */
+	void LoadRacket();
+
+	/** Attaches the racket to To's racket bone, in the palm (RacketGrip.h). */
+	void AttachRacket(USkeletalMeshComponent* To);
+
 	UPROPERTY()
 	TObjectPtr<USkeletalMeshComponent> Body;
 
@@ -81,5 +92,7 @@ private:
 	TUniquePtr<FPadelAnimData> Data;
 	TUniquePtr<Padel::Animation::FPlayerAnimModel> Model;
 	bool bSkeletalBody = false;
+	Padel::Animation::FRacketSettings RacketSettings;
+	bool bImportedRacket = false;
 	bool bStepped = false;
 };

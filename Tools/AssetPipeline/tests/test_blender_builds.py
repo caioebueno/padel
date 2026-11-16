@@ -55,6 +55,10 @@ class BlenderBuildTest(unittest.TestCase):
         inspected = blender_runner.run("inspect_fbx", {"file": str(out)})
         return report, inspected
 
+    def cfg_racket(self) -> dict:
+        from asset_lib import racket_layout
+        return racket_layout.load_config()
+
     def extent(self, inspected: dict) -> list[float]:
         return [hi - lo for lo, hi in zip(inspected["bounds_min_m"], inspected["bounds_max_m"])]
 
@@ -87,14 +91,32 @@ class BlenderBuildTest(unittest.TestCase):
         self.assertLessEqual(report["triangles"], self.cat.get("BallTrail").budget_tris)
 
     def test_racket_is_within_the_regulation_size(self) -> None:
-        report, fbx = self.build("RacketPlaceholder", "build_equipment")
+        asset = self.cat.get("Racket")
+        report, fbx = self.build("Racket", "build_racket")
         x, y, z = self.extent(fbx)
+        # GDD 2: at most 455 x 260 mm, built to the limit like a real racket. Only the butt
+        # cap is thicker than the 38 mm frame (racket_layout checks the frame itself).
         self.assertLessEqual(z, 0.455 + 1e-3)
-        self.assertGreater(z, 0.44)
+        self.assertGreater(z, 0.45)
         self.assertLessEqual(x, 0.26 + 1e-3)
-        self.assertLessEqual(y, 0.038 + 1e-3)
-        self.assertLessEqual(report["triangles"], self.cat.get("RacketPlaceholder").budget_tris)
-        self.assertIn("MI_RacketA_Face", fbx["materials"])
+        self.assertGreater(x, 0.255)
+        self.assertLessEqual(y, 2 * self.cfg_racket()["grip"]["cap_semi_axes_m"][1] + 1e-3)
+        # Grip centre on the origin (README conventions): butt 75 mm below, the head up +Z.
+        self.assertAlmostEqual(fbx["bounds_min_m"][2], -0.075, delta=1e-3)
+        self.assertAlmostEqual(fbx["bounds_min_m"][0] + fbx["bounds_max_m"][0], 0.0, delta=1e-3)
+        self.assertAlmostEqual(fbx["bounds_min_m"][1] + fbx["bounds_max_m"][1], 0.0, delta=2e-3)
+        self.assertLessEqual(report["triangles"], asset.budget_tris)
+        self.assertEqual(set(fbx["materials"]), {f"MI_Racket_{n}" for n in
+                                                 ("Face", "Frame", "Core", "Bumper", "Metal", "Accent", "Grip", "Cap")})
+        # Built LODs, each a good deal lighter than the one before, and all in the FBXs.
+        tris = [report["triangles"]] + report["lod_triangles"]
+        self.assertEqual(len(tris), 1 + len(asset.lods))
+        for bigger, smaller in zip(tris, tris[1:]):
+            self.assertLess(smaller, bigger * 0.5)
+        for i in range(1, len(asset.lods) + 1):
+            lod = blender_runner.run("inspect_fbx", {"file": str(self.out / f"SM_Racket_LOD{i}.fbx")})
+            for a, b in zip(self.extent(lod), (x, y, z)):
+                self.assertAlmostEqual(a, b, delta=0.004)
 
     def test_net_matches_courtspec(self) -> None:
         asset = self.cat.get("CourtNet")
