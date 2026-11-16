@@ -1,6 +1,8 @@
 # Written by Tools/AssetPipeline/pipeline.py build: procedural outputs, rebuilt from the scripts.
 /Textures/
 /Court/SM_CourtSurface.fbx
+/Court/SM_CourtGlass.fbx
+/Court/SM_CourtNet.fbx
 /Court/SM_CourtFrame.fbx
 /Court/SM_CourtMesh.fbx
 /Equipment/SM_Ball.fbx
