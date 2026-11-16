@@ -41,4 +41,17 @@ public:
 	virtual void MenuQuitMatch() = 0;
 	/** Main menu: Quit game, after its dialog. */
 	virtual void MenuQuitGame() = 0;
+
+	/**
+	 * Practice intro: Start practice (spec 7.9). Hides the menus and hands play to the
+	 * ball machine drills, which W9 owns; the screen stays Practice while drilling, and
+	 * Start opens Practice pause.
+	 */
+	virtual void MenuStartPractice() = 0;
+	/** Practice pause: Quit practice. No confirm, nothing is lost (spec 7.9). Main menu. */
+	virtual void MenuQuitPractice() = 0;
+	/** True between Start practice and Quit practice. */
+	virtual bool IsMenuPracticeRunning() const = 0;
+	/** The current drill's name for the Practice pause header (spec 7.9), or empty. */
+	virtual FText GetMenuPracticeDrill() const = 0;
 };

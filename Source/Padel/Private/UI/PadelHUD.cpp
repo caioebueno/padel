@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "GameFramework/InputDeviceSubsystem.h"
 #include "Gameplay/PadelPlayerController.h"
+#include "Gameplay/PadelPracticeDirector.h"
 #include "InputAction.h"
 #include "InputMappingContext.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -146,7 +147,14 @@ void APadelHUD::HandleScreenChanged(EPadelScreen NewScreen)
 	{
 		return;
 	}
-	const bool bMenu = Padel::Ui::IsMenuScreen(ToUiScreen(NewScreen));
+	// Spec 7.9: once Start practice is pressed, Practice is the drills themselves, not
+	// the intro overlay: no menu over the court, and the pad drives the player again.
+	const bool bDrilling = NewScreen == EPadelScreen::Practice && bPracticeRunning;
+	if (bDrilling && MenuRoot)
+	{
+		MenuRoot->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	const bool bMenu = Padel::Ui::IsMenuScreen(ToUiScreen(NewScreen)) && !bDrilling;
 	const bool bPaused = NewScreen == EPadelScreen::Paused || NewScreen == EPadelScreen::PracticePaused;
 	if (APlayerController* PC = GetOwningPlayerController())
 	{
@@ -205,6 +213,34 @@ void APadelHUD::MenuQuitMatch()
 void APadelHUD::MenuQuitGame()
 {
 	UKismetSystemLibrary::QuitGame(this, GetOwningPlayerController(), EQuitPreference::Quit, false);
+}
+
+void APadelHUD::MenuStartPractice()
+{
+	// The practice session itself (level, director, drills) is W9's; the HUD only flips
+	// Practice from intro to drilling and says so.
+	bPracticeRunning = true;
+	OnPracticeRequested.Broadcast();
+	HandleScreenChanged(Screen);
+}
+
+void APadelHUD::MenuQuitPractice()
+{
+	bPracticeRunning = false;
+	OnPracticeClosed.Broadcast();
+	ShowScreen(EPadelScreen::MainMenu);
+}
+
+FText APadelHUD::GetMenuPracticeDrill() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return FText::GetEmpty();
+	}
+	// The director's drill names aren't localised yet (W9 exposes them for the UI).
+	TActorIterator<APadelPracticeDirector> It(World);
+	return It ? FText::FromString(It->GetDebugInfo().Drill) : FText::GetEmpty();
 }
 
 // --- Match -------------------------------------------------------------------

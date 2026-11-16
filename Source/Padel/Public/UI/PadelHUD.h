@@ -26,6 +26,8 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnPadelMatchRequested, const Padel::Ui::FMa
 /** The match is over or was quit: the match owner detaches and drops its simulation. */
 DECLARE_MULTICAST_DELEGATE(FOnPadelMatchClosed);
 /** GDD 3.1: the human picked the golden point receiver; the owner calls ChooseGoldenPointReceiver. */
+/** Practice started or ended from the menus (spec 7.9); the practice owner (W9) listens. */
+DECLARE_MULTICAST_DELEGATE(FOnPadelPracticeChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnPadelGoldenReceiverPicked, int32 /*PlayerId*/);
 
 /**
@@ -86,12 +88,18 @@ public:
 	virtual void MenuRestartMatch() override;
 	virtual void MenuQuitMatch() override;
 	virtual void MenuQuitGame() override;
+	virtual void MenuStartPractice() override;
+	virtual void MenuQuitPractice() override;
+	virtual bool IsMenuPracticeRunning() const override { return bPracticeRunning; }
+	virtual FText GetMenuPracticeDrill() const override;
 
 	/** Partner command pressed (GDD 8): shows the prompt. The partner AI binds the action itself. */
 	void ShowPartnerCommand(EPadelInputAction Action);
 
 	FOnPadelMatchRequested OnMatchRequested;
 	FOnPadelMatchClosed OnMatchClosed;
+	FOnPadelPracticeChanged OnPracticeRequested;
+	FOnPadelPracticeChanged OnPracticeClosed;
 	FOnPadelGoldenReceiverPicked OnGoldenReceiverPicked;
 
 	/** True while the scripted stand-in plays because no real match was attached. */
@@ -136,6 +144,8 @@ private:
 	FPadelMatchEventBinder MatchEvents;
 	uint32 MatchCount = 0;
 	float MatchEndCountdown = -1.0f;
+	/** Start practice was pressed and Quit practice wasn't yet: Practice means drilling, not the intro. */
+	bool bPracticeRunning = false;
 	/** Title for the score card, shown when the next score arrives. */
 	FText PendingCardTitle;
 	bool bInputBound = false;

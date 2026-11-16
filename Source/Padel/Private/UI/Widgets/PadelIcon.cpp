@@ -109,6 +109,32 @@ namespace
 		case EPadelIcon::ShapeTriangle:
 			Out.Add({{16, 8}, {24, 22}, {8, 22}, {16, 8}});
 			break;
+		case EPadelIcon::DPadUp:
+		case EPadelIcon::DPadDown:
+		case EPadelIcon::DPadLeft:
+		case EPadelIcon::DPadRight:
+		{
+			// The cross outline, with an arrowhead in the arm that's meant.
+			Out.Add({{11, 3}, {21, 3}, {21, 11}, {29, 11}, {29, 21}, {21, 21}, {21, 29}, {11, 29}, {11, 21}, {3, 21}, {3, 11},
+				{11, 11}, {11, 3}});
+			if (Icon == EPadelIcon::DPadUp)
+			{
+				Out.Add({{16, 6}, {19, 10}, {13, 10}, {16, 6}});
+			}
+			else if (Icon == EPadelIcon::DPadDown)
+			{
+				Out.Add({{16, 26}, {19, 22}, {13, 22}, {16, 26}});
+			}
+			else if (Icon == EPadelIcon::DPadLeft)
+			{
+				Out.Add({{6, 16}, {10, 13}, {10, 19}, {6, 16}});
+			}
+			else
+			{
+				Out.Add({{26, 16}, {22, 13}, {22, 19}, {26, 16}});
+			}
+			break;
+		}
 		case EPadelIcon::None:
 			break;
 		}

@@ -220,7 +220,7 @@ void UPadelScreenWidget::ApplyEntryAnimation()
 	// and Reduce motion fade only.
 	const float T = EntryTween.Value();
 	float Slide = 0.0f;
-	if (!PadelUi::Options().bReduceMotion)
+	if (!PadelUi::Options().bReduceMotion && UsesStageSlide())
 	{
 		const float Distance = PadelUi::Theme().Motion.ScreenSlideIn;
 		if (EntryTransition == EUiTransition::SlideFromRight)
@@ -291,6 +291,11 @@ bool UPadelScreenWidget::HandleMenuInput(EUiInput Input, bool bRepeat)
 	default:
 		return OnScreenInput(Input, bRepeat);
 	}
+}
+
+bool UPadelScreenWidget::HandleAnyKey(const FString& KeyName)
+{
+	return InputLock.AcceptsInput() && OnAnyKey(KeyName);
 }
 
 bool UPadelScreenWidget::OnBack()

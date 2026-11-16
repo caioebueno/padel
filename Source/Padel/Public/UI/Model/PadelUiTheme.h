@@ -162,6 +162,8 @@ namespace Padel::Ui
 		float DialogOut = 0.10f;
 		float DialogScaleFrom = 0.96f;
 		float Pulse = 1.6f;
+		float PulseMinAlpha = 0.5f;   // "Press any button" pulses 1.0 <-> this (7.1)
+		float TitleUnderline = 0.4f;  // the lime stroke under STREET draws in (7.1)
 		float PushIn = 6.0f;
 		float PushInScale = 1.04f;
 		float ReduceMotionFade = 0.16f;

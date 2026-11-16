@@ -383,8 +383,14 @@ void UPadelMenuRoot::UpdateFamilyFromKey(const FKey& Key, int32 UserIndex)
 
 FReply UPadelMenuRoot::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-	const EUiInput Input = Padel::Ui::InputForKey(RootUtf8(InKeyEvent.GetKey().GetFName().ToString()));
+	const FString KeyName = InKeyEvent.GetKey().GetFName().ToString();
+	const EUiInput Input = Padel::Ui::InputForKey(RootUtf8(KeyName));
 	UpdateFamilyFromKey(InKeyEvent.GetKey(), InKeyEvent.GetUserIndex());
+	// A screen that takes any key (Title) hears the raw key first.
+	if (!InKeyEvent.IsRepeat() && !IsDialogOpen() && ScreenWidget && ScreenWidget->HandleAnyKey(KeyName))
+	{
+		return FReply::Handled();
+	}
 	if (Input == EUiInput::None)
 	{
 		return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
