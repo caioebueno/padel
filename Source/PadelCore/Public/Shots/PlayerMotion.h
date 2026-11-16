@@ -41,6 +41,9 @@ namespace Padel::Shots
 		// Split-step hop in progress, for animation.
 		bool IsSplitHopping() const { return SplitHopLeftS > 0.0; }
 		int GetSplitStepCount() const { return SplitStepCount; }
+		// Times the wall or net margin stopped the player dead (a velocity component
+		// zeroed in one tick). Read by the soak's realism metrics; changes nothing.
+		int GetEdgeStopCount() const { return EdgeStopCount; }
 
 	private:
 		void ClampToOwnHalf();
@@ -59,5 +62,6 @@ namespace Padel::Shots
 		double SplitHopLeftS = 0.0;
 		bool bSplitPending = false;
 		int SplitStepCount = 0;
+		int EdgeStopCount = 0;
 	};
 }
