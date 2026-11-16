@@ -11,6 +11,7 @@
 #include "Support/AiTestData.h"
 #include "TestSupport.h"
 
+#include <array>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -37,6 +38,10 @@ namespace
 		std::map<std::string, int> Faults;
 		std::map<std::string, int> ShotCounts;
 		std::map<std::string, int> Grades;
+		// Why the losing pair let a ball bounce twice.
+		std::map<std::string, int> Unreached;
+		// The shot that won a point the opponents couldn't reach.
+		std::map<std::string, int> Winners;
 
 		void Add(const FSoakStats& O)
 		{
@@ -52,6 +57,8 @@ namespace
 			for (const auto& [K, V] : O.Faults) Faults[K] += V;
 			for (const auto& [K, V] : O.ShotCounts) ShotCounts[K] += V;
 			for (const auto& [K, V] : O.Grades) Grades[K] += V;
+			for (const auto& [K, V] : O.Unreached) Unreached[K] += V;
+			for (const auto& [K, V] : O.Winners) Winners[K] += V;
 		}
 		double ShotsPerPoint() const { return Points > 0 ? static_cast<double>(Shots) / Points : 0.0; }
 		double GlassShare() const { return Points > 0 ? static_cast<double>(PointsWithGlassShot) / Points : 0.0; }
@@ -87,11 +94,43 @@ namespace
 		bool bGlassShot = false;
 		bool bMatchOver = false;
 		Padel::Shots::FShotIntent LastShot;
+		const FAiMatchRunner* Runner = nullptr;
+		std::array<bool, 2> bWhiffed = { false, false };
 
 		void OnServeFault(Padel::EServeFault Reason) override { ++Stats->Faults[std::to_string(static_cast<int>(Reason))]; }
-		void OnPointEnded(Padel::ETeam, Padel::EPointReason Reason, int) override
+		void OnPointEnded(Padel::ETeam Winner, Padel::EPointReason Reason, int) override
 		{
 			++Stats->Points;
+			if (Reason == Padel::EPointReason::DoubleBounce && Runner)
+			{
+				const Padel::ETeam Loser = Padel::OtherTeam(Winner);
+				const FAiTeamController& Team = Runner->Team(Loser);
+				const int Taker = Team.GetTaker();
+				const char* Why = bWhiffed[Padel::TeamIndex(Loser)] ? "whiffed"
+					: Taker < 0 || !Team.GetPlan(Taker) ? "no_plan"
+					: !Team.GetPlan(Taker)->bReachable ? "out_of_reach"
+					: "reachable_no_hit";
+				++Stats->Unreached[Why];
+				++Stats->Winners[Padel::ShotTypeName(LastShot.ShotType)];
+				if (std::getenv("PADEL_SOAK_DEBUG") && Taker >= 0)
+				{
+					int Id = -1;
+					for (int I = 0; I < Padel::NumPlayers; ++I)
+					{
+						if (Padel::TeamOfPlayer(I) == Loser && Runner->SlotOf(I) == Taker)
+						{
+							Id = I;
+						}
+					}
+					const Padel::Shots::FPlayerShotController& C = Runner->Player(Id);
+					const auto& Plan = *Team.GetPlan(Taker);
+					const Padel::FVec3& P = C.GetMotion().GetPosition();
+					std::printf("unreached why=%s id=%d phase=%d ideal=%d toIdeal=%.2f pending=%d slack=%.2f stand=(%.2f,%.2f) player=(%.2f,%.2f) planball=(%.2f,%.2f,%.2f) bounces=%d\n",
+						Why, Id, static_cast<int>(C.GetPhase()), C.HasIdealMoment(), C.TimeToIdealS(), Runner->HasPendingShot(Id), Plan.Slack,
+						Plan.StandPoint.X, Plan.StandPoint.Y, P.X, P.Y, Plan.Sample.Position.X, Plan.Sample.Position.Y, Plan.Sample.Position.Z, Plan.Sample.GroundBounces);
+				}
+			}
+			bWhiffed = { false, false };
 			if (Reason == Padel::EPointReason::None)
 			{
 				++Stats->InvariantFailures;
@@ -154,6 +193,7 @@ namespace
 			Listener.Stats = &Stats;
 			Match.AddListener(&Listener);
 			FAiMatchRunner Runner(Match, Data().Library, Data().Movement, TestData::Tactics(), MakeSetup(A, B, Seed));
+			Listener.Runner = &Runner;
 			Runner.Start();
 
 			double LastHit = Match.Time();
@@ -182,6 +222,7 @@ namespace
 					const Padel::Shots::FSwingEvents& E = Runner.LastEvents(Id);
 					if (Runner.HitAccepted(Id))
 					{
+						Listener.bWhiffed = { false, false };
 						LastHit = Match.Time();
 						Hitters.push_back(Id);
 						++Stats.Shots;
@@ -194,23 +235,29 @@ namespace
 							const Padel::Shots::FPlayerShotController& C = Runner.Player(Id);
 							const double Off = std::min(Padel::Shots::DistanceXY(E.Intent.Origin, C.IdealContactPoint(1.0, 0.0)),
 								Padel::Shots::DistanceXY(E.Intent.Origin, C.IdealContactPoint(-1.0, 0.0)));
-							std::printf("hit id=%d shot=%s off=%.2f z=%.2f speed=%.1f charge=%.2f\n", Id, Padel::ShotTypeName(E.Intent.ShotType), Off,
+							std::printf("hit id=%d shot=%s off=%.2f depth=%.2f z=%.2f speed=%.1f charge=%.2f\n", Id, Padel::ShotTypeName(E.Intent.ShotType), Off, std::abs(E.Intent.Origin.X),
 								E.Intent.Origin.Z, E.Intent.SpeedMps, E.Intent.Charge);
 						}
 					}
 					else if (E.Outcome == Padel::Shots::ESwingOutcome::Whiff || E.Outcome == Padel::Shots::ESwingOutcome::ShadowSwing)
 					{
 						++Stats.Whiffs;
+						Listener.bWhiffed[Padel::TeamIndex(Padel::TeamOfPlayer(Id))] = true;
 						if (std::getenv("PADEL_SOAK_DEBUG"))
 						{
-							const Padel::FBallState& Ball = Match.Ball();
 							const Padel::FVec3& P = Runner.Player(Id).GetMotion().GetPosition();
 							const Padel::ETeam T = Padel::TeamOfPlayer(Id);
 							const auto& Plan = Runner.Team(T).GetPlan(Runner.SlotOf(Id));
-							std::printf("whiff id=%d outcome=%d ball=(%.2f,%.2f,%.2f) player=(%.2f,%.2f) toIdeal=%.3f taker=%d plan=%d stand=(%.2f,%.2f) slack=%.2f\n", Id,
-								static_cast<int>(E.Outcome), Ball.Position.X, Ball.Position.Y, Ball.Position.Z, P.X, P.Y,
-								Runner.Player(Id).TimeToIdealS(), Runner.Team(T).GetTaker(), Plan.has_value(), Plan ? Plan->StandPoint.X : 0.0,
-								Plan ? Plan->StandPoint.Y : 0.0, Plan ? Plan->Slack : 0.0);
+							const Padel::Shots::FPlayerShotController& C = Runner.Player(Id);
+							const Padel::Shots::FBallView V = Runner.Ball().Current();
+							const Padel::FVec3 Ideal = C.GetIdealBallPosition();
+							const double Gap = Padel::Shots::DistanceXY(Ideal, P);
+							const char* Why = V.GroundBounces > 1 ? "bounced_twice"
+								: Ideal.Z > C.MaxContactHeight() ? "too_high"
+								: Gap > C.ReachM() + Data().Library.Model.ReachSlackM ? "too_far" : "other";
+							std::printf("whiff id=%d why=%s gap=%.2f reach=%.2f z=%.2f max=%.2f bounces=%d taker=%d plan=%d stand=(%.2f,%.2f) player=(%.2f,%.2f) ideal=(%.2f,%.2f) slack=%.2f\n",
+								Id, Why, Gap, C.ReachM(), Ideal.Z, C.MaxContactHeight(), V.GroundBounces, Runner.Team(T).GetTaker(), Plan.has_value(),
+								Plan ? Plan->StandPoint.X : 0.0, Plan ? Plan->StandPoint.Y : 0.0, P.X, P.Y, Ideal.X, Ideal.Y, Plan ? Plan->Slack : 0.0);
 						}
 					}
 				}
@@ -251,6 +298,10 @@ namespace
 		for (const auto& [Fault, Count] : S.Faults) std::printf(" %s=%d", Fault.c_str(), Count);
 		std::printf("\n[soak]   shots:");
 		for (const auto& [Shot, Count] : S.ShotCounts) std::printf(" %s=%d", Shot.c_str(), Count);
+		std::printf("\n[soak]   double bounces:");
+		for (const auto& [Why, Count] : S.Unreached) std::printf(" %s=%d", Why.c_str(), Count);
+		std::printf("\n[soak]   winners:");
+		for (const auto& [Shot, Count] : S.Winners) std::printf(" %s=%d", Shot.c_str(), Count);
 		std::printf("\n[soak]   timing:");
 		for (const auto& [Grade, Count] : S.Grades) std::printf(" %s=%d", Grade.c_str(), Count);
 		std::printf("\n");
@@ -265,7 +316,20 @@ TEST_CASE("Ai.Soak: Medium AI-vs-AI matches finish with no stuck points")
 	CHECK(S.Unfinished == 0);
 	CHECK(S.InvariantFailures == 0);
 	CHECK(S.Points > 0);
-	CHECK(S.ShotsPerPoint() > 2.0);
+	// GDD 12.4 feel targets on Medium (issue 20): rallies of 6 to 12 shots, a quarter of
+	// the points with a shot off the glass, smashes in the mix, and GDD 8's "mostly
+	// good, some perfect" timing.
+	CHECK(S.ShotsPerPoint() >= 6.0);
+	CHECK(S.ShotsPerPoint() <= 12.0);
+	CHECK(S.GlassShare() >= 0.25);
+	const auto Count = [](const std::map<std::string, int>& M, const char* Key)
+	{
+		const auto It = M.find(Key);
+		return It != M.end() ? It->second : 0;
+	};
+	CHECK(Count(S.ShotCounts, "smash") > S.Points / 10);
+	CHECK(Count(S.Grades, "good") > Count(S.Grades, "perfect"));
+	CHECK(Count(S.Grades, "perfect") > 0);
 }
 
 TEST_CASE("Ai.Soak: every difficulty plays without getting stuck")

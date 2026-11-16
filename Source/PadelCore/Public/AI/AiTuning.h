@@ -83,6 +83,7 @@ namespace Padel::AI
 		double MinContactHeightM = 0.0;
 		double IdealContactHeightM = 0.0;
 		double OverheadMinHeightM = 0.0;
+		double OverheadIdealHeightM = 0.0; // the planner's favourite overhead contact near the net (GDD 4)
 		// GDD 5.2: where the ball should meet the player, beside and in front of them.
 		// The same numbers as Data/ShotModel.json IdealContactSideM / ForwardM (a test
 		// keeps them equal), so the AI stands where the shot model wants the ball.
@@ -130,6 +131,7 @@ namespace Padel::AI
 
 		// --- Targets, as the opponents' depth ---
 		double LobDepthM = 0.0;
+		double LobShortSpreadM = 0.0;     // a lob lands up to this much short of LobDepthM, times the difficulty's aim scatter
 		double LobSideM = 0.0;
 		double ChiquitaDepthM = 0.0;
 		double DriveDeepDepthM = 0.0;
@@ -168,6 +170,8 @@ namespace Padel::AI
 		double ServeDelayS = 0.0;          // the AI server waits this long, set, before the toss
 		double PointGapS = 0.0;            // between the end of a point and the next serve
 		double WaistHeightFraction = 0.0;  // waist height / player height, for the serve's waist rule (GDD 3.2)
+		double DeadBallMarginS = 0.0;      // a late swing still releases this long before the ball dies
+		double LateRequestS = 0.0;         // while the controller sees another moment, the request may wait until this long before contact, with less backswing
 		double ContactMatchS = 0.0;        // the swing controller's contact moment must be this close to the plan's
 		double NetClearanceM = 0.0;        // the AI wants its flat shots this far over the tape
 		double NetRetargetDepthStepM = 0.0;

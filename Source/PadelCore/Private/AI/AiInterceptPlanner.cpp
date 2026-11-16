@@ -121,16 +121,27 @@ std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples
 			continue;
 		}
 
-		double Score = -std::abs(Height - T.IdealContactHeightM) * T.ScoreHeightWeight
+		// Near the net an overhead is the attack (GDD 4, 8: bandeja, víbora, smash when
+		// short and high), so it has its own ideal height, up where those are played.
+		// From the back a high ball is better let down or off the glass, so a deep
+		// overhead is scored against waist height like any other ball, with half of
+		// that height penalty given back.
+		const bool bOverhead = Candidate.Kind == EContactKind::Overhead;
+		const bool bAttackingOverhead = bOverhead && Depth < T.SmashMaxDepthM;
+		const double IdealHeight = bAttackingOverhead ? T.OverheadIdealHeightM : T.IdealContactHeightM;
+		double Score = -std::abs(Height - IdealHeight) * T.ScoreHeightWeight
 			+ ClampD(Candidate.Slack, 0.0, T.SlackCapS) * T.ScoreSlackWeight
 			- S.T * T.ScoreTimeWeight;
 		if (Candidate.Kind == EContactKind::Volley && bAtNet)
 		{
 			Score += T.VolleyAtNetBonus;
 		}
-		if (Candidate.Kind == EContactKind::Overhead)
+		if (bAttackingOverhead)
 		{
-			// Overheads are scored against the ideal height too; give them their own credit.
+			Score += T.OverheadBonus;
+		}
+		else if (bOverhead)
+		{
 			Score += T.OverheadBonus + std::abs(Height - T.IdealContactHeightM) * T.ScoreHeightWeight * 0.5;
 		}
 		if (Score > BestScore)
