@@ -318,8 +318,8 @@ namespace
 			const FSoakStats One = Game.Play(D, D, Seed);
 			if (std::getenv("PADEL_SOAK_PER_MATCH"))
 			{
-				std::printf("[soak]   %s seed %llu: %d points, %.2f shots/point\n", Level, static_cast<unsigned long long>(Seed), One.Points,
-					One.ShotsPerPoint());
+				std::printf("[soak]   %s seed %llu: %d points, %.2f shots/point, %d whiffs\n", Level, static_cast<unsigned long long>(Seed),
+					One.Points, One.ShotsPerPoint(), One.Whiffs);
 			}
 			Total.Add(One);
 		}
