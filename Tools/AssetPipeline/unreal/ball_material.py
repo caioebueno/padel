@@ -146,7 +146,7 @@ def build_felt(mat: unreal.Material, material_dir: str, cfg: dict, radius_mm: fl
     MEL.connect_material_property(rough, "", P.MP_ROUGHNESS)
     # Cloth: the felt gets the fuzz sheen, the rubber strip doesn't.
     MEL.connect_material_property(fuzz_color, "", P.MP_SUBSURFACE_COLOR)
-    MEL.connect_material_property(felt_share, "", P.MP_CUSTOM_DATA0)
+    _connect_cloth_amount(felt_share)
 
     # Normal: the seam groove, plus the fibres (off the seam, faded out with distance),
     # combined by adding slopes (whiteout blend).
@@ -201,7 +201,7 @@ def build_fuzz(mat: unreal.Material, material_dir: str, cfg: dict, radius_mm: fl
     MEL.connect_material_property(color, "", P.MP_BASE_COLOR)
     MEL.connect_material_property(roughness, "", P.MP_ROUGHNESS)
     MEL.connect_material_property(fuzz_color, "", P.MP_SUBSURFACE_COLOR)
-    MEL.connect_material_property(g.node(unreal.MaterialExpressionConstant, r=1.0), "", P.MP_CUSTOM_DATA0)
+    _connect_cloth_amount(g.node(unreal.MaterialExpressionConstant, r=1.0))
     MEL.recompile_material(mat)
 
 
@@ -238,3 +238,12 @@ def apply_instance(mi, settings: dict, linear) -> None:
     for key, param in INSTANCE_VECTORS.items():
         if key in settings:
             MEL.set_material_instance_vector_parameter_value(mi, param, linear(settings[key]))
+
+
+def _connect_cloth_amount(expression) -> None:
+    """The Cloth shading model's "Cloth" input (how much fuzz, CustomData0). UE 5.8's
+    Python MaterialProperty enum has no MP_CUSTOM_DATA0, so where it's missing the input
+    stays unconnected and the whole surface gets the fuzz sheen."""
+    prop = getattr(unreal.MaterialProperty, "MP_CUSTOM_DATA0", None)
+    if prop is not None:
+        MEL.connect_material_property(expression, "", prop)
