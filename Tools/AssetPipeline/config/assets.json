@@ -11,7 +11,7 @@
       "nanite": true,
       "budget_tris": 60000,
       "part": "solid",
-      "_note": "Floor, lines, frame, mesh, net and lights. Glass is a separate mesh because Nanite does not render translucent materials."
+      "_note": "Floor, lines, frame, mesh and lights (the net is CourtNet). Glass is a separate mesh because Nanite does not render translucent materials."
     },
     {
       "id": "CourtIndoorGlass",
@@ -22,6 +22,46 @@
       "part": "glass",
       "nanite": false,
       "budget_tris": 2000
+    },
+    {
+      "id": "CourtNet",
+      "kind": "static",
+      "category": "Court",
+      "source": "procedural",
+      "builder": "net",
+      "nanite": false,
+      "budget_tris": 40000,
+      "bounds_extension_m": [
+        0.2,
+        0.0,
+        0.0
+      ],
+      "_note": "Net cloth (a grid the hit reaction bends through MPC_NetReaction), headband tape, border and side bands, lacing, cable, posts, winch and anchor. Not Nanite: its materials use World Position Offset and it is small. bounds_extension_m keeps it from being culled while it bulges.",
+      "net": {
+        "_doc": "Build sizes in metres, not regulation values (those come from CourtSpec.h). Tape 50-63 mm per the rules; cable at most 10 mm.",
+        "post_size_m": 0.08,
+        "post_corner_m": 0.008,
+        "cap_height_m": 0.012,
+        "base_plate_m": 0.18,
+        "base_plate_thickness_m": 0.008,
+        "bolt_head_m": 0.019,
+        "bolt_height_m": 0.008,
+        "tape_height_m": 0.055,
+        "tape_thickness_m": 0.012,
+        "band_thickness_m": 0.004,
+        "side_band_m": 0.05,
+        "border_bottom_m": 0.015,
+        "border_top_m": 0.05,
+        "lacing_gap_m": 0.03,
+        "lacing_step_m": 0.12,
+        "cord_radius_m": 0.0018,
+        "cable_radius_m": 0.004,
+        "cable_guide_height_m": 0.9,
+        "winch_height_m": 0.42,
+        "column_step_m": 0.05,
+        "row_step_m": 0.06,
+        "slack_m": 0.004
+      }
     },
     {
       "id": "Ball",

@@ -150,13 +150,31 @@ class TexturesTest(unittest.TestCase):
     def test_writes_valid_pngs_of_the_right_size(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             paths = textures.generate_all(catalogue.load_palette(), Path(tmp))
-            self.assertEqual([p.name for p in paths], ["T_WeldedMesh_Mask.png", "T_NetGrid_Mask.png", "T_Ball_Felt.png"])
+            self.assertEqual([p.name for p in paths], ["T_WeldedMesh_Mask.png", "T_NetGrid_Mask.png", "T_NetGrid_Normal.png", "T_Ball_Felt.png"])
             for path in paths:
                 data = path.read_bytes()
                 self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
-            felt = paths[2].read_bytes()
+            felt = paths[-1].read_bytes()
             self.assertEqual(int.from_bytes(felt[16:20], "big"), 512)
             self.assertEqual(int.from_bytes(felt[20:24], "big"), 256)
+
+    def test_net_cell_is_open_with_a_knotted_cord_on_its_edges(self) -> None:
+        size = 128
+        mask = textures.net_mask(size)
+        # A real net is mostly hole: the cord covers well under a third of the cell.
+        cover = sum(mask(x, y)[0] for x in range(0, size, 2) for y in range(0, size, 2)) / (255 * (size // 2) ** 2)
+        self.assertGreater(cover, 0.08)
+        self.assertLess(cover, 0.3)
+        self.assertEqual(mask(size // 2, size // 2), (0,))
+        self.assertEqual(mask(0, size // 2), (255,))
+        # The knot at the corner is thicker than the cord between knots.
+        self.assertEqual(mask(4, 4), (255,))
+        self.assertEqual(mask(5, size // 2), (0,))
+        normal = textures.net_normal(size)
+        self.assertEqual(normal(size // 2, size // 2), (128, 128, 255))
+        # The cord's flank leans away from its centre line.
+        self.assertGreater(normal(2, size // 2)[0], 140)
+        self.assertLess(normal(size - 3, size // 2)[0], 116)
 
 
 if __name__ == "__main__":
