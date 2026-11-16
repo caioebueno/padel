@@ -30,7 +30,7 @@ Also tested: both halves and both sides get the same light at mirrored points (n
 
 **Outdoor day** is a physical sun (100,000 lux at 55°, behind the near left of the broadcast camera) with a sky atmosphere and real-time sky light, at EV 14.8. **Outdoor night** uses the same ten masts, switched on.
 
-**The arena spec's vertical target.** `ARENA_SPEC.md` 6.2 asks for 750 lux vertical toward each camera. With fixtures only on the long sides and the camera at the rig's height, the side rows give about a third of the floor level (377 lux). Reaching 750 needs fixtures on the end trusses aimed steeply down, which 6.1 rules out, or a lot more light overall. The tests hold the achievable floor (0.3 × horizontal) until that choice is made.
+**The arena spec's vertical target.** `ARENA_SPEC.md` 6.2 asks for vertical light toward each camera of at least 0.3 × the horizontal average. With fixtures only on the long sides (6.1) and the camera at the rig's height, that is what the side rows can give: 377 lux at 1,159 horizontal. The tests hold the same floor. If playtests show the players look flat, the fix is a low end-truss fill aimed at least 60° below horizontal, added to the spec first.
 
 ## Performance on the Mac
 
