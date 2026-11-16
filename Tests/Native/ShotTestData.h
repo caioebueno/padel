@@ -64,10 +64,16 @@ namespace ShotTestData
 			P.ContactHeightMinM = Num(R, "ContactHeightMinM");
 			P.ContactHeightMaxM = Num(R, "ContactHeightMaxM");
 			P.PreferredContactHeightM = Num(R, "PreferredContactHeightM");
+			P.ContactHeightPerBodyHeight = Num(R, "ContactHeightPerBodyHeight");
+			P.IdealContactSideM = Num(R, "IdealContactSideM");
+			P.IdealContactForwardM = Num(R, "IdealContactForwardM");
+			P.IdealContactSideBackM = Num(R, "IdealContactSideBackM");
+			P.IdealContactForwardBackM = Num(R, "IdealContactForwardBackM");
 			P.DepthShortM = Num(R, "DepthShortM");
 			P.DepthDeepM = Num(R, "DepthDeepM");
 			P.DepthNeutralM = Num(R, "DepthNeutralM");
 			P.LateralMaxM = Num(R, "LateralMaxM");
+			P.ForwardS = Num(R, "ForwardS");
 			P.FollowThroughS = Num(R, "FollowThroughS");
 			P.RecoveryS = Num(R, "RecoveryS");
 			P.SwingMoveMult = Num(R, "SwingMoveMult");
@@ -111,6 +117,10 @@ namespace ShotTestData
 		PADEL_READ(SplitWindowS); PADEL_READ(SplitHopS); PADEL_READ(SplitFirstStepAt1); PADEL_READ(SplitFirstStepAt99);
 		PADEL_READ(SplitBoostS); PADEL_READ(HomeDriftAt1); PADEL_READ(HomeDriftAt99); PADEL_READ(HomeArriveM);
 		PADEL_READ(WallMarginM); PADEL_READ(NetMarginM);
+		PADEL_READ(AccelFalloff); PADEL_READ(ShuffleSpeedFrac); PADEL_READ(BackpedalSpeedFrac); PADEL_READ(TurnToRunS);
+		PADEL_READ(CrossoverMinDistM); PADEL_READ(TurnBackMinDistM); PADEL_READ(FatigueHardAccelMps2);
+		PADEL_READ(FatigueDrainPerHardAccel); PADEL_READ(FatigueRallyStartS); PADEL_READ(FatigueDrainPerRallyS);
+		PADEL_READ(FatigueTopSpeedLossAtZero);
 #undef PADEL_READ
 		return O;
 	}

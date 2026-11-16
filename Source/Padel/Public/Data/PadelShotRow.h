@@ -29,10 +29,16 @@ struct PADEL_API FPadelShotRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Contact") double ContactHeightMinM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double ContactHeightMaxM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double PreferredContactHeightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double ContactHeightPerBodyHeight = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactSideM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactForwardM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactSideBackM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactForwardBackM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Aim") double DepthShortM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Aim") double DepthDeepM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Aim") double DepthNeutralM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Aim") double LateralMaxM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Phases") double ForwardS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Phases") double FollowThroughS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Phases") double RecoveryS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Phases") double SwingMoveMult = 0.0;

@@ -161,7 +161,7 @@ void FAiMatchRunner::SetUpServe()
 	const int ServingTeam = TeamIndex(TeamOfPlayer(Server));
 	// GDD 3.2: the server and the receiver stand on the serve side, diagonally.
 	const double Side = Match.Score().ServeSide() == EServeSide::Right ? 1.0 : -1.0;
-	const double Wide = Tactics.PartnerSpacingM * 0.5;
+	const double Wide = Tactics.PartnerSpacingMinM * 0.5;
 
 	const FScoreSnapshot Score = Match.Score().Snapshot();
 	const bool bPressure = Score.bBreakPoint || Score.bSetPoint || Score.bMatchPoint || Score.bGoldenPoint;

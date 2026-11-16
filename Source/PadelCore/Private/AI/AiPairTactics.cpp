@@ -78,7 +78,8 @@ std::array<FAiVec2, 2> FAiPairTactics::HomePositions(const FAiVec2& BallLocal) c
 {
 	const double BaseDepth = Formation == EFormation::BothNet ? Tactics.NetDepthM : Tactics.BackDepthM;
 	const double Centre = ClampD(BallLocal.X * Tactics.BallShiftFactor, -Tactics.MaxLateralShiftM, Tactics.MaxLateralShiftM);
-	const double HalfSpacing = Tactics.PartnerSpacingM * 0.5;
+	// The ball-central spacing; widening toward PartnerSpacingMaxM is the AI lane's (GDD 8).
+	const double HalfSpacing = Tactics.PartnerSpacingMinM * 0.5;
 	const double MaxX = Court::HalfWidth - Tactics.CourtMarginM;
 
 	std::array<FAiVec2, 2> Homes;

@@ -31,6 +31,10 @@ struct PADEL_API FPadelAnimClipRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Placeholder") double FollowRightM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Placeholder") double FollowForwardM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Placeholder") double FollowUpM = 0.0;
+	/** Racket sweet spot at ContactS, from the root, facing the net; all 0 = not measured. */
+	UPROPERTY(EditAnywhere, Category = "Contact") double ContactRightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double ContactForwardM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double ContactUpM = 0.0;
 
 	/** False (with the reason) when Shot, Side or Variant is not a known name. */
 	bool ToCore(FName RowName, Padel::Animation::FAnimClip& Out, FString& OutError) const;

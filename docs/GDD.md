@@ -165,7 +165,7 @@ When a shot fires, the shot system produces a **target point**, a **speed** and 
 
 ### 5.1 Timing
 
-Holding a shot button starts the charge and the swing. **Releasing** the button sets the moment of contact. The difference between release and the ideal contact moment (when the ball reaches the best contact point near the player) is graded:
+Holding a shot button starts the charge and the swing. **Releasing** the button starts the forward swing, and the racket meets the ball the shot's `ForwardS` later (`Data/Shots.json`; 0 means contact at the release). The difference between release + `ForwardS` and the ideal contact moment (when the ball reaches the best contact point near the player) is graded, so the windows and grades below are the same whatever the swing length:
 
 | Grade | Window (base, before attributes) | Effect |
 |---|---|---|
@@ -174,11 +174,11 @@ Holding a shot button starts the charge and the swing. **Releasing** the button 
 | Early / Late | ±160 ms | Error × 1.8; early pulls the ball cross-court, late pushes it the other way (side depends on forehand or backhand) |
 | Miss | outside | Mishit: random weak ball, often into the net or a short pop-up |
 
-If the button is held through the whole window, the swing fires automatically at the late edge. The relevant shot attribute widens all windows by up to 35% (attribute 99) or narrows them by up to 20% (attribute 1). A small timing cue near the player shows the grade after every shot.
+If the button is held through the whole window, the swing fires automatically at the late edge, as before. The relevant shot attribute widens all windows by up to 35% (attribute 99) or narrows them by up to 20% (attribute 1). A small timing cue near the player shows the grade after every shot.
 
 ### 5.2 Position
 
-The ideal contact point is about 0.8 m in front and to the side of the player, at the shot's preferred height. Being out of position multiplies error by `1 + 0.6 × distance_from_ideal_m`, and limits power to `1 − 0.3 × distance` (minimum 0.5). Running at full speed through the shot multiplies error by 1.3. A split-step before the opponent's contact (section 6) removes this penalty for the next shot.
+The ideal contact point is about 0.8 m to the side of the player and a little in front, at the shot's preferred height. Each shot sets its own point, separately for the forehand and the backhand (`Data/Shots.json`), and overhead heights may scale with the player's body height. The numbers come from [the stroke biomechanics notes](animation/BIOMECHANICS_SHOTS.md), section 5. Being out of position multiplies error by `1 + 0.6 × distance_from_ideal_m`, and limits power to `1 − 0.3 × distance` (minimum 0.5). Running at full speed through the shot multiplies error by 1.3. A split-step before the opponent's contact (section 6) removes this penalty for the next shot.
 
 ### 5.3 The formulas (starting values, tuned in data)
 
@@ -215,11 +215,11 @@ Ratings run from 1 to 99, like a football sim. Each player is a row in `Data/Pla
 | | **Return** | Error on the first shot after a serve |
 | Physical | **Speed** | Top running speed, 4.5 m/s (1) to 6.5 m/s (99) |
 | | **Acceleration** | Time to top speed, 0.9 s (1) to 0.45 s (99) |
-| | **Agility** | Turn rate, side-step speed, split-step recovery |
+| | **Agility** | Turn rate, how quickly the player turns to run, side-step speed, split-step recovery |
 | | **Power** | Max shot speed (5.3) |
 | | **Reach** | Max contact height and side reach (height plus arm and racket), 0.9 m to 1.2 m sideways |
 | | **Jump** | Extra overhead contact height, and how often a smash can be a jump smash |
-| | **Stamina** | How quickly sprinting and long rallies drain stamina, and how quickly it comes back between points |
+| | **Stamina** | How quickly sprinting, hard efforts (sharp starts and stops) and long rallies drain stamina, and how quickly it comes back between points |
 | Mental | **Anticipation** | How soon the player reacts after the opponent's contact (AI read delay, human auto split-step quality) |
 | | **Positioning** | AI movement to the right spot as a pair; for the human's player, the strength of the "home position" assist when no input is given |
 | | **Composure** | The pressure multiplier on big points (5.3) |
@@ -241,6 +241,10 @@ A player playing on the wrong side plays at −4 overall (applied as −6% to th
 - If a player has stopped (or slowed below 1 m/s) inside 150 ms before the opponent's contact, they split-step automatically: a small hop that gives full Agility for the first step and removes the moving-shot penalty on the next shot.
 - Human-controlled movement is direct (the left stick is the direction), with acceleration from the Acceleration attribute. When the stick is released, the player drifts toward a "home position" (section 8) at a speed set by Positioning.
 - Sprint (RT / Shift) adds 15% top speed and drains stamina.
+- Speed depends on the direction of the move relative to the net. Facing the net, a player shuffles sideways and backpedals more slowly than they run forward; a longer move sideways or backwards turns the hips and runs (a crossover or turn-and-run), which costs a short turn first.
+- Acceleration falls as speed rises: the first steps are the sharpest, and the last bit of top speed comes slowly.
+- Fatigue builds from hard efforts and long rallies as well as sprinting, and at low stamina it takes some top speed and acceleration away. It recovers between points.
+- The numbers live in `Data/Movement.json` and come from [the movement biomechanics notes](animation/BIOMECHANICS_MOVEMENT.md), sections 5 and 8.
 
 ### 6.4 The slice roster
 
@@ -289,9 +293,11 @@ Gamepad first; everything is reachable on a gamepad. Labels use the Xbox layout 
 - **Both at the net** (about 2–3 m from the net) when they've played a good attacking shot or a deep lob gets them time to advance.
 - **Both back** (about 1–2 m in front of the back glass) when defending, especially after a lob over them.
 - **Split** (one up, one back) is a mistake state that the AI avoids and the opponents should punish (aim through the gap).
-- Partners move together, keep about 4–5 m apart side to side, and shift toward the ball. The player whose side the ball is on takes it; balls down the middle are taken by the forehand of the player on the left by default, unless the partner is clearly better placed (Teamwork decides how cleanly this works).
+- Partners move together, keep about 4–5 m apart side to side (closer with the ball in the middle, wider with it out wide), and shift toward the ball. At the net the partner away from the ball stands a little deeper than the one near it (the stagger). A lob over one player that lands deep makes the pair swap sides, with the partner crossing behind to take it. The player whose side the ball is on takes it; balls down the middle are taken by the forehand of the player on the left by default, unless the partner is clearly better placed (Teamwork decides how cleanly this works).
 
 **Home positions** come from the formation, the ball's position and which side each player plays.
+
+**Reading the ball:** the read delay is the AI's decision time after the opponent's contact. Its first step comes as its split-step lands, so a player who split-stepped moves at the same moment a human would. The pair numbers (`Data/AiTactics.json`) come from [the movement biomechanics notes](animation/BIOMECHANICS_MOVEMENT.md), section 5.4.
 
 **Shot choice:** a weighted choice that favours, in order:
 - Opponents both at the net and the ball is low: lob (deep) or chiquita (if the ball is in front).

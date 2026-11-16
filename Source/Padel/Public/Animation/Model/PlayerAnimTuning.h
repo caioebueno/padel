@@ -53,6 +53,12 @@ namespace Padel::Animation
 		// runs until clips exist. The contact key is not here: it is the ball.
 		FPlayerFrameVec Backswing;
 		FPlayerFrameVec Follow;
+		// The racket sweet spot at ContactS in the authored clip, from the root, facing the
+		// net (right, forward, up). All zero = not measured: no contact warp for this clip
+		// (BIOMECHANICS_SHOTS 5).
+		FPlayerFrameVec Contact;
+
+		bool HasContactPoint() const { return Contact.RightM != 0.0 || Contact.ForwardM != 0.0 || Contact.UpM != 0.0; }
 
 		static std::string MakeName(EShotType Shot, ESwingSide Side, ESwingVariant Variant);
 	};
