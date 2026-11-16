@@ -22,7 +22,7 @@ The in-match HUD (score bug, callouts, timing cue, score card, golden point prom
 9. [Motion](#9-motion)
 10. [Accessibility](#10-accessibility)
 11. [Implementation notes](#11-implementation-notes)
-12. [Slice scope: in, stubbed, out](#12-slice-scope-in-stubbed-out)
+12. [Slice scope: must, if time, post-slice](#12-slice-scope-must-if-time-post-slice)
 13. [Open decisions for Caio](#13-open-decisions-for-caio)
 
 [Appendix A. Prompt for Claude Design](#appendix-a-prompt-for-claude-design)
@@ -680,7 +680,7 @@ The game is paused (`SetPause(true)`, as today) and the match stays visible behi
 
 | Element | Position | Spec |
 |---|---|---|
-| Scrim | full | `Bg.Scrim` at 0.70 + blur 8 (no blur if Reduce transparency). |
+| Scrim | full | `Bg.Scrim` at 0.70 over the screen's single blur layer (4.3); no blur if Reduce transparency. |
 | Header | header band | Title "PAUSED" (`Type.Display`); right side: the score line (`Type.Heading`, tabular), for example "LAGOON 6–4  3–2  30–15  EMBER", from `Padel::Ui::SummaryLine(LastScore)`, with team names in team colours and the serving team marked with a small ball icon in `Text.Primary`. |
 | Menu column | C1–C4, from y 216 | Glass panel, list buttons (6.2), 72 px each, 8 px apart. |
 | Context panel | C6–C12, y 216–760 | Shows what the focused item does, for the slice: on Resume and Restart, the match rules ("MEDIUM · BEST OF 3 · GOLDEN POINT") and the two pairs; on Controls, a small version of the gamepad diagram (7.6); on Settings, "Audio and accessibility"; on Quit, "The match will not be saved." Not focusable. |
