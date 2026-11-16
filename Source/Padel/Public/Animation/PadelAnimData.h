@@ -23,6 +23,12 @@ struct PADEL_API FPadelAnimData
 	FString MetaHumanRetargeter;
 	int32 MetaHumanMinLod = 0;
 	int32 MetaHumanIkLodThreshold = -1;
+	/** The C++ pose's clips (Animation.json IdleAsset, WalkAssets, JogAssets) and its two values. */
+	FString IdleAsset;
+	TArray<FString> WalkAssets;
+	TArray<FString> JogAssets;
+	double WalkClipSpeedMps = 0.0;
+	double ArmReadyAlpha = 0.0;
 	bool bOk = false;
 	TArray<FString> Errors;
 

@@ -33,7 +33,7 @@ Source/
     AI/            prediction, pair tactics, shot choice, difficulty
     UI/            HUD, menus, stats screen (UMG + CommonUI, logic in C++)
     Presentation/  camera (APadelBroadcastCamera), venue lighting (APadelVenueLighting), the look-dev stage, audio, replays, the UPadelMatchEvents subsystem and its listeners
-    Animation/     the player anim instance and component; Model/ holds the engine-free animation model (docs/decisions/0005-player-animation.md); UPadelMetaHumanAnimInstance retargets it onto the MetaHumans (0006)
+    Animation/     the player anim instance and component; Model/ holds the engine-free animation model (docs/decisions/0005-player-animation.md); UPadelMetaHumanAnimInstance retargets it onto the MetaHumans, and FAnimNode_PadelPlayerPose plays it in C++ when there's no ABP_PadelPlayer (0006)
     Data/          USTRUCT row types for the data tables (FShotRow, FPlayerRow, FDifficultyRow...)
   Padel.Target.cs, PadelEditor.Target.cs
 Content/Padel/     Maps/, Court/, Venue/, Equipment/, Characters/, Materials/, Animations/, UI/, Audio/, Data/ (imported DataTables)
