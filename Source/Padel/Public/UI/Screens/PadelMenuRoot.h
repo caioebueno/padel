@@ -103,7 +103,7 @@ public:
 protected:
 	virtual void BuildTree() override;
 	virtual void NativeOnInitialized() override;
-	virtual void NativeDestruct() override;
+	virtual void BeginDestroy() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual FReply NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;

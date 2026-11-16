@@ -76,11 +76,14 @@ void UPadelMenuRoot::ListenForOptions()
 	}
 }
 
-void UPadelMenuRoot::NativeDestruct()
+void UPadelMenuRoot::BeginDestroy()
 {
+	// Not NativeDestruct: that runs whenever the Slate widget is released (a dropped
+	// TakeWidget, leaving the viewport), and the root must keep following option changes
+	// for as long as it exists.
 	PadelUi::OnOptionsChanged().Remove(OptionsHandle);
 	OptionsHandle.Reset();
-	Super::NativeDestruct();
+	Super::BeginDestroy();
 }
 
 void UPadelMenuRoot::BuildTree()
