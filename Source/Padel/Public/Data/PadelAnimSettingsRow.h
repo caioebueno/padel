@@ -92,6 +92,13 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpElbowBendM = 0.2;
 	/** Of the arm's length, the furthest the hand goes before the racket turns along the arm (never a locked elbow). */
 	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxReachShare = 0.98;
+	/** How far above the shoulder a target has to be for the full overhead arm (long arm, elbow up and out); blended in from the shoulder. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpOverheadBlendM = 0.40;
+	/** How far the forearm keeps from the spine (pelvis up to the top spine bone) through a swing: the torso half-depth plus a margin. 0 turns the guard off. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpTorsoClearanceM = 0.14;
+	/** An overhead past the arm's reach: how high the player rises onto the toes, and how far the trunk leans towards the ball. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxToeRiseM = 0.12;
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxOverheadLeanDeg = 30.0;
 
 	Padel::Animation::FAnimSettings ToCore() const;
 };

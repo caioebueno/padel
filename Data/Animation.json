@@ -70,6 +70,10 @@
 		"WarpMaxTrunkTurnDeg": 50.0,
 		"WarpKneeBendM": 0.2,
 		"WarpElbowBendM": 0.2,
-		"WarpMaxReachShare": 0.98
+		"WarpMaxReachShare": 0.98,
+		"WarpOverheadBlendM": 0.4,
+		"WarpTorsoClearanceM": 0.14,
+		"WarpMaxToeRiseM": 0.12,
+		"WarpMaxOverheadLeanDeg": 30.0
 	}
 ]
