@@ -50,6 +50,8 @@ FAiMatchRunner::FAiMatchRunner(FMatchSimulation& InMatch, const Shots::FShotLibr
 				TeamSetup.HumanSlot = Slot;
 			}
 		}
+		TeamSetup.AccelFalloff = Movement.AccelFalloff;
+		TeamSetup.BrakeMult = Movement.BrakeMult;
 		TeamSetup.Seed = Setup.Seed * 8 + static_cast<uint64_t>(TeamIdx) + 1;
 		Teams[TeamIdx].emplace(TeamSetup, Tactics, *Setup.Difficulties[TeamIdx], Model);
 	}

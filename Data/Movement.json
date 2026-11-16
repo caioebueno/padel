@@ -5,7 +5,7 @@
 		"TopSpeedAt99Mps": 6.5,
 		"TimeToTopAt1S": 0.9,
 		"TimeToTopAt99S": 0.73,
-		"BrakeMult": 1.6,
+		"BrakeMult": 1.0,
 		"SprintSpeedBonus": 0.15,
 		"SprintDrainAt1": 0.1,
 		"SprintDrainAt99": 0.04,

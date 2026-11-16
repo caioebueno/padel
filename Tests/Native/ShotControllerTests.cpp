@@ -4,9 +4,12 @@
 #include "doctest.h"
 #include "ShotTestData.h"
 #include "Shots/BallMachine.h"
+#include "Shots/MotionCurve.h"
 #include "Shots/PlayerShotController.h"
 #include "Shots/TimingGrader.h"
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
 
 using namespace ShotTestData;
@@ -99,7 +102,13 @@ namespace
 						const double D = LengthXY(To);
 						if (D > 0.05)
 						{
-							const double Gain = D > 0.5 ? 1.0 : D / 0.5;
+							// Arrive rather than overrun: no faster than the player can still stop
+							// in (braking has been no harder than starting since M1), easing in
+							// over the last half metre.
+							const FPlayerMotion& M = P.GetMotion();
+							const double Top = M.TopSpeed(false);
+							const double Brake = MotionCurve::InitialAccel(Top, M.TimeToTopSpeed()) * Move.BrakeMult;
+							const double Gain = std::min({ 1.0, D / 0.5, std::sqrt(2.0 * Brake * D) / Top });
 							In.Move = FVec2{ DotProduct(To, RightAxis(P.GetTeamSign())) / D * Gain, DotProduct(To, ForwardAxis(P.GetTeamSign())) / D * Gain };
 						}
 					}
@@ -211,17 +220,17 @@ TEST_CASE("Shots.Controller: every slice shot can be played on purpose")
 		{ "drive", "deep_middle", Vec(8.5, 0.0, 0.0), Drive, EShotType::Drive },
 		{ "volley", "volley_body", Vec(3.0, 0.0, 0.0), Volley, EShotType::Volley },
 		{ "lob", "deep_middle", Vec(8.5, 0.0, 0.0), Lob, EShotType::Lob },
-		// Half a metre toward the ball: with M1's slower first steps the scripted chase from
-		// the centre stops at the ideal spot, where this seed's scatter puts the low touch
+		// Half a metre deeper than before M1: with the softer start and braking the scripted
+		// chase from 6 m stops on the ideal spot, where this seed's scatter puts the low touch
 		// into the tape (the old curve slid the bot past the spot and the ball cleared).
-		{ "chiquita", "short_low", Vec(6.0, 0.5, 0.0), Chiquita, EShotType::Chiquita },
+		{ "chiquita", "short_low", Vec(6.5, 0.0, 0.0), Chiquita, EShotType::Chiquita },
 		{ "bandeja", "lob_deep", Vec(4.0, 0.0, 0.0), Bandeja, EShotType::Bandeja },
 		{ "smash", "lob_short", Vec(3.5, 0.0, 0.0), Smash, EShotType::Smash },
 		{ "vibora", "lob_deep", Vec(4.0, 0.0, 0.0), Vibora, EShotType::Vibora },
 	};
 	for (const FCase& C : Cases)
 	{
-		CAPTURE(C.Name);
+		CAPTURE(std::string(C.Name));
 		FRig Rig;
 		FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, C.Start, 7);
 		Rig.Feed(C.Feed);

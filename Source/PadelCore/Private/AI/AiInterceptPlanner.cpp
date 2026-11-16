@@ -30,11 +30,10 @@ namespace
 	}
 }
 
-double TimeToCover(double Distance, double TopSpeed, double AccelTime)
+double TimeToCover(double Distance, double TopSpeed, double AccelTime, double AccelFalloff)
 {
-	// The players' shared curve with no falloff: constant acceleration, then cruise. A3
-	// passes the movement tuning's AccelFalloff once the planner models it.
-	return Shots::MotionCurve::TimeToCover(Distance, TopSpeed, AccelTime, 0.0);
+	// The same curve FPlayerMotion steps, so a plan is one the player can run (M1).
+	return Shots::MotionCurve::TimeToCover(Distance, TopSpeed, AccelTime, AccelFalloff);
 }
 
 std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples, const FInterceptQuery& Query,
@@ -93,7 +92,7 @@ std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples
 				Distance += Away * Away / (2.0 * Accel);
 			}
 		}
-		Candidate.TimeNeeded = Query.StartDelayS + Turn + TimeToCover(Distance, TopSpeed, AccelTime);
+		Candidate.TimeNeeded = Query.StartDelayS + Turn + TimeToCover(Distance, TopSpeed, AccelTime, Query.AccelFalloff);
 		Candidate.Slack = S.T - Candidate.TimeNeeded;
 		Candidate.bReachable = Candidate.Slack >= 0.0;
 

@@ -300,9 +300,12 @@ TEST_CASE("Shots.Motion: single moves from standing match the movement table (M1
 {
 	// BIOMECHANICS_MOVEMENT 4: peak speed and time of a 1, 2, 4 and 8 m move from standing.
 	// Real players pace short moves, so the move here caps its speed at the top of the
-	// table's band; the curve must then cover the distance within 10% of the table's
-	// slowest time at rating 77 (with the human acceleration cap it lands 0 to 10% slow).
-	// A flat-out move peaks higher than the band; pacing it is the AI's job (A3).
+	// table's band; the curve must then cover the distance within 20% of the table's
+	// slowest time at ratings 77 and 99 (with the human acceleration cap and braking no
+	// harder than starting, rating 77 lands about 0 to 15% slow).
+	// A flat-out move peaks higher than the band; pacing it is the AI's job (A3). The 1 m
+	// and 2 m rows assume a paced move: flat out, 1 m in 0.6 s at a 2 m/s peak would need
+	// about 16 m/s^2, not physical under the human cap (plan lead, review of M1).
 	const FMovementTuning T = OpenField();
 	struct FRow
 	{
@@ -321,7 +324,7 @@ TEST_CASE("Shots.Motion: single moves from standing match the movement table (M1
 			if (Rating >= 77)
 			{
 				CHECK(Paced.PeakMps >= Row.PeakLo);
-				CHECK(Paced.TimeS <= Row.TimeHi * 1.1);
+				CHECK(Paced.TimeS <= Row.TimeHi * 1.2);
 			}
 		}
 		// Flat out, a rating-77 player gets there no slower than paced, and the falloff

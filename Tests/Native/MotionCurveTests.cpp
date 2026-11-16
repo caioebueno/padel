@@ -21,9 +21,11 @@ TEST_CASE("Shots.MotionCurve: no falloff is constant acceleration, then cruise")
 	CHECK(std::isinf(TimeToCover(3.0, 0.0, 0.6, 0.5)));
 }
 
-TEST_CASE("Shots.MotionCurve: the AI planner's time to cover is the curve with no falloff, bit for bit")
+TEST_CASE("Shots.MotionCurve: the AI planner's time to cover is the players' curve, bit for bit")
 {
-	// A3 will pass the movement falloff; until then the AI plans exactly as before M1.
+	// With no falloff the AI plans exactly as before M1; with one it runs the same curve.
+	CHECK(AI::InterceptPlanner::TimeToCover(5.0, 6.05, 0.76, 0.3) == Shots::MotionCurve::TimeToCover(5.0, 6.05, 0.76, 0.3));
+	CHECK(AI::InterceptPlanner::TimeToCover(5.0, 6.05, 0.76, 0.3) > AI::InterceptPlanner::TimeToCover(5.0, 6.05, 0.76));
 	for (double D = 0.0; D <= 20.0; D += 0.173)
 	{
 		for (const double Top : { 4.5, 6.05, 6.5 * 1.15 })
