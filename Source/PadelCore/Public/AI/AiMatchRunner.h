@@ -59,6 +59,9 @@ namespace Padel::AI
 		bool ChooseGoldenPointReceiver(int PlayerId);
 
 		const Shots::FPlayerShotController& Player(int PlayerId) const { return *Controllers[PlayerId]; }
+		// The ball as the players see it: the serve toss while the match still holds the
+		// ball, the match ball otherwise. What the game should draw.
+		const Shots::IBallPort& Ball() const { return Port; }
 		// What each player's swing did in the last tick.
 		const Shots::FSwingEvents& LastEvents(int PlayerId) const { return Events[PlayerId]; }
 		// True when that player's hit in the last tick was taken by the match.
