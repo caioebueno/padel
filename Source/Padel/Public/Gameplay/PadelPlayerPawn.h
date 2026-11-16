@@ -29,6 +29,12 @@ class PADEL_API APadelPlayerPawn : public APawn
 public:
 	APadelPlayerPawn();
 
+	/**
+	 * In a match the shot controllers belong to the match runner (FAiMatchRunner), so the
+	 * pawn only shows one: its position, facing the net from the controller's half.
+	 */
+	void ShowController(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FPlayerRatings& Ratings);
+
 	/** Creates the shot controller. The pointers must outlive the pawn. */
 	void InitShots(int32 PlayerId, double TeamSign, const Padel::Shots::FPlayerRatings* Ratings,
 		const Padel::Shots::FShotLibrary* Library, const Padel::Shots::FMovementTuning* Movement,
@@ -42,18 +48,13 @@ public:
 	/** Moves the placeholder body to the simulated position. */
 	void SyncFromSimulation();
 
-	/**
-	 * In a match the shot controllers belong to the match runner (FAiMatchRunner), so the
-	 * pawn only shows one: position, and facing the net from the controller's half.
-	 */
-	void ShowController(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FPlayerRatings& Ratings);
-
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 private:
 	bool IsHeld(EPadelInputAction Action) const;
-	void FaceNet(double TeamSign, const Padel::Shots::FPlayerRatings& Ratings);
-	void PlaceAt(const Padel::Court::FVec3& FeetMetres);
+
+	/** The half the body faces from in ShowController; 0 until it first faces the net. */
+	double FacingTeamSign = 0.0;
 
 	UPROPERTY(VisibleAnywhere, Category = "Player")
 	TObjectPtr<UCapsuleComponent> Capsule;
@@ -72,7 +73,4 @@ private:
 	TObjectPtr<UEnhancedInputComponent> EnhancedInput;
 
 	TUniquePtr<Padel::Shots::FPlayerShotController> ShotController;
-
-	/** The half the body faces from; 0 until it first faces the net. */
-	double FacingTeamSign = 0.0;
 };
