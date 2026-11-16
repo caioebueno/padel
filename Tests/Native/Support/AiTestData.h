@@ -2,9 +2,11 @@
 // the native tests, so tests run against the numbers the game ships with.
 #pragma once
 
+#include "AI/AiEngineBallModel.h"
 #include "AI/AiPlayerProfile.h"
 #include "AI/AiTuningJson.h"
 #include "CourtSpec.h"
+#include "../TestSupport.h"
 
 #include <fstream>
 #include <sstream>
@@ -70,6 +72,14 @@ namespace Padel::AI::TestData
 			}
 		}
 		throw std::runtime_error(std::string("no difficulty row ") + Name);
+	}
+
+	// The engine's own ball sim on Data/Physics.json, as the AI predicts with it.
+	inline const IAiBallModel& EngineModel()
+	{
+		static const FBallSim Sim(Padel::Test::Physics());
+		static const FAiEngineBallModel Model(Sim);
+		return Model;
 	}
 
 	// A typical slice-roster player, around 78 overall (GDD 6.4).

@@ -2,7 +2,8 @@
 #include "doctest.h"
 #include "AI/AiInterceptPlanner.h"
 #include "Support/AiTestData.h"
-#include "Support/StandInBallModel.h"
+
+#include <cmath>
 
 using namespace Padel::AI;
 using Padel::FPadelRng;
@@ -19,7 +20,7 @@ namespace
 
 TEST_CASE("Ai.Prediction: stops at the second bounce and counts bounces per half")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	const FAiBallPredictor Predictor(Model, TestData::Tactics());
 	FPadelRng Rng(1);
 	const std::vector<FTrajectorySample> Samples = Predictor.Predict(IncomingDrive(), 0.0, Rng);
@@ -40,7 +41,7 @@ TEST_CASE("Ai.Prediction: stops at the second bounce and counts bounces per half
 
 TEST_CASE("Ai.Prediction: rebounds off the back glass are flagged and kept")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	const FAiBallPredictor Predictor(Model, TestData::Tactics());
 	FPadelRng Rng(1);
 	// Deep and fast: bounces near the back glass, then hits it.
@@ -56,7 +57,7 @@ TEST_CASE("Ai.Prediction: rebounds off the back glass are flagged and kept")
 
 TEST_CASE("Ai.Prediction: Wall Play noise moves only the rebound and is seeded")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	const FAiBallPredictor Predictor(Model, TestData::Tactics());
 	const FAiBall Deep = { { -5.0, 0.0, 1.0 }, { 16.0, 0.0, 2.5 }, {} };
 	FPadelRng Clean(1);
@@ -93,7 +94,7 @@ TEST_CASE("Ai.Intercept: time to cover follows the acceleration model")
 TEST_CASE("Ai.Intercept: picks a reachable point on the own half before the second bounce")
 {
 	const FAiTactics& T = TestData::Tactics();
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	const FAiBallPredictor Predictor(Model, T);
 	FPadelRng Rng(1);
 	const auto Samples = Predictor.Predict(IncomingDrive(), 0.0, Rng);
@@ -107,14 +108,15 @@ TEST_CASE("Ai.Intercept: picks a reachable point on the own half before the seco
 	CHECK(Plan->Sample.GroundBounces < 2);
 	CHECK(Plan->Sample.Position.Z >= T.MinContactHeightM);
 	CHECK(Plan->Slack >= 0.0);
-	// The player stands a contact offset from the ball, not on it.
-	CHECK((Plan->StandPoint - Plan->Sample.Position).Length2D() == Approx(T.ContactOffsetM).epsilon(0.05));
+	// The ball meets the player at the shot model's ideal contact point (GDD 5.2).
+	const double Ideal = std::sqrt(T.ContactSideM * T.ContactSideM + T.ContactForwardM * T.ContactForwardM);
+	CHECK((Plan->StandPoint - Plan->Sample.Position).Length2D() == Approx(Ideal).epsilon(0.05));
 }
 
 TEST_CASE("Ai.Intercept: the serve return waits for the bounce (GDD 3.2)")
 {
 	const FAiTactics& T = TestData::Tactics();
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	const FAiBallPredictor Predictor(Model, T);
 	FPadelRng Rng(1);
 	const auto Samples = Predictor.Predict(IncomingDrive(), 0.0, Rng);
@@ -133,11 +135,11 @@ TEST_CASE("Ai.Intercept: the serve return waits for the bounce (GDD 3.2)")
 TEST_CASE("Ai.Intercept: an unreachable ball is still chased, flagged as late")
 {
 	const FAiTactics& T = TestData::Tactics();
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	const FAiBallPredictor Predictor(Model, T);
 	FPadelRng Rng(1);
-	// A short ball to the far corner, with a long read delay.
-	const FAiBall Wide = { { -4.0, -3.0, 1.0 }, { 9.0, 6.0, 2.0 }, {} };
+	// A short ball across the court from the player, with a long read delay.
+	const FAiBall Wide = { { -4.0, 2.0, 1.0 }, { 9.0, 1.0, 2.5 }, {} };
 	const auto Samples = Predictor.Predict(Wide, 0.0, Rng);
 	FInterceptQuery Query;
 	Query.PlayerPosition = { 9.5, -4.5, 0.0 };
