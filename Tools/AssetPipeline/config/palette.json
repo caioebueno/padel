@@ -79,16 +79,52 @@
       "tiling_m": 0.05
     },
     "Net": {
-      "master": "Masked",
-      "color": "#121316",
-      "roughness": 0.9,
+      "master": "Net",
+      "color": "#36383c",
+      "roughness": 0.82,
       "mask": "T_NetGrid_Mask",
-      "tiling_m": 0.045
+      "normal": "T_NetGrid_Normal",
+      "tiling_m": 0.045,
+      "_note": "Knotted black polyethylene cord. Albedo about 0.04 linear: real dark cord, not crushed black, so it reads under physically based lights."
     },
     "NetTape": {
+      "master": "NetSolid",
+      "color": "#dcddda",
+      "roughness": 0.72,
+      "_note": "White polyester webbing, albedo about 0.72 linear."
+    },
+    "NetBorder": {
+      "master": "NetSolid",
+      "color": "#2e2f32",
+      "roughness": 0.8,
+      "_note": "Dark border tape and the plastic post caps and crank knob."
+    },
+    "NetCable": {
       "master": "Opaque",
-      "color": "#f1f2f3",
-      "roughness": 0.8
+      "color": "#b4b7ba",
+      "roughness": 0.34,
+      "metallic": 1.0,
+      "_note": "Galvanised steel cable."
+    },
+    "NetPost": {
+      "master": "Opaque",
+      "color": "#2b2e33",
+      "roughness": 0.42,
+      "metallic": 0.0,
+      "_note": "Powder-coated steel posts and base plates (paint is dielectric)."
+    },
+    "NetHardware": {
+      "master": "Opaque",
+      "color": "#a9acaf",
+      "roughness": 0.38,
+      "metallic": 1.0,
+      "_note": "Zinc-plated bolts, winch and turnbuckle."
+    },
+    "NetCord": {
+      "master": "Opaque",
+      "color": "#3a3c40",
+      "roughness": 0.9,
+      "_note": "Lacing cord at the posts."
     },
     "LightPanel": {
       "master": "Emissive",

@@ -45,7 +45,7 @@ class BlenderBuildTest(unittest.TestCase):
         job = {"id": asset.asset_name, "kind": asset.kind, "builder": asset.raw.get("builder"),
                "size": asset.size, "budget_tris": asset.budget_tris, "spec": self.spec, "palette": self.palette,
                "palette_group": asset.raw.get("palette", ""), "part": asset.raw.get("part", "solid"),
-               "body": asset.raw.get("body", {}), "lods": [{"ratio": l.ratio} for l in asset.lods],
+               "body": asset.raw.get("body", {}), "net": asset.raw.get("net", {}), "lods": [{"ratio": l.ratio} for l in asset.lods],
                "out": str(out), "lod_outs": [str(self.out / f"{asset.asset_name}_LOD{i}.fbx")
                                              for i in range(1, len(asset.lods) + 1)]}
         job.update(extra)
@@ -79,8 +79,36 @@ class BlenderBuildTest(unittest.TestCase):
         # Floor top at Z = 0, run-off around the court.
         self.assertAlmostEqual(solid["bounds_max_m"][0], 12.0, delta=0.01)
         self.assertLess(solid["bounds_min_m"][2], 0.0)
-        for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Net", "MI_Court_Mesh", "MI_Court_Frame"):
+        for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Mesh", "MI_Court_Frame"):
             self.assertIn(slot, solid["materials"])
+        # The net is its own asset (CourtNet).
+        self.assertNotIn("MI_Court_Net", solid["materials"])
+
+    def test_net_matches_courtspec(self) -> None:
+        asset = self.cat.get("CourtNet")
+        report, fbx = self.build("CourtNet", "build_net")
+        net = asset.raw["net"]
+        # Posts: regulation height, centred where CourtLayout's NetPost colliders are.
+        self.assertAlmostEqual(fbx["bounds_max_m"][2], self.spec["NetPostHeight"], delta=0.002)
+        self.assertAlmostEqual(fbx["bounds_min_m"][2], 0.0, delta=0.001)
+        hw = self.spec["HalfWidth"]
+        # The winch and anchor stick out past the posts' outer faces, but not far.
+        self.assertGreater(fbx["bounds_max_m"][1], hw)
+        self.assertLess(fbx["bounds_max_m"][1], hw + 0.15)
+        self.assertLess(fbx["bounds_min_m"][1], -hw)
+        self.assertGreater(fbx["bounds_min_m"][1], -hw - 0.15)
+        # Thin across X: plates and the winch, nothing that reaches into the court.
+        self.assertLess(fbx["bounds_max_m"][0] - fbx["bounds_min_m"][0], net["base_plate_m"] + 0.01)
+        self.assertLessEqual(report["triangles"], asset.budget_tris)
+        self.assertGreater(report["triangles"], 8000, "the cloth must be a dense grid for the hit reaction")
+        self.assertEqual(set(fbx["materials"]), {"MI_Court_Net", "MI_Court_NetTape", "MI_Court_NetBorder",
+                                                 "MI_Court_NetCable", "MI_Court_NetPost", "MI_Court_NetHardware",
+                                                 "MI_Court_NetCord"})
+        # The top of the tape follows CourtSpec's sag: 0.88 in the centre, 0.92 at the posts.
+        tops = report["net_tape_top_m"]
+        self.assertAlmostEqual(tops["centre"], self.spec["NetHeightCentre"], delta=0.002)
+        self.assertAlmostEqual(tops["near_post"], court_spec.net_height_at(self.spec, tops["near_post_y"]), delta=0.002)
+        self.assertGreater(tops["near_post"], 0.915)
 
     def test_glass_walls_match_courtspec(self) -> None:
         asset = self.cat.get("CourtGlass")

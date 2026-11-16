@@ -23,6 +23,7 @@ import build_character  # noqa: E402
 import build_court  # noqa: E402
 import build_court_glass  # noqa: E402
 import build_equipment  # noqa: E402
+import build_net  # noqa: E402
 
 
 def _job(entry: dict, job: dict, part: str | None = None) -> dict:
@@ -44,6 +45,8 @@ def main() -> None:
             objects += build_court.build(_job(entry, job))
         elif entry["builder"] == "court_glass":
             objects += build_court_glass.build(_job(entry, job))
+        elif entry["builder"] == "net":
+            objects += build_net.build(_job(entry, job))
 
     # Two players per team in a typical rally shape: A at the back, B at the net.
     players = [e for e in entries.values() if e["builder"] == "character"]

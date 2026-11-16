@@ -31,7 +31,7 @@ from asset_lib import blender_runner, catalogue, court_spec, glass, manifest, pr
 from asset_lib.catalogue import Asset  # noqa: E402
 
 PROCEDURAL_SCRIPTS = {"court": "build_court", "court_glass": "build_court_glass", "ball": "build_equipment", "racket": "build_equipment",
-                      "character": "build_character"}
+                      "character": "build_character", "net": "build_net"}
 
 
 def log(msg: str) -> None:
@@ -99,7 +99,7 @@ def build_asset(asset: Asset, spec: dict, palette: dict, allow_generate: bool) -
         builder = asset.raw["builder"]
         job.update({"builder": builder, "spec": spec, "palette": palette,
                     "palette_group": asset.raw.get("palette", ""), "part": asset.raw.get("part", "solid"),
-                    "body": asset.raw.get("body", {})})
+                    "body": asset.raw.get("body", {}), "net": asset.raw.get("net", {})})
         report = blender_runner.run(PROCEDURAL_SCRIPTS[builder], job)
         source = f"procedural: Tools/AssetPipeline/blender/{PROCEDURAL_SCRIPTS[builder]}.py"
         licence = "original (this repo)"

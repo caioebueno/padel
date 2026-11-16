@@ -14,7 +14,8 @@ That command does three things:
 
 | Asset | Unreal path | Source |
 |---|---|---|
-| `CourtIndoor` | `/Game/Padel/Court/SM_CourtIndoor` | Blender script, from `CourtSpec.h` (floor, lines, frame, mesh, net, lights) |
+| `CourtIndoor` | `/Game/Padel/Court/SM_CourtIndoor` | Blender script, from `CourtSpec.h` (floor, lines, frame, mesh, lights) |
+| `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0006](../../docs/decisions/0006-net-and-hit-reaction.md)) |
 | `CourtGlass` | `/Game/Padel/Court/SM_CourtGlass` | Blender script `build_court_glass.py` with `config/glass.json`: 18 tempered panels with arrised edges and their bolt fixings, plus the glass dirt textures. Not Nanite, because Nanite can't render translucent materials. See [0006](../../docs/decisions/0006-court-glass.md) |
 | `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script, 65 mm, felt texture with the seam |
 | `RacketPlaceholder` | `/Game/Padel/Equipment/SM_RacketPlaceholder` | Blender script, 455 × 260 × 38 mm, perforated face, invented design |
