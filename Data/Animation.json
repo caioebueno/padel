@@ -39,6 +39,9 @@
 			"/Game/Padel/Characters/SK_PlayerPlaceholderB"
 		],
 		"AnimClass": "/Game/Padel/Animations/ABP_PadelPlayer.ABP_PadelPlayer_C",
-		"RacketBone": "hand_r"
+		"RacketBone": "hand_r",
+		"MetaHumanRetargeter": "/Game/Padel/Animations/Retarget/RTG_PadelPlaceholder_To_MetaHuman.RTG_PadelPlaceholder_To_MetaHuman",
+		"MetaHumanMinLod": 1,
+		"MetaHumanIkLodThreshold": 1
 	}
 ]

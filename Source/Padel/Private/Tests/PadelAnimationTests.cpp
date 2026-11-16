@@ -24,6 +24,14 @@ bool FPadelAnimDataLoadTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Animation data loads"), Data.bOk);
 	TestTrue(TEXT("Clips for every slice shot"), Data.Clips.Validate().empty());
 	TestEqual(TEXT("One mesh per team"), Data.TeamMeshes.Num(), 2);
+
+	// docs/decisions/0006-metahuman-players.md: every slice player names a MetaHuman (which may
+	// not be on disk: then the placeholder shows), and the retargeter is set.
+	for (const TCHAR* Player : { TEXT("selva_arunde"), TEXT("mikko_ventara"), TEXT("ilan_corvisa"), TEXT("ruben_halvaro") })
+	{
+		TestTrue(FString::Printf(TEXT("%s has a MetaHuman row"), Player), Data.PlayerBodies.Contains(FName(Player)));
+	}
+	TestFalse(TEXT("MetaHuman retargeter set"), Data.MetaHumanRetargeter.IsEmpty());
 	return true;
 }
 

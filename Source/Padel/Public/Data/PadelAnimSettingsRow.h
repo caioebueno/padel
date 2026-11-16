@@ -40,5 +40,15 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	/** Bone the racket attaches to once a skeletal body is shown. */
 	UPROPERTY(EditAnywhere, Category = "Assets") FString RacketBone;
 
+	/**
+	 * MetaHuman players (docs/decisions/0006-metahuman-players.md): the IK Retargeter from the
+	 * placeholder skeleton to the MetaHuman body, the first LOD the MetaHumans may draw (their
+	 * LOD 0 face is far more than a broadcast-distance player needs at 60 fps) and the last LOD
+	 * that runs the retargeter's IK pass (-1 = every LOD).
+	 */
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString MetaHumanRetargeter;
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") int32 MetaHumanMinLod = 0;
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") int32 MetaHumanIkLodThreshold = -1;
+
 	Padel::Animation::FAnimSettings ToCore() const;
 };

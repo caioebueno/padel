@@ -30,3 +30,9 @@ Thumbs.db
 SourceArt/_raw/
 SourceArt/_incoming/
 __pycache__/
+
+# MetaHuman players (docs/decisions/0006-metahuman-players.md): each one is hundreds of MB to
+# GBs of binary content under the MetaHuman licence, so they stay on the machine that made
+# them. Data/PlayerBodies.json names them; a clone without them shows the placeholders.
+/Content/MetaHumans/
+/Content/Padel/Characters/MetaHumans/

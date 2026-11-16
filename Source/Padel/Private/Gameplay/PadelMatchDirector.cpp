@@ -272,7 +272,7 @@ void APadelMatchDirector::SpawnPawns()
 		Pawns[Id] = World->SpawnActor<APadelPlayerPawn>(APadelPlayerPawn::StaticClass(), FTransform::Identity, Params);
 		if (Pawns[Id])
 		{
-			Pawns[Id]->InitAnimation(&ShotData.Library, Padel::TeamIndex(Padel::TeamOfPlayer(Id)));
+			Pawns[Id]->InitAnimation(&ShotData.Library, Padel::TeamIndex(Padel::TeamOfPlayer(Id)), PlayerRows[Id]);
 		}
 	}
 

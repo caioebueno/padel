@@ -21,5 +21,8 @@ public class Padel : ModuleRules
 			"SlateCore",
 			"Json",
 		});
+
+		// MetaHuman players: the runtime IK retarget node (docs/decisions/0006-metahuman-players.md).
+		PrivateDependencyModuleNames.AddRange(new string[] { "IKRig" });
 	}
 }
