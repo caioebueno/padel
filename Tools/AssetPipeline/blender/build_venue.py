@@ -1,4 +1,4 @@
-"""Builds the venue around the court (GDD 10, decision 0006): the indoor club hall, the
+"""Builds the venue around the court (GDD 10, decision 0009): the indoor club hall, the
 light trusses and outdoor masts that carry the floodlights, the stands, the perimeter
 boards, the outdoor ground and the floodlight head the game places on every fixture.
 

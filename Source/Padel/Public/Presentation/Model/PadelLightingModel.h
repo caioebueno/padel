@@ -135,7 +135,7 @@ namespace Padel::Presentation::Lighting
 		// 0 means the preset has no floodlight target (daylight).
 		double TargetAverageLux = 0.0;
 		double TargetUniformity = 0.0;
-		// Shadow-casting local lights cost the most on Metal (docs/decisions/0006).
+		// Shadow-casting local lights cost the most on Metal (docs/decisions/0009).
 		int MaxShadowedFixtures = 4;
 		FSunSettings Sun;
 		FSkySettings Sky;

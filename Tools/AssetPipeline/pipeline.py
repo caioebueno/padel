@@ -103,7 +103,7 @@ def build_asset(asset: Asset, spec: dict, palette: dict, allow_generate: bool) -
                     "body": asset.raw.get("body", {}), "net": asset.raw.get("net", {}),
                     "surface": turf_textures.load_config(), "textures_dir": str(textures.TEXTURE_DIR)})
         if builder == "venue":
-            # Trusses and masts carry the fixtures Data/Lighting.json lights (decision 0006).
+            # Trusses and masts carry the fixtures Data/Lighting.json lights (decision 0009).
             job["rigs"] = lighting.venue_rigs()
         report = blender_runner.run(PROCEDURAL_SCRIPTS[builder], job)
         source = f"procedural: Tools/AssetPipeline/blender/{PROCEDURAL_SCRIPTS[builder]}.py"

@@ -1,4 +1,4 @@
-# 0006: Court playing surface
+# 0008: Court playing surface
 
 **Date:** 2026-11-16 · **Status:** proposed (court art: surface) · Implements GDD 2 (line positions and widths) and GDD 10 (blue artificial grass with visible sand, white lines), on the asset pipeline of [0003](0003-asset-pipeline.md)
 

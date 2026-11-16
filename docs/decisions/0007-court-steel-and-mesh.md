@@ -1,4 +1,4 @@
-# 0006: Court steel structure and welded mesh
+# 0007: Court steel structure and welded mesh
 
 **Date:** 2026-11-16 · **Status:** proposed (court art, mesh and frame)
 

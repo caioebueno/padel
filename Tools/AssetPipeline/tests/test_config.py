@@ -103,7 +103,7 @@ class CatalogueTest(unittest.TestCase):
         self.assertEqual(catalogue.material_name("team_a", "Shirt"), "MI_TeamA_Shirt")
 
     def test_venue_palette_is_physically_plausible(self) -> None:
-        # Realistic lighting needs real albedos (decision 0006): nothing blacker than
+        # Realistic lighting needs real albedos (decision 0009): nothing blacker than
         # charcoal or whiter than fresh paint, and only bare metal is metallic.
         venue = catalogue.load_palette()["venue"]
         for name, settings in venue.items():
