@@ -5,6 +5,8 @@
 #include "Animation/PadelPlayerAnimComponent.h"
 #include "BallState.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "EnhancedInputComponent.h"
 #include "Gameplay/PadelPlayerController.h"
 #include "Gameplay/PadelPlayerPawn.h"
@@ -58,6 +60,30 @@ namespace PadelMatchDirectorDetail
 		}
 		return nullptr;
 	}
+}
+
+namespace PadelMatchDirectorCommands
+{
+	// Four AI players with no human: for screen recordings and eyeballing animation
+	// (the HUD's Start match is the normal way in).
+	FAutoConsoleCommandWithWorldAndArgs AttractCommand(
+		TEXT("Padel.Match.Attract"),
+		TEXT("Start a match of four AI players (no human), for recordings."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>&, UWorld* World)
+		{
+			if (!World)
+			{
+				return;
+			}
+			if (TActorIterator<APadelMatchDirector> It(World); It)
+			{
+				Padel::Ui::FMatchSetup Setup;
+				Setup.HumanPlayerId = -1;
+				It->StartMatch(Setup);
+				return;
+			}
+			UE_LOG(LogPadel, Warning, TEXT("Padel.Match.Attract: no match director in this world"));
+		}));
 }
 
 APadelMatchDirector::APadelMatchDirector()

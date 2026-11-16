@@ -1,16 +1,55 @@
 #include "Animation/PadelPlayerAnimComponent.h"
 
+#include "Animation/PadelContactWarp.h"
+
 #include "Animation/AnimSequenceBase.h"
 #include "Animation/PadelAnimData.h"
 #include "Animation/PadelMetaHumanAnimInstance.h"
 #include "Components/LODSyncComponent.h"
 #include "Animation/PadelPlayerAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
 #include "Gameplay/PadelShotUnits.h"
 #include "Engine/World.h"
 #include "PadelLog.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Retargeter/IKRetargeter.h"
+
+namespace PadelAnimComponentDetail
+{
+	Padel::Animation::FRacketSettings LoadRacketSettings()
+	{
+		Padel::Animation::FRacketSettings Settings;
+		const FString Path = FPaths::Combine(FPaths::ProjectDir(), TEXT("Data"), TEXT("Racket.json"));
+		FString Text;
+		if (!FFileHelper::LoadFileToString(Text, *Path))
+		{
+			UE_LOG(LogPadel, Warning, TEXT("No %s: using the default racket and grip."), *Path);
+			return Settings;
+		}
+		std::string Error;
+		if (!Padel::Animation::ParseRacketSettings(TCHAR_TO_UTF8(*Text), Settings, Error))
+		{
+			UE_LOG(LogPadel, Warning, TEXT("%s: %s. Using the default racket and grip."), *Path, UTF8_TO_TCHAR(Error.c_str()));
+		}
+		return Settings;
+	}
+
+	// A bone's transform in the skeleton's reference pose, in component space.
+	FTransform RefPoseComponentSpace(const FReferenceSkeleton& Skeleton, int32 BoneIndex)
+	{
+		const TArray<FTransform>& Pose = Skeleton.GetRefBonePose();
+		FTransform Result = FTransform::Identity;
+		for (int32 Index = BoneIndex; Index != INDEX_NONE; Index = Skeleton.GetParentIndex(Index))
+		{
+			Result = Result * Pose[Index];
+		}
+		return Result;
+	}
+}
 
 UPadelPlayerAnimComponent::UPadelPlayerAnimComponent()
 {
@@ -25,6 +64,7 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 	RemoveMetaHuman();
 	Body = InBody;
 	Racket = InRacket;
+	LoadRacket();
 	Data = MakeUnique<FPadelAnimData>(FPadelAnimData::Load());
 	if (!Data->bOk)
 	{
@@ -60,6 +100,7 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 			if (UPadelPlayerAnimInstance* Anim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
 			{
 				Anim->LocomotionSet = Set;
+				Anim->WarpTuning = Data->Warp;
 			}
 			if (Racket && !Data->RacketBone.IsNone())
 			{
@@ -80,6 +121,11 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 		{
 			Anim->TrajectoryTimes.Add(static_cast<float>(T));
 		}
+	}
+	// In the palm, not on the wrist's pivot (0008). A MetaHuman shown below takes it over.
+	if (bSkeletalBody)
+	{
+		AttachRacket(Body);
 	}
 	// The MetaHuman copies the placeholder skeleton's pose, so it needs that skeleton running.
 	if (bSkeletalBody && !PlayerKey.IsNone())
@@ -184,16 +230,116 @@ bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
 	// The placeholder keeps animating while hidden: it is the pose the MetaHuman copies.
 	Body->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	Body->SetVisibility(false);
-	if (Racket && !Data->RacketBone.IsNone())
+	AttachRacket(MetaBody);
+	// The MetaHuman warps its own arm after the retarget; the hidden driver doesn't.
+	if (UPadelPlayerAnimInstance* DriverAnim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
 	{
-		Racket->AttachToComponent(MetaBody, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Data->RacketBone);
+		DriverAnim->bWarpThisBody = false;
 	}
 	UE_LOG(LogPadel, Log, TEXT("Player %s: showing MetaHuman %s."), *PlayerKey.ToString(), *Row->MetaHumanClass);
 	return true;
 }
 
+void UPadelPlayerAnimComponent::LoadRacket()
+{
+	RacketSettings = PadelAnimComponentDetail::LoadRacketSettings();
+	bImportedRacket = false;
+	UStaticMeshComponent* RacketMesh = Cast<UStaticMeshComponent>(Racket);
+	if (!RacketMesh)
+	{
+		return;
+	}
+	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, UTF8_TO_TCHAR(RacketSettings.Mesh.c_str()), nullptr, LOAD_Quiet | LOAD_NoWarn);
+	if (!Mesh)
+	{
+		UE_LOG(LogPadel, Log, TEXT("%s isn't imported yet: keeping the placeholder racket. Run Tools/AssetPipeline/pipeline.py all."),
+			UTF8_TO_TCHAR(RacketSettings.Mesh.c_str()));
+		return;
+	}
+	// Built to size by the pipeline, the grip centre on its origin, the handle up +Z and a
+	// face looking along +Y. Until it's in a hand, turn that face towards the net (+X here).
+	RacketMesh->SetStaticMesh(Mesh);
+	RacketMesh->SetRelativeScale3D(FVector::OneVector);
+	RacketMesh->SetRelativeRotation(FRotator(0.0, 90.0, 0.0));
+	bImportedRacket = true;
+}
+
+void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
+{
+	if (!Racket || !To || !Data || Data->RacketBone.IsNone())
+	{
+		return;
+	}
+	const FName RacketBone = OnRacketSide(Data->RacketBone);
+	Racket->AttachToComponent(To, FAttachmentTransformRules::SnapToTargetNotIncludingScale, RacketBone);
+	// The placeholder skeleton is hidden under a MetaHuman; the racket must not inherit that.
+	Racket->SetVisibility(true);
+	Racket->SetHiddenInGame(false);
+	const USkeletalMesh* Mesh = To->GetSkeletalMeshAsset();
+	if (!bImportedRacket || !Mesh)
+	{
+		// The placeholder box stays centred on the bone, as before.
+		return;
+	}
+
+	// Solve the grip once from the reference pose (RacketGrip.h); the hand bone then carries it.
+	using namespace PadelAnimComponentDetail;
+	const FReferenceSkeleton& Skeleton = Mesh->GetRefSkeleton();
+	const int32 HandIndex = Skeleton.FindBoneIndex(RacketBone);
+	const int32 ForearmIndex = Skeleton.FindBoneIndex(OnRacketSide(FName(UTF8_TO_TCHAR(RacketSettings.ForearmBone.c_str()))));
+	if (HandIndex == INDEX_NONE)
+	{
+		UE_LOG(LogPadel, Warning, TEXT("%s has no bone %s: the racket sits on the body's origin."), *Mesh->GetName(), *RacketBone.ToString());
+		return;
+	}
+	const int32 KnuckleIndex = Skeleton.FindBoneIndex(OnRacketSide(FName(UTF8_TO_TCHAR(RacketSettings.KnuckleBone.c_str()))));
+	const FTransform HandCS = RefPoseComponentSpace(Skeleton, HandIndex);
+	const int32 ParentIndex = Skeleton.GetParentIndex(HandIndex);
+	const int32 ArmIndex = ForearmIndex != INDEX_NONE ? ForearmIndex : ParentIndex;
+
+	Padel::Animation::FRacketGripInput In;
+	In.Hand = Padel::ToMetres(HandCS.GetLocation());
+	In.Forearm = ArmIndex != INDEX_NONE ? Padel::ToMetres(RefPoseComponentSpace(Skeleton, ArmIndex).GetLocation()) : In.Hand;
+	if (KnuckleIndex != INDEX_NONE)
+	{
+		In.Knuckle = Padel::ToMetres(RefPoseComponentSpace(Skeleton, KnuckleIndex).GetLocation());
+		In.bHasKnuckle = true;
+	}
+	const Padel::Animation::FRacketGripFrame Grip = Padel::Animation::SolveRacketGrip(In, RacketSettings);
+	if (!Grip.bValid)
+	{
+		UE_LOG(LogPadel, Warning, TEXT("%s: the hand bones are degenerate, the racket sits on %s."), *Mesh->GetName(), *RacketBone.ToString());
+		return;
+	}
+	const auto Axis = [](const Padel::FVec3& V) { return FVector(V.X, V.Y, V.Z); };
+	const FTransform GripCS(Axis(Grip.AxisX), Axis(Grip.AxisY), Axis(Grip.AxisZ), Padel::ToWorld(Grip.Origin));
+	FTransform Relative = GripCS.GetRelativeTransform(HandCS);
+	Relative.SetScale3D(FVector::OneVector);
+	Racket->SetRelativeTransform(Relative);
+	UE_LOG(LogPadel, Log, TEXT("Racket in %s's %s: grip %.1f cm from the bone (%s finger bones)."), *Mesh->GetName(),
+		*RacketBone.ToString(), Relative.GetLocation().Size(), In.bHasKnuckle ? TEXT("with") : TEXT("no"));
+
+	// The contact warp aims this face centre, on this body's arm, at the ball (PadelContactWarp.h).
+	const FVector FaceInHand = PadelContactWarp::FaceInHand(Relative, Padel::ToWorld(Padel::FVec3{ 0.0, 0.0, RacketSettings.FaceCentreM }).Z);
+	if (To == Body)
+	{
+		if (UPadelPlayerAnimInstance* Anim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
+		{
+			Anim->RacketFaceInHand = FaceInHand;
+		}
+	}
+	else if (UPadelMetaHumanAnimInstance* MetaAnim = Cast<UPadelMetaHumanAnimInstance>(To->GetAnimInstance()))
+	{
+		MetaAnim->SetRacketFace(FaceInHand, bLeftHanded);
+	}
+}
+
 void UPadelPlayerAnimComponent::RemoveMetaHuman()
 {
+	if (UPadelPlayerAnimInstance* DriverAnim = Body ? Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()) : nullptr)
+	{
+		DriverAnim->bWarpThisBody = true;
+	}
 	if (MetaHuman)
 	{
 		MetaHuman->Destroy();
@@ -211,8 +357,39 @@ void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& 
 {
 	if (Model)
 	{
+		// Left-handers (Players.json Handedness) hold the racket and reach with the left arm.
+		const bool bLeft = Controller.GetRatings().ForehandSign() < 0.0;
+		if (bLeft != bLeftHanded)
+		{
+			SetLeftHanded(bLeft);
+		}
 		Model->Step(Padel::Animation::FPlayerAnimInput::FromController(Controller, Events, bRallyLive), Dt);
 		bStepped = true;
+	}
+}
+
+FName UPadelPlayerAnimComponent::OnRacketSide(FName RightSideBone) const
+{
+	FString Name = RightSideBone.ToString();
+	if (bLeftHanded && Name.EndsWith(TEXT("_r")))
+	{
+		Name.LeftChopInline(2);
+		Name += TEXT("_l");
+	}
+	return FName(*Name);
+}
+
+void UPadelPlayerAnimComponent::SetLeftHanded(bool bLeft)
+{
+	bLeftHanded = bLeft;
+	if (UPadelPlayerAnimInstance* Anim = Body ? Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()) : nullptr)
+	{
+		Anim->bLeftHanded = bLeft;
+	}
+	// Re-grip on the racket hand of whichever body holds it now (the MetaHuman, or the placeholder).
+	if (USkeletalMeshComponent* Holder = Racket ? Cast<USkeletalMeshComponent>(Racket->GetAttachParent()) : nullptr)
+	{
+		AttachRacket(Holder);
 	}
 }
 
@@ -271,6 +448,8 @@ void UPadelPlayerAnimComponent::Present()
 	if (Racket)
 	{
 		// Placeholder swing: the racket face follows the arc and meets the ball at contact.
-		Racket->SetWorldLocation(Padel::ToWorld(Frame.RacketPosition));
+		// SM_Racket's origin is its grip, so lift the face, not the handle, onto the arc.
+		const FVector FaceOffset = bImportedRacket ? Racket->GetUpVector() * Padel::ToWorld(Padel::FVec3{ 0.0, 0.0, RacketSettings.FaceCentreM }).Z : FVector::ZeroVector;
+		Racket->SetWorldLocation(Padel::ToWorld(Frame.RacketPosition) - FaceOffset);
 	}
 }

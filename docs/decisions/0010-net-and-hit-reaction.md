@@ -1,4 +1,4 @@
-# 0006: The net, and how it reacts to the ball
+# 0010: The net, and how it reacts to the ball
 
 **Status:** accepted (court art, net). **GDD:** 2 (net 0.88 m centre, 0.92 m posts), 3.4 (`ball_bounced` on `net`), 10.
 

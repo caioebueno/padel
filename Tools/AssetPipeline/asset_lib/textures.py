@@ -19,8 +19,8 @@ TEXTURE_DIR = SOURCE_ART_DIR / "Textures"
 
 
 def write_png(path: Path, width: int, height: int, channels: int, pixel: Callable[[int, int], tuple[int, ...]]) -> Path:
-    """Writes an 8-bit grey (1 channel) or RGB (3 channel) PNG. Row 0 is the top."""
-    colour_type = {1: 0, 3: 2}[channels]
+    """Writes an 8-bit grey (1 channel), RGB (3) or RGBA (4) PNG. Row 0 is the top."""
+    colour_type = {1: 0, 3: 2, 4: 6}[channels]
     raw = bytearray()
     for y in range(height):
         raw.append(0)  # filter: none

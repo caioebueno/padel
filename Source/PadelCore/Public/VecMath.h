@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "PadelMath.h"
 #include "CourtLayout.h"
 
 #include <cmath>
@@ -40,8 +41,8 @@ namespace Padel::Court
 	// Rotates V around a unit Axis by Angle radians (Rodrigues).
 	inline FVec3 RotateAround(const FVec3& V, const FVec3& Axis, double Angle)
 	{
-		const double C = std::cos(Angle);
-		const double S = std::sin(Angle);
+		const double C = Padel::Math::Cos(Angle);
+		const double S = Padel::Math::Sin(Angle);
 		return V * C + Cross(Axis, V) * S + Axis * (Dot(Axis, V) * (1.0 - C));
 	}
 

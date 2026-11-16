@@ -13,7 +13,8 @@ TEST_CASE("Contracts.Realism: Movement.json's new fields are neutral (GDD 6.1, 6
 {
 	const Padel::Shots::FMovementTuning M = ShotTestData::LoadMovement();
 	CHECK(M.Validate().empty());
-	CHECK(M.AccelFalloff == Approx(0.0));
+	// M1 turned the falloff on (PlayerMotionTests and MotionCurveTests pin its shape).
+	CHECK(M.AccelFalloff == Approx(0.3));
 	CHECK(M.ShuffleSpeedFrac == Approx(1.0));
 	CHECK(M.BackpedalSpeedFrac == Approx(1.0));
 	CHECK(M.TurnToRunS == Approx(0.0));

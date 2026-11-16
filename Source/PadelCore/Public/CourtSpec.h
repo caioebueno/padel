@@ -14,6 +14,9 @@
 
 #pragma once
 
+// Determinism pragmas (no FMA contraction) for the inline maths below; see PadelCoreApi.h.
+#include "PadelCoreApi.h"
+
 namespace Padel::Court
 {
 	inline constexpr double UnrealUnitsPerMetre = 100.0;

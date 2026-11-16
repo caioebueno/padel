@@ -10,7 +10,7 @@ class APadelVenueLighting;
 
 /**
  * The shared look-dev level, built in code so it can be reviewed and never goes stale
- * (docs/decisions/0006-lighting-and-venue.md). Open any map with
+ * (docs/decisions/0009-lighting-and-venue.md). Open any map with
  * ?game=LookDev (Tools/RunLookDev.sh does it): it spawns the venue lighting, the stage
  * with all five court parts and the venue, and a camera on the look-dev bookmarks.
  *

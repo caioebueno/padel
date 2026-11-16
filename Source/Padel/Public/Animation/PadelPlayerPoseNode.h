@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNodeBase.h"
+#include "Animation/PadelContactWarp.h"
 #include "PadelPlayerPoseNode.generated.h"
 
 class UAnimSequenceBase;
@@ -37,8 +38,10 @@ struct FPadelLocomotionSet
  * 2. Swing: the swing clip at its explicit time (0005's contact-frame sync), over the upper
  *    body from spine_01, or the whole body by FullBodyAlpha.
  * 3. Celebration on top.
- * 4. Until swing clips exist, the right arm reaches with two-bone IK for the placeholder
- *    racket target, which meets the ball on the contact tick.
+ * 4. The contact warp (PadelContactWarp.h): the arm puts the racket's face centre on the
+ *    racket target, which meets the ball on the contact tick, and for clips with contact
+ *    fields the knees and spine take part of the reach. Skipped while a MetaHuman shows
+ *    this pose; it warps itself after the retarget.
  *
  * Inputs are copied from the anim instance on the game thread (PreUpdate).
  */
@@ -75,7 +78,12 @@ private:
 	double CelebrationTime = 0.0;
 	double CelebrationWeight = 0.0;
 	double ArmAlpha = 0.0;
+	double BodyAlpha = 0.0;
+	bool bWarp = true;
 	FVector RacketTargetComponent = FVector::ZeroVector;
+	FVector FaceInHand = FVector::ZeroVector;
+	FPadelWarpTuning WarpTuning;
+	bool bLeftHanded = false;
 
 	// Advanced in Update.
 	double CyclePhase = 0.0;
@@ -83,7 +91,5 @@ private:
 
 	// Bone setup, from CacheBones: per compact bone 1 above spine_01, else 0.
 	TArray<float> UpperBodyMask;
-	FCompactPoseBoneIndex UpperArm = FCompactPoseBoneIndex(INDEX_NONE);
-	FCompactPoseBoneIndex LowerArm = FCompactPoseBoneIndex(INDEX_NONE);
-	FCompactPoseBoneIndex Hand = FCompactPoseBoneIndex(INDEX_NONE);
+	mutable FPadelWarpBones WarpBones;
 };

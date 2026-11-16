@@ -4,23 +4,59 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimInstanceProxy.h"
 #include "AnimNodes/AnimNode_RetargetPoseFromMesh.h"
+#include "Animation/PadelContactWarp.h"
 #include "PadelMetaHumanAnimInstance.generated.h"
 
 class UIKRetargeter;
 
-/** Runs the anim instance's one node, the IK retarget, as its root (no AnimBP graph). */
+/**
+ * The MetaHuman's root: the IK retarget, then the contact warp on the MetaHuman's own arm
+ * (PadelContactWarp.h), using this body's racket grip. The warp reads its request from the
+ * placeholder's UPadelPlayerAnimInstance, which skips its own warp while a MetaHuman shows.
+ */
+USTRUCT()
+struct FAnimNode_PadelMetaHumanWarp : public FAnimNode_Base
+{
+	GENERATED_BODY()
+
+	FAnimNode_RetargetPoseFromMesh* Retarget = nullptr;
+	TWeakObjectPtr<USkeletalMeshComponent> Source;
+	FVector FaceInHand = FVector::ZeroVector;
+	bool bLeftHanded = false;
+
+	virtual void Initialize_AnyThread(const FAnimationInitializeContext& Context) override;
+	virtual void CacheBones_AnyThread(const FAnimationCacheBonesContext& Context) override;
+	virtual void Update_AnyThread(const FAnimationUpdateContext& Context) override;
+	virtual void Evaluate_AnyThread(FPoseContext& Output) override;
+	virtual bool HasPreUpdate() const override { return true; }
+	virtual void PreUpdate(const UAnimInstance* InAnimInstance) override;
+
+private:
+	FPadelWarpBones Bones;
+	FPadelTwistBones TwistBones;
+	/** The MetaHuman's own post-process AnimBP drives its twist bones; ours only spreads the roll without one. */
+	bool bPostProcessTwist = false;
+	FPadelWarpInput Request;
+	FPadelWarpTuning Tuning;
+};
+
+/** Runs the anim instance's root node (retarget, then contact warp) with no AnimBP graph. */
 USTRUCT()
 struct FPadelMetaHumanAnimInstanceProxy : public FAnimInstanceProxy
 {
 	GENERATED_BODY()
 
 	FPadelMetaHumanAnimInstanceProxy() = default;
-	FPadelMetaHumanAnimInstanceProxy(UAnimInstance* InAnimInstance, FAnimNode_RetargetPoseFromMesh* InRetargetNode);
+	FPadelMetaHumanAnimInstanceProxy(UAnimInstance* InAnimInstance, FAnimNode_PadelMetaHumanWarp* InRootNode);
 
-	virtual FAnimNode_Base* GetCustomRootNode() override { return RetargetNode; }
-	virtual void GetCustomNodes(TArray<FAnimNode_Base*>& OutNodes) override { OutNodes.Add(RetargetNode); }
+	virtual FAnimNode_Base* GetCustomRootNode() override { return RootNode; }
+	virtual void GetCustomNodes(TArray<FAnimNode_Base*>& OutNodes) override
+	{
+		OutNodes.Add(RootNode);
+		OutNodes.Add(RootNode->Retarget);
+	}
 
-	FAnimNode_RetargetPoseFromMesh* RetargetNode = nullptr;
+	FAnimNode_PadelMetaHumanWarp* RootNode = nullptr;
 };
 
 /**
@@ -41,9 +77,15 @@ public:
 	 */
 	void Configure(USkeletalMeshComponent* Source, UIKRetargeter* Retargeter, int32 IkLodThreshold);
 
+	/** This body's racket grip: the face centre in its racket hand's bone space, cm (PadelContactWarp::FaceInHand). */
+	void SetRacketFace(const FVector& InFaceInHand, bool bInLeftHanded);
+
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
 
 	UPROPERTY(Transient)
 	FAnimNode_RetargetPoseFromMesh RetargetNode;
+
+	UPROPERTY(Transient)
+	FAnimNode_PadelMetaHumanWarp WarpNode;
 };

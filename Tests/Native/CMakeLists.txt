@@ -33,6 +33,11 @@ if(MSVC)
   target_compile_options(padel_core_tests PRIVATE /W4 /WX)
 else()
   target_compile_options(padel_core_tests PRIVATE -Wall -Wextra -Wpedantic -Wshadow -Werror)
+  # Determinism (GDD 8, test plan P-12): Clang on Apple Silicon fuses a*b+c into one FMA
+  # instruction by default, which rounds differently from GCC on x86 and gives a different
+  # match from the same seed. Turn contraction off so every compiler does the same maths.
+  # The Unreal build of PadelCore needs the same setting.
+  target_compile_options(padel_core_tests PRIVATE -ffp-contract=off)
 endif()
 
 enable_testing()

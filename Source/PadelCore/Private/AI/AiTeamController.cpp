@@ -1,4 +1,5 @@
 #include "AI/AiTeamController.h"
+#include "PadelMath.h"
 
 #include "AI/AiTeamFrame.h"
 
@@ -11,6 +12,8 @@ FAiTeamController::FAiTeamController(const FAiTeamSetup& Setup, const FAiTactics
 	const IAiBallModel& InModel)
 	: HalfSign(Setup.HalfSign)
 	, HumanSlot(Setup.HumanSlot)
+	, AccelFalloff(Setup.AccelFalloff)
+	, BrakeMult(Setup.BrakeMult)
 	, Tactics(InTactics)
 	, Difficulty(InDifficulty)
 	, Predictor(InModel, InTactics)
@@ -42,7 +45,7 @@ void FAiTeamController::OnPointStarted(bool bServing)
 		const double Radius = Tactics.HomeErrorMaxM * (1.0 - ByRating(Profiles[Slot].Positioning, 0.0, 1.0));
 		const double Angle = Rng.Range(0.0, 6.283185307179586);
 		const double R = Radius * std::sqrt(Rng.NextDouble());
-		HomeError[Slot] = { std::cos(Angle) * R, std::sin(Angle) * R };
+		HomeError[Slot] = { Padel::Math::Cos(Angle) * R, Padel::Math::Sin(Angle) * R };
 	}
 }
 
@@ -146,6 +149,7 @@ void FAiTeamController::Read(const FAiWorldView& View)
 		Intercept.PlayerVelocity = View.OwnVelocities[Slot];
 		Intercept.HalfSign = HalfSign;
 		Intercept.bMustBounce = View.bMustBounce;
+		Intercept.AccelFalloff = AccelFalloff;
 		Plans[Slot] = InterceptPlanner::Plan(Samples, Intercept, Profiles[Slot], Tactics);
 		Query.Plans[Slot] = Plans[Slot];
 		Query.PlayerLocal[Slot] = TeamFrame::ToLocal(HalfSign, View.OwnPositions[Slot]);
@@ -178,7 +182,6 @@ void FAiTeamController::Read(const FAiWorldView& View)
 
 FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& Target, bool bChasing, double Slack) const
 {
-	(void)Slot;
 	FAiIntent Intent;
 	FAiVec Delta = Target - From;
 	Delta.Z = 0.0;
@@ -191,9 +194,23 @@ FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& 
 	// GDD 5.2: a player running at contact plays worse and can't be set for a smash).
 	// Only a ball with no time to spare is chased flat out to the last step.
 	const bool bFlatOut = bChasing && Slack < Tactics.SetSlackS;
-	const double Speed = bFlatOut ? 1.0 : ClampD(Distance / Tactics.SlowRadiusM, 0.0, 1.0);
-	Intent.Move = TeamFrame::MoveVector(HalfSign, Delta * (Speed / Distance));
+	double Speed = bFlatOut ? 1.0 : ClampD(Distance / Tactics.SlowRadiusM, 0.0, 1.0);
 	Intent.bSprint = bChasing ? (Slack < Tactics.SprintSlackS || Distance > Tactics.SprintDistanceM) : Distance > Tactics.SprintDistanceM;
+	// Never faster than the player can still stop in (GDD 6.3, M1: braking is about as
+	// hard as starting), or they overrun the spot and meet the ball out of reach.
+	const FAiPlayerProfile& Profile = Profiles[Slot];
+	const double AccelTime = Profile.AccelTime(Tactics);
+	const double Top = Profile.TopSpeed(Tactics);
+	if (BrakeMult > 0.0 && AccelTime > 0.0 && Top > 0.0)
+	{
+		const double StopFrac = std::sqrt(2.0 * Top / AccelTime * BrakeMult * Distance) / Top;
+		if (StopFrac < Speed)
+		{
+			Speed = StopFrac;
+			Intent.bSprint = false;
+		}
+	}
+	Intent.Move = TeamFrame::MoveVector(HalfSign, Delta * (Speed / Distance));
 	return Intent;
 }
 

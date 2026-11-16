@@ -62,5 +62,43 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double WalkClipSpeedMps = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Placeholder") double ArmReadyAlpha = 0.0;
 
+	/**
+	 * Contact warp (movement plan N3, shots doc 4.2, PadelContactWarp.h): how the reach for the
+	 * ball splits across the body. Metres and degrees here; Unreal units once, at load.
+	 */
+	/** Of a target below the face, how much the pelvis drops (knee bend; the feet stay planted). */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpPelvisDownShare = 0.8;
+	/** The deepest knee bend. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxPelvisDropM = 0.5;
+	/** Of the reach ahead, how much the pelvis shifts forward. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpPelvisForwardShare = 0.25;
+	/** The longest forward pelvis shift. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxPelvisForwardM = 0.15;
+	/** Of the sideways reach, how much the spine side-bends. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpSpineSideShare = 0.45;
+	/** Of the reach ahead, how much the spine flexes forward. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpSpineForwardShare = 0.25;
+	/** Of what's still below after the knees, how much the spine flexes. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpSpineDownShare = 0.75;
+	/** The most the spine bends, both passes together. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxSpineDeg = 55.0;
+	/** Of the angle from the racket shoulder to the ball, how much the trunk turns about the vertical. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpTrunkTurnShare = 0.7;
+	/** The most the trunk turns. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxTrunkTurnDeg = 50.0;
+	/** How far in front of the knee the leg IK aims it (knees bend forward). */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpKneeBendM = 0.2;
+	/** How far out the arm IK aims the elbow (it keeps the current pose's bend). */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpElbowBendM = 0.2;
+	/** Of the arm's length, the furthest the hand goes before the racket turns along the arm (never a locked elbow). */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxReachShare = 0.98;
+	/** How far above the shoulder a target has to be for the full overhead arm (long arm, elbow up and out); blended in from the shoulder. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpOverheadBlendM = 0.40;
+	/** How far the forearm keeps from the spine (pelvis up to the top spine bone) through a swing: the torso half-depth plus a margin. 0 turns the guard off. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpTorsoClearanceM = 0.14;
+	/** An overhead past the arm's reach: how high the player rises onto the toes, and how far the trunk leans towards the ball. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxToeRiseM = 0.12;
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxOverheadLeanDeg = 30.0;
+
 	Padel::Animation::FAnimSettings ToCore() const;
 };

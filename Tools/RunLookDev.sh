@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Opens the shared look-dev level (docs/decisions/0006): every court part and the venue,
+# Opens the shared look-dev level (docs/decisions/0009): every court part and the venue,
 # lit by a Data/Lighting.json preset, seen from the Data/LookDev.json cameras.
 #
 # Usage: Tools/RunLookDev.sh [preset] [camera]     e.g. Tools/RunLookDev.sh OutdoorNight CornerHigh

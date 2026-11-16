@@ -48,6 +48,9 @@ tecnifibre
 oxdog
 dabber
 
+# Real racket models (the racket's inspiration is a category, never a product)
+metalbone
+
 # Real players (do not generate likenesses)
 lebron
 galan

@@ -18,6 +18,8 @@ Status key: **gate** = CI test already enforces it · **todo** = the owning agen
 | G-06 | Native tests pass on Linux and Apple Silicon (`Tools/RunNativeTests.sh`, Agent 1's `tests.yml`) |
 | G-07 | No `SetSimulatePhysics(true)` in `Source/Padel` unless marked `// QA-allow: cosmetic`: the ball never uses Chaos |
 | G-08 | `PadelCore`'s `IMatchEventListener` has a virtual `On<Event>` for every GDD 3.4 event with the GDD's parameter count. Skipped until it exists |
+| G-09 | No libm transcendentals (`sin`, `cos`, `atan2`, `pow`, `exp`...) in `PadelCore` outside `Private/PadelMath.cpp`: they differ in the last bit between glibc versions and Apple's libm. Use `Padel::Math` |
+| G-10 | Every `PadelCore` header and source reaches `PadelCoreApi.h`, so the clang/MSVC pragmas that turn off fused multiply-add and reassociation apply to all simulation code |
 
 The reason codes and event names are read from `docs/GDD.md`, so changing the GDD changes the gate. That is on purpose.
 
@@ -103,7 +105,7 @@ Physics tests are tolerance tests at a fixed step. Values come from `Data/Physic
 | P-06 | Net | Ball hitting the tape loses most energy; can roll over |
 | P-07 | Determinism | Same seed and inputs give a bit-identical trajectory over 10 s, run twice in one process |
 | P-08 | Step independence | 120 Hz vs 240 Hz land within a few cm of each other (catches integrator bugs) |
-| P-12 | Cross-platform determinism | The same seeded trajectory gives the same landing point (to 1e-9 m) on the Linux/GCC and macOS/Clang CI runners: a native test prints a checksum and both jobs compare it with a value stored in the test |
+| P-12 | Cross-platform determinism | **gate:** `QA.Determinism` in `Tests/Native/QaDeterminismTests.cpp` plays 12 seeded AI-vs-AI points and compares an FNV-1a checksum of every hit, bounce and point ending with a recorded value, on the Linux/GCC and macOS/Clang CI runners |
 | P-09 | No tunnelling | A 140 km/h smash at the glass never passes through it at the fixed step |
 | P-10 | Energy | No bounce gains energy |
 | P-11 | Launch solver | Given a target, speed and spin, the ball lands within 5 cm of the target with zero scatter |
