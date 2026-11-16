@@ -65,6 +65,8 @@ public:
 	virtual bool WantsBackgroundBlur() const { return false; }
 	/** Extra Confirm lock after the entry lock (Stats: 1 s, spec 7.8). */
 	virtual float GetConfirmLockSeconds() const { return 0.0f; }
+	/** A further Confirm gate on top of the lock (Stats: until its entry animation ends). */
+	virtual bool IsConfirmBlocked() const { return false; }
 
 	void SetPadFamily(Padel::Ui::EPadFamily InFamily);
 	Padel::Ui::EPadFamily GetPadFamily() const { return PadFamily; }
@@ -101,12 +103,22 @@ protected:
 	virtual bool OnBack();
 	/** X, Y, LB, RB, Start: anything the focus logic didn't use. True if handled. */
 	virtual bool OnScreenInput(Padel::Ui::EUiInput Input, bool bRepeat) { return false; }
+	/**
+	 * A fresh Confirm press while Confirm is locked or blocked, after the entry lock (Stats:
+	 * finish the entry animation, spec 7.8). It never activates anything. True if used.
+	 */
+	virtual bool OnBlockedConfirm() { return false; }
 
 	/** Header text: the Display title and the optional breadcrumb above it. */
 	void SetHeader(const FText& Title, const FText& Breadcrumb = FText::GetEmpty());
 	/** Hide the header band (Title, Versus). */
 	void SetHeaderVisible(bool bVisible);
 	void SetHintBarVisible(bool bVisible);
+	/**
+	 * Spec 6.1 on Pause: the hint bar sits on a full-width Surface.Charcoal strip, 88 px
+	 * tall and centred on the hint bar band, so it reads over the frozen match.
+	 */
+	void SetHintBarPauseStrip(bool bStrip);
 
 	/**
 	 * Put a widget on the stage at spec coordinates: X and Y from the top-left of a 1920 x

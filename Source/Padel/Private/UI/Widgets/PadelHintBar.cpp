@@ -105,6 +105,8 @@ void UPadelHintBar::Rebuild()
 	SizeRoot->SetHeightOverride(bPauseStrip ? Layout.HintBarPauseStrip : Layout.HintBarHeight);
 	Strip->SetBrush(PadelUiPaint::Solid(
 		bPauseStrip ? PadelUi::Colour(EUiColour::SurfaceCharcoal, HintPauseStripAlpha) : FLinearColor::Transparent));
+	// The pause strip spans the screen; its items keep to the safe area (spec 4.3).
+	Strip->SetPadding(FMargin(bPauseStrip ? Layout.SafeX : HintBarPaddingX, 0.0f));
 
 	// Order through the model, so every screen gets the same A ... B order (spec 6.1).
 	std::vector<Padel::Ui::FHint> ModelHints;
