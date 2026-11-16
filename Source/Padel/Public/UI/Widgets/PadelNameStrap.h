@@ -31,6 +31,11 @@ public:
 	void SetCompact(bool bInCompact);
 	/** Shows a badge in the top-right corner; bShow false hides it. */
 	void SetBadge(bool bShow, EPadelBadgeKind InKind = EPadelBadgeKind::You);
+	/**
+	 * Round the band's top corners (the small card's strap sits at the card's rounded top).
+	 * The white edge is inset by the radius, as the glass panel's light catch is.
+	 */
+	void SetTopRadius(float InRadius);
 	/** The badge's opacity, for the card's You / Partner cross-fade (spec 7.3). */
 	void SetBadgeOpacity(float Opacity);
 
@@ -48,6 +53,7 @@ private:
 	FText Surname;
 	int32 Team = 0;
 	bool bCompact = false;
+	float TopRadius = 0.0f;
 	bool bShowBadge = false;
 	EPadelBadgeKind BadgeKind = EPadelBadgeKind::You;
 
@@ -72,4 +78,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UPadelBadge> Badge;
+
+	UPROPERTY()
+	TObjectPtr<UImage> TopEdge;
 };

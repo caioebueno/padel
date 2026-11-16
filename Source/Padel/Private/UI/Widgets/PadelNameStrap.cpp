@@ -1,6 +1,7 @@
 #include "UI/Widgets/PadelNameStrap.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
@@ -57,6 +58,12 @@ FString UPadelNameStrap::GetSurnameText() const
 	return Surname.ToString();
 }
 
+void UPadelNameStrap::SetTopRadius(float InRadius)
+{
+	TopRadius = FMath::Max(0.0f, InRadius);
+	Refresh();
+}
+
 void UPadelNameStrap::SetBadgeOpacity(float Opacity)
 {
 	if (Badge)
@@ -101,7 +108,8 @@ void UPadelNameStrap::BuildTree()
 	// The thin white top edge of a broadcast strap, over the band.
 	FSlateBrush EdgeBrush = PadelUiPaint::Solid(FLinearColor::White);
 	EdgeBrush.ImageSize = FVector2D(NameStrapEdge, NameStrapEdge);
-	UOverlaySlot* EdgeSlot = Root->AddChildToOverlay(MakeImage(EdgeBrush));
+	TopEdge = MakeImage(EdgeBrush);
+	UOverlaySlot* EdgeSlot = Root->AddChildToOverlay(TopEdge);
 	EdgeSlot->SetHorizontalAlignment(HAlign_Fill);
 	EdgeSlot->SetVerticalAlignment(VAlign_Top);
 	Refresh();
@@ -118,7 +126,16 @@ void UPadelNameStrap::Refresh()
 	SizeRoot->SetHeightOverride(bCompact ? NameStrapCompactHeight : NameStrapLargeHeight);
 	Band->SetPadding(bCompact ? FMargin(NameStrapCompactSide, NameStrapEdge, NameStrapCompactSide, 0.0f)
 		: FMargin(PadelUi::Space(3), 0.0f, PadelUi::Space(3), 0.0f));
-	Band->SetBrush(PadelUiPaint::Solid(PadelUi::TeamColour(Team) * FLinearColor(1.0f, 1.0f, 1.0f, NameStrapAlpha)));
+	const FLinearColor BandColour = PadelUi::TeamColour(Team) * FLinearColor(1.0f, 1.0f, 1.0f, NameStrapAlpha);
+	Band->SetBrush(TopRadius > 0.0f ? FSlateRoundedBoxBrush(BandColour, FVector4(TopRadius, TopRadius, 0.0f, 0.0f))
+		: PadelUiPaint::Solid(BandColour));
+	if (TopEdge)
+	{
+		if (UOverlaySlot* EdgeSlot = Cast<UOverlaySlot>(TopEdge->Slot))
+		{
+			EdgeSlot->SetPadding(FMargin(TopRadius, 0.0f, TopRadius, 0.0f));
+		}
+	}
 
 	// Move the two names into the stacked or the inline box.
 	FirstText->RemoveFromParent();
