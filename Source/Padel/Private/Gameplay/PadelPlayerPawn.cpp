@@ -73,9 +73,14 @@ void APadelPlayerPawn::InitShots(int32 PlayerId, double TeamSign, const Padel::S
 	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings->ForehandSign();
 	Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
 
-	Animation->Init(Library, TeamSign > 0.0 ? 0 : 1, Character, Racket);
-	Body->SetVisibility(!Animation->HasSkeletalBody());
+	InitAnimation(Library, TeamSign > 0.0 ? 0 : 1);
 	SyncFromSimulation();
+}
+
+void APadelPlayerPawn::InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex)
+{
+	Animation->Init(Library, TeamIndex, Character, Racket);
+	Body->SetVisibility(!Animation->HasSkeletalBody());
 }
 
 void APadelPlayerPawn::StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
@@ -84,6 +89,16 @@ void APadelPlayerPawn::StepAnimation(const Padel::Shots::FSwingEvents& Events, d
 	{
 		Animation->Step(*ShotController, Events, Dt, bRallyLive);
 	}
+}
+
+void APadelPlayerPawn::StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
+{
+	Animation->Step(Controller, Events, Dt, bRallyLive);
+}
+
+void APadelPlayerPawn::PresentAnimation()
+{
+	Animation->Present();
 }
 
 Padel::Shots::FPlayerInputFrame APadelPlayerPawn::SampleInput() const

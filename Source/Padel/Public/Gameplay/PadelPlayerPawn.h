@@ -46,8 +46,20 @@ public:
 	/** Moves the body to the simulated position and presents the latest animation frame. */
 	void SyncFromSimulation();
 
-	/** Steps the animation; call once per fixed step, right after the shot controller's Tick. */
+	/** Steps the animation for the pawn's own controller (practice); once per fixed step, right after its Tick. */
 	void StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
+
+	/**
+	 * For pawns whose controller lives elsewhere (the match: FAiMatchRunner owns all four).
+	 * InitAnimation once per pawn; then each fixed step, right after the controller's Tick,
+	 * StepAnimation with that controller and its events. Don't cache the controller: the
+	 * runner rebuilds them at a change of ends.
+	 */
+	void InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex);
+	void StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
+
+	/** Applies the latest animation frame; SyncFromSimulation does this for the pawn's own controller. */
+	void PresentAnimation();
 
 	UPadelPlayerAnimComponent* GetAnimation() const { return Animation; }
 
