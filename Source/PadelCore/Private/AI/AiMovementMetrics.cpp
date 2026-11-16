@@ -31,12 +31,68 @@ namespace Padel::AI
 
 	FAiMovementMetrics::FAiMovementMetrics(const FAiMovementMetricsConfig& InConfig)
 		: Config(InConfig)
+		, AccelWindowTicks(std::max(1, static_cast<int>(std::lround(InConfig.AccelSmoothingS / InConfig.TickSeconds))))
+		, AccelMinTicks(std::max(1, static_cast<int>(std::lround(InConfig.AccelMinDurationS / InConfig.TickSeconds))))
 	{
 	}
 
 	void FAiMovementMetrics::BeginMatch()
 	{
 		State = {};
+	}
+
+	void FAiMovementMetrics::ResetHistory(FPlayerState& S) const
+	{
+		S.History.assign(static_cast<size_t>(AccelWindowTicks) + 1, FVec3{});
+		S.Filled = 0;
+		S.bEdgeStopInWindow = false;
+		S.TicksSinceEdgeStop = 0;
+		S.AboveTicks = 0;
+		S.bEventCounted = false;
+	}
+
+	void FAiMovementMetrics::TrackAcceleration(FPlayerState& S, const FAiMovementSample& Now)
+	{
+		const int Size = AccelWindowTicks + 1;
+		S.History[static_cast<size_t>(S.Filled % Size)] = Now.Velocity;
+		++S.Filled;
+		if (Now.bEdgeStop)
+		{
+			++EdgeStops;
+			S.bEdgeStopInWindow = true;
+			S.TicksSinceEdgeStop = 0;
+		}
+		else if (S.bEdgeStopInWindow && ++S.TicksSinceEdgeStop >= AccelWindowTicks)
+		{
+			S.bEdgeStopInWindow = false;
+		}
+		if (S.Filled < Size || S.bEdgeStopInWindow)
+		{
+			// No full window yet, or the clamp's dead stop is inside it: unknown, so
+			// it neither extends nor ends a stretch above the threshold.
+			S.AboveTicks = 0;
+			return;
+		}
+
+		// The trailing average over N ticks moves by (v_t - v_t-N) / N each tick, so its
+		// rate of change is that difference over the window's length.
+		const FVec3& Oldest = S.History[static_cast<size_t>(S.Filled % Size)];
+		const double Accel = SizeXY(Now.Velocity - Oldest) / (AccelWindowTicks * Config.TickSeconds);
+		S.MatchPeakAccel = std::max(S.MatchPeakAccel, Accel);
+		if (Accel > Config.AccelEventMps2)
+		{
+			++S.AboveTicks;
+			if (S.AboveTicks >= AccelMinTicks && !S.bEventCounted)
+			{
+				++AccelEvents;
+				S.bEventCounted = true;
+			}
+		}
+		else
+		{
+			S.AboveTicks = 0;
+			S.bEventCounted = false;
+		}
 	}
 
 	void FAiMovementMetrics::Tick(bool bBallInPlay, const std::array<FAiMovementSample, NumTracked>& Players, int HitterId)
@@ -47,7 +103,6 @@ namespace Padel::AI
 			for (FPlayerState& S : State)
 			{
 				S.bHasPrevious = false;
-				S.bAboveAccel = false;
 				S.bReacting = false;
 			}
 			return;
@@ -66,15 +121,15 @@ namespace Padel::AI
 			FastTicks += Speed > Config.FastSpeedMps ? 1 : 0;
 			S.MatchPeakSpeed = std::max(S.MatchPeakSpeed, Speed);
 
-			if (S.bHasPrevious)
+			if (!S.bHasPrevious)
+			{
+				ResetHistory(S);
+			}
+			else
 			{
 				S.PointDistance += SizeXY(Now.Position - S.Previous.Position);
-				const double Accel = SizeXY(Now.Velocity - S.Previous.Velocity) / Dt;
-				S.MatchPeakAccel = std::max(S.MatchPeakAccel, Accel);
-				const bool bAbove = Accel > Config.AccelEventMps2;
-				AccelEvents += bAbove && !S.bAboveAccel ? 1 : 0;
-				S.bAboveAccel = bAbove;
 			}
+			TrackAcceleration(S, Now);
 
 			if (S.bReacting)
 			{
@@ -131,6 +186,12 @@ namespace Padel::AI
 
 	void FAiMovementMetrics::EndMatch()
 	{
+		bool bHadPlay = false;
+		for (const FPlayerState& S : State)
+		{
+			bHadPlay = bHadPlay || S.bMatchHadPlay;
+		}
+		Matches += bHadPlay ? 1 : 0;
 		for (FPlayerState& S : State)
 		{
 			if (S.bMatchHadPlay)
@@ -154,6 +215,8 @@ namespace Padel::AI
 		SlowTicks += Other.SlowTicks;
 		FastTicks += Other.FastTicks;
 		AccelEvents += Other.AccelEvents;
+		EdgeStops += Other.EdgeStops;
+		Matches += Other.Matches;
 		Points += Other.Points;
 		ServerPoints += Other.ServerPoints;
 		ServerFarther += Other.ServerFarther;
@@ -182,6 +245,8 @@ namespace Padel::AI
 		R.PeakSpeedMedian = Median(PeakSpeeds);
 		R.PeakSpeedMax = PeakSpeeds.empty() ? 0.0 : *std::max_element(PeakSpeeds.begin(), PeakSpeeds.end());
 		R.PeakAccelMedian = Median(PeakAccels);
+		R.PeakAccelMax = PeakAccels.empty() ? 0.0 : *std::max_element(PeakAccels.begin(), PeakAccels.end());
+		R.EdgeStopsPerMatch = Matches > 0 ? static_cast<double>(EdgeStops) / Matches : 0.0;
 		R.ReactionSamples = static_cast<int>(ReactionSeconds.size());
 		R.ReactionMedianMs = 1000.0 * Median(ReactionSeconds);
 		if (ServerPoints > 0)

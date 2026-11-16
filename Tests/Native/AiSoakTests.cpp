@@ -184,14 +184,17 @@ namespace
 	}
 
 	// The ball is in play from the serve's contact to the point's end (Live).
-	void SampleMovement(const FMatchSimulation& Match, const FAiMatchRunner& Runner, FAiMovementMetrics& Metrics)
+	// LastEdgeStops carries each player's FPlayerMotion edge-stop count between ticks.
+	void SampleMovement(const FMatchSimulation& Match, const FAiMatchRunner& Runner, std::array<int, Padel::NumPlayers>& LastEdgeStops,
+		FAiMovementMetrics& Metrics)
 	{
 		std::array<FAiMovementSample, FAiMovementMetrics::NumTracked> Players;
 		int Hitter = -1;
 		for (int Id = 0; Id < Padel::NumPlayers; ++Id)
 		{
 			const Padel::Shots::FPlayerMotion& M = Runner.Player(Id).GetMotion();
-			Players[Id] = { M.GetPosition(), M.GetVelocity() };
+			Players[Id] = { M.GetPosition(), M.GetVelocity(), M.GetEdgeStopCount() != LastEdgeStops[Id] };
+			LastEdgeStops[Id] = M.GetEdgeStopCount();
 			Hitter = Runner.HitAccepted(Id) ? Id : Hitter;
 		}
 		Metrics.Tick(Match.Phase() == EMatchPhase::Live, Players, Hitter);
@@ -217,6 +220,11 @@ namespace
 			Listener.Runner = &Runner;
 			Runner.Start();
 			Stats.Movement.BeginMatch();
+			std::array<int, Padel::NumPlayers> EdgeStops{};
+			for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+			{
+				EdgeStops[Id] = Runner.Player(Id).GetMotion().GetEdgeStopCount();
+			}
 
 			double LastHit = Match.Time();
 			while (!Listener.bMatchOver)
@@ -240,7 +248,7 @@ namespace
 				{
 					LastHit = Match.Time();  // between points the clock is the runner's
 				}
-				SampleMovement(Match, Runner, Stats.Movement);
+				SampleMovement(Match, Runner, EdgeStops, Stats.Movement);
 				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
 				{
 					const Padel::Shots::FSwingEvents& E = Runner.LastEvents(Id);
@@ -313,12 +321,14 @@ namespace
 
 	// Realism plan A1: each metric with its real-padel band (BIOMECHANICS_MOVEMENT.md
 	// section 4). Reported, not asserted yet; "!" marks a value outside its band.
+	// Acceleration is smoothed over 0.2 s and events last 0.3 s, like the GNSS/IMU
+	// data the bands come from; the wall and net dead stops are counted on their own.
 	void ReportMovement(const FAiMovementSummary& M)
 	{
 		const auto Line = [](const char* Name, double Value, const char* Unit, double Lo, double Hi, const char* Band)
 		{
 			const bool bOut = Value < Lo || Value > Hi;
-			std::printf("[soak]     %-34s %8.2f %-6s [%s]%s\n", Name, Value, Unit, Band, bOut ? " !" : "");
+			std::printf("[soak]     %-40s %8.2f %-6s [%s]%s\n", Name, Value, Unit, Band, bOut ? " !" : "");
 		};
 		constexpr double Any = 1e9;
 		std::printf("[soak]   movement: %.0f s ball in play, %d player-matches, %d reactions\n", M.BallInPlaySeconds, M.PlayerMatches, M.ReactionSamples);
@@ -330,7 +340,9 @@ namespace
 		Line("peak speed per match, median", M.PeakSpeedMedian, "m/s", 4.0, 5.0, "4 to 5");
 		Line("peak speed per match, max", M.PeakSpeedMax, "m/s", 0.0, 7.0, "7 or less");
 		Line("peak acceleration per match, median", M.PeakAccelMedian, "m/s2", 4.0, 8.0, "4 to 8");
-		Line("accelerations > 1.12 m/s2 per minute", M.AccelEventsPerMinute, "/min", 15.0, 20.0, "about 15 to 20");
+		Line("peak acceleration per match, max", M.PeakAccelMax, "m/s2", -Any, Any, "-");
+		Line("accel > 1.12 m/s2 for 0.3 s, per minute", M.AccelEventsPerMinute, "/min", 15.0, 20.0, "about 15 to 20");
+		Line("wall/net dead stops per match", M.EdgeStopsPerMatch, "", 0.0, 0.0, "0: real players slow down");
 		Line("first foot movement, median", M.ReactionMedianMs, "ms", 250.0, 300.0, "250 to 300 (Hard)");
 		Line("server distance per point", M.ServerDistancePerPoint, "m", M.ServerPartnerDistancePerPoint, Any, "above partner");
 		Line("server's partner distance per point", M.ServerPartnerDistancePerPoint, "m", -Any, Any, "-");
@@ -416,6 +428,7 @@ TEST_CASE("Ai.Soak: a match replays identically from its seed (GDD 8 determinism
 	CHECK(MA.PeakSpeedMax == MB.PeakSpeedMax);
 	CHECK(MA.PeakAccelMedian == MB.PeakAccelMedian);
 	CHECK(MA.AccelEventsPerMinute == MB.AccelEventsPerMinute);
+	CHECK(MA.EdgeStopsPerMatch == MB.EdgeStopsPerMatch);
 	CHECK(MA.ReactionSamples == MB.ReactionSamples);
 	CHECK(MA.ReactionMedianMs == MB.ReactionMedianMs);
 	CHECK(MA.ServerFartherShare == MB.ServerFartherShare);

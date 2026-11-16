@@ -119,6 +119,7 @@ namespace Padel::Shots
 		const double Side = Court::HalfWidth - Tuning->WallMarginM;
 		const double Lo = TeamSign > 0.0 ? Near : -Far;
 		const double Hi = TeamSign > 0.0 ? Far : -Near;
+		const FVec3 Before = Velocity;
 		if (Position.X < Lo || Position.X > Hi)
 		{
 			Position.X = Clamp(Position.X, Lo, Hi);
@@ -129,5 +130,6 @@ namespace Padel::Shots
 			Position.Y = Clamp(Position.Y, -Side, Side);
 			Velocity.Y = 0.0;
 		}
+		EdgeStopCount += Velocity.X != Before.X || Velocity.Y != Before.Y ? 1 : 0;
 	}
 }

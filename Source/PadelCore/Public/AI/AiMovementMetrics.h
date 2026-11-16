@@ -27,8 +27,14 @@ namespace Padel::AI
 		// Speed bands for the "slow" and "fast" shares of rally time.
 		double SlowSpeedMps = 2.0;
 		double FastSpeedMps = 4.0;
-		// One acceleration event per upward crossing of this (BIOMECHANICS 4).
+		// The real-padel numbers come from GNSS/IMU units that smooth at about 10 Hz and
+		// count only efforts that last, so acceleration is the change of the velocity's
+		// trailing average over this window, not the per-tick derivative...
+		double AccelSmoothingS = 0.2;
+		// ...and an event is a stretch above this threshold lasting at least
+		// AccelMinDurationS. It re-arms once the acceleration drops back below it.
 		double AccelEventMps2 = 1.12;
+		double AccelMinDurationS = 0.3;
 		// First foot movement: speed rises this much over the speed at the opponent's contact.
 		double ReactionSpeedRiseMps = 0.2;
 	};
@@ -38,6 +44,9 @@ namespace Padel::AI
 	{
 		FVec3 Position;
 		FVec3 Velocity;
+		// The wall or net margin stopped the player dead this tick (FPlayerMotion's
+		// clamp). Counted on its own and kept out of the acceleration metrics.
+		bool bEdgeStop = false;
 	};
 
 	// The summary a report prints. Speeds in m/s, distances in m, accelerations in m/s².
@@ -54,7 +63,10 @@ namespace Padel::AI
 		double PeakSpeedMedian = 0.0;
 		double PeakSpeedMax = 0.0;
 		double PeakAccelMedian = 0.0;
+		double PeakAccelMax = 0.0;
 		double AccelEventsPerMinute = 0.0;
+		// Wall and net stops, all four players together, per match.
+		double EdgeStopsPerMatch = 0.0;
 		int ReactionSamples = 0;
 		double ReactionMedianMs = 0.0;
 		double ServerDistancePerPoint = 0.0;
@@ -89,7 +101,14 @@ namespace Padel::AI
 			bool bHasPrevious = false;
 			FAiMovementSample Previous;
 			double LastSpeed = 0.0;
-			bool bAboveAccel = false;
+			// The last AccelWindowTicks + 1 velocities, a ring indexed by Filled.
+			std::vector<FVec3> History;
+			int Filled = 0;
+			// Ticks since the last edge stop; its window is left out of the acceleration.
+			int TicksSinceEdgeStop = 0;
+			bool bEdgeStopInWindow = false;
+			int AboveTicks = 0;
+			bool bEventCounted = false;
 			double PointDistance = 0.0;
 			double MatchPeakSpeed = 0.0;
 			double MatchPeakAccel = 0.0;
@@ -100,7 +119,12 @@ namespace Padel::AI
 			int TicksSinceContact = 0;
 		};
 
+		void ResetHistory(FPlayerState& S) const;
+		void TrackAcceleration(FPlayerState& S, const FAiMovementSample& Now);
+
 		FAiMovementMetricsConfig Config;
+		int AccelWindowTicks = 1;
+		int AccelMinTicks = 1;
 		std::array<FPlayerState, NumTracked> State;
 
 		// Raw samples, merged across matches.
@@ -113,6 +137,8 @@ namespace Padel::AI
 		long long SlowTicks = 0;      // player-ticks
 		long long FastTicks = 0;
 		long long AccelEvents = 0;
+		long long EdgeStops = 0;
+		int Matches = 0;
 		int Points = 0;
 		int ServerPoints = 0;
 		int ServerFarther = 0;
