@@ -325,8 +325,8 @@ Gamepad first; everything is reachable on a gamepad. Labels use the Xbox layout 
 
 ## 9. Camera [SLICE]
 
-- **Default: broadcast end camera.** Behind and above the human team's back glass, looking down the court, about 7–9 m high and 6–8 m behind the glass, with a slight tilt so the near players don't hide the far half. Gentle horizontal tracking of the ball (no more than ±1.5 m), no rotation during a point.
-- **The human's team is always at the bottom of the screen.** On a change of ends the camera moves to the other end during the change-over (with a short transition shot), so "up on the stick" always means "toward the opponents".
+- **Default: broadcast end camera.** Behind and above the human team's back glass, looking down the court with a long lens, like a televised match: about 7–8 m high and 13–15 m behind the glass, aimed at the foot of the net, about 26° vertical field of view (held for every screen shape). The whole court, both back walls and both pairs are always in frame, the net sits just above the middle of the picture, and the near pair is about twice the size of the far pair. Gentle horizontal tracking of the ball (no more than ±1 m, nothing while the ball is near the middle), no rotation, zoom or cut during a point. Each serve starts from the same centred frame.
+- **The human's team is always at the bottom of the screen.** On a change of ends the camera cuts to a short transition shot during the change-over, then cuts to the other end, so "up on the stick" always means "toward the opponents".
 - **Between points:** short cut-aways (close-up of the server, the scoreboard). No camera moves while the ball is live.
 - **Replays (post-slice):** side camera along the net, ball cam.
 - Camera settings (height, tracking strength) are in a data file.

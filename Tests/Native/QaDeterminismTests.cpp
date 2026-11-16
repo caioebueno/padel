@@ -91,10 +91,10 @@ namespace
 
 	constexpr int PointsToPlay = 12;
 	constexpr std::uint64_t Seed = 20261116;
-	// Re-recorded for #45 (S1 + S2: per-shot contact points, overhead heights by body height):
-	// the ideal contact moment and the AI's stand point move on purpose, so the seeded match
-	// changes. Recorded on Linux/GCC. See the comment at the top before changing it.
-	constexpr std::uint64_t ExpectedChecksum = 0x3e08d0edc9a3589eULL;
+	// Re-recorded for #43 (A2: net stagger, spacing by ball width, net depth 3.0 m), which moves
+	// the AI's home positions on purpose. Recorded on Linux/GCC 13; CI checks it on the Mac.
+	// Before that: #35 and #44 together (0x11dc4f0919a9c309). See the comment at the top.
+	constexpr std::uint64_t ExpectedChecksum = 0x6e694e677fffa7a2ULL;
 }
 
 TEST_CASE("QA.Determinism: a seeded AI match gives the same checksum on every platform (TP P-12)")

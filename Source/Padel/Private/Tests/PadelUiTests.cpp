@@ -136,10 +136,11 @@ bool FPadelCameraSettingsTest::RunTest(const FString& Parameters)
 	// Data/Camera.json is the source of truth (CLAUDE.md: tuning data is text), and must
 	// stay inside GDD 9's ranges.
 	const Padel::Presentation::FCameraSettings Settings = APadelBroadcastCamera::LoadSettings();
-	TestTrue(TEXT("Height 7-9 m"), Settings.HeightM >= 7.0 && Settings.HeightM <= 9.0);
-	TestTrue(TEXT("6-8 m behind the glass"), Settings.BehindGlassM >= 6.0 && Settings.BehindGlassM <= 8.0);
-	TestTrue(TEXT("Tracking at most 1.5 m"), Settings.MaxTrackingM > 0.0 && Settings.MaxTrackingM <= 1.5);
-	TestTrue(TEXT("Change-over move takes time"), Settings.EndTransitionSeconds > 0.0);
+	TestTrue(TEXT("Height 7-8 m"), Settings.HeightM >= 7.0 && Settings.HeightM <= 8.0);
+	TestTrue(TEXT("13-15 m behind the glass"), Settings.BehindGlassM >= 13.0 && Settings.BehindGlassM <= 15.0);
+	TestTrue(TEXT("About 26 degrees vertical field of view"), FMath::Abs(Settings.VerticalFieldOfViewDeg - 26.0) <= 2.0);
+	TestTrue(TEXT("Tracking at most 1 m"), Settings.MaxTrackingM > 0.0 && Settings.MaxTrackingM <= 1.0);
+	TestTrue(TEXT("Change-of-ends transition shot takes time"), Settings.EndCutawaySeconds > 0.0);
 	return true;
 }
 
