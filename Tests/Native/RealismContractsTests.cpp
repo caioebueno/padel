@@ -51,7 +51,8 @@ TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by
 	CHECK(T.PartnerSpacingMaxM == Approx(5.0));
 	// A4 (movement doc 2.12): the side switch on lobs landing past 7 m.
 	CHECK(T.SideSwitchMinLobDepthM == Approx(7.0));
-	CHECK(T.FirstStepExtraS == Approx(0.0));
+	// A5 (movement doc 3.2, 5.4): the split-step landing before the first step.
+	CHECK(T.FirstStepExtraS == Approx(0.15));
 }
 
 TEST_CASE("Contracts.Realism: AnimClips.json has no contact points yet (0005)")
