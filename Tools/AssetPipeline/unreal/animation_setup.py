@@ -5,7 +5,7 @@ Unreal Editor after import_assets.py:
   Output Log (Python): exec(open("<repo>/Tools/AssetPipeline/unreal/animation_setup.py").read())
   or headless: UnrealEditor-Cmd Padel.uproject -run=pythonscript -script=<this file>
 
-The clips are Epic's Game Animation Sample (free on Fab under its Standard License; Epic content for Unreal Engine projects only): crouched
+The clips are Epic's Game Animation Sample (free on Fab under its Standard License; Epic content for Unreal Engine projects only): an upright idle, crouched
 loops for the low adjustment and side-shuffle steps, run loops for the faster movement.
 gasp_export.py, run in the sample project, writes them as FBX to SourceArt/_incoming/GASP/
 (git-ignored). This script imports them onto the UE5 mannequin skeleton (the bone names
@@ -44,13 +44,14 @@ STAGING = "/Game/Padel/Animations/Locomotion/_Staging"
 INCOMING = PROJECT / "SourceArt" / "_incoming" / "GASP"
 GASP_DIR = "/Game/Characters/GASP"
 # Game Animation Sample clip (FBX in INCOMING, imported into GASP_DIR) -> the name
-# Animation.json expects. Biomechanics doc 2.1 to 2.4: a ready stance with bent knees, low
+# Animation.json expects. Biomechanics doc 2.1 to 2.4: an upright idle until the ready-stance
+# blend (phase 2; the crouched idle reads as a squat), low
 # adjustment steps forward and back, a low side shuffle, then an athletic run and strafe.
 # The "Relaxed" sets are used because every direction in them moves at the same root speed
 # (crouch 1.65 m/s, run 3.75 m/s), and the pose plays all four directions at one rate:
 # WalkClipSpeedMps and RunClipSpeedMps in Data/Animation.json.
 CLIPS = {
-    f"{GASP_DIR}/M_Neutral_Crouch_Idle_Loop": "A_Idle",
+    f"{GASP_DIR}/M_Neutral_Stand_Idle_Loop": "A_Idle",
     f"{GASP_DIR}/M_Relaxed_Crouch_Loop_F": "A_Walk_Fwd",
     f"{GASP_DIR}/M_Relaxed_Crouch_Loop_B": "A_Walk_Bwd",
     f"{GASP_DIR}/M_Relaxed_Crouch_Loop_LL": "A_Walk_Left",

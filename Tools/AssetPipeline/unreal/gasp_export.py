@@ -18,7 +18,7 @@ OUT = Path(__file__).resolve().parents[3] / "SourceArt" / "_incoming" / "GASP"
 ANIMS = "/Game/Characters/UEFN_Mannequin/Animations"
 # Keep in step with CLIPS in animation_setup.py.
 CLIPS = [
-    "Idle/M_Neutral_Crouch_Idle_Loop",
+    "Idle/M_Neutral_Stand_Idle_Loop",
     "Crouch/M_Relaxed_Crouch_Loop_F",
     "Crouch/M_Relaxed_Crouch_Loop_B",
     "Crouch/M_Relaxed_Crouch_Loop_LL",
