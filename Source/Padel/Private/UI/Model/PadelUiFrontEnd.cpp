@@ -79,9 +79,9 @@ namespace Padel::Ui
 			{"Main.QuickMatch", 1, 8, 184.0f, 520.0f, true, false, EUiScreen::MatchSetup},
 			{"Main.Practice", 9, 4, 184.0f, 248.0f, false, false, EUiScreen::Practice},
 			{"Main.Settings", 9, 4, 456.0f, 248.0f, false, false, EUiScreen::Settings},
-			{"Main.Career", 1, 4, 728.0f, 208.0f, false, true, EUiScreen::Count},
-			{"Main.TeamBuilder", 5, 4, 728.0f, 208.0f, false, true, EUiScreen::Count},
-			{"Main.Controls", 9, 4, 728.0f, 208.0f, false, false, EUiScreen::Controls},
+			{"Main.Career", 1, 4, 728.0f, 208.0f, false, true, EUiScreen::Count, true},
+			{"Main.TeamBuilder", 5, 4, 728.0f, 208.0f, false, true, EUiScreen::Count, true},
+			{"Main.Controls", 9, 4, 728.0f, 208.0f, false, false, EUiScreen::Controls, true},
 		};
 		return Tiles;
 	}

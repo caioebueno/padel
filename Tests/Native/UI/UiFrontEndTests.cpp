@@ -93,6 +93,8 @@ TEST_CASE("UI.MainMenu: six tiles on the spec 7.2 grid, inside the content area"
 		// Locked tiles go nowhere; every other tile has a screen.
 		CHECK(Tile.bLocked == (Tile.Target == EUiScreen::Count));
 		Locked += Tile.bLocked ? 1 : 0;
+		// The bottom row anchors to the bottom edge (spec 4.4).
+		CHECK(Tile.bBottomRow == (Tile.Top >= 728.0f));
 	}
 	CHECK(Locked == 2);
 	CHECK(Ids.count("Main.Career") == 1);

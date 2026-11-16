@@ -46,6 +46,9 @@ namespace Padel::Ui
 		bool bHero = false;
 		bool bLocked = false;  // focusable, explains itself, A shows a toast (spec 5.3)
 		EUiScreen Target = EUiScreen::Count; // where A goes; Count for a locked tile
+		// The bottom row keeps its distance from the hint bar on screens taller than
+		// 16:9 (16:10 Macs); the extra height goes to the gap above it (spec 4.4).
+		bool bBottomRow = false;
 	};
 
 	// The six tiles in reading order (hero first), with spec 7.2's positions.

@@ -96,7 +96,6 @@ namespace Padel::Ui
 			PADEL_UI_FIELD("Motion", "Pulse", Motion.Pulse),
 			PADEL_UI_FIELD("Motion", "PulseMinAlpha", Motion.PulseMinAlpha),
 			PADEL_UI_FIELD("Motion", "TitleUnderline", Motion.TitleUnderline),
-			PADEL_UI_FIELD("Motion", "TitleFlash", Motion.TitleFlash),
 			PADEL_UI_FIELD("Motion", "PushIn", Motion.PushIn),
 			PADEL_UI_FIELD("Motion", "PushInScale", Motion.PushInScale),
 			PADEL_UI_FIELD("Motion", "ReduceMotionFade", Motion.ReduceMotionFade),
