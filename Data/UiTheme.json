@@ -59,7 +59,8 @@
 		"Pulse": 1.6, "PushIn": 6.0, "PushInScale": 1.04,
 		"ReduceMotionFade": 0.16,
 		"ToastSeconds": 2.5, "ToastFade": 0.2,
-		"HintFlash": 0.12
+		"HintFlash": 0.12,
+		"StatsSetStagger": 0.12, "StatsBarGrow": 0.4
 	},
 	"Input": {
 		"EntryLock": 0.12,
