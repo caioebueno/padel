@@ -55,6 +55,14 @@ The component picks this class when `ABP_PadelPlayer` is missing and the idle cl
 
 **The clips** are Epic's UE5 mannequin idle, walk and jog from the engine's Third Person template, retargeted onto the placeholder skeleton by `Tools/AssetPipeline/unreal/animation_setup.py` (it copies the mannequin into `/Game/Characters/Mannequins`, git-ignored, and writes `/Game/Padel/Animations/Locomotion/A_*`). They're Epic content for use in Unreal projects; no padel swing clips exist yet. `Padel.Animation.NativePose` checks that the four pawns get skeletal bodies, the arms come down from the T-pose and the feet stay on the ground (it skips on a clone without the generated clips).
 
+## Contact warp (movement plan N3)
+
+At contact the racket's face centre, not the hand, meets the ball (shots doc 4.2), on the body that's on screen. `PadelContactWarp` runs in the placeholder's pose node, or on a MetaHuman after the retarget (`FAnimNode_PadelMetaHumanWarp` wraps the retarget node), because the bodies' arms differ in length. The hidden placeholder skips its own warp while a MetaHuman shows (`bWarpThisBody`). The face centre in the hand's bone space comes from each body's racket grip (0008, `PadelContactWarp::FaceInHand`).
+
+- The arm's two-bone IK aims the face centre at the racket target and keeps the hand's angle. Past the arm's reach it turns the racket along the arm's line, so the racket's length counts. This is all a clip with zero contact fields gets (K1's `ContactRightM/ForwardM/UpM` all zero), which is today's arm reach, now aimed with the face.
+- A clip with contact fields also brings in the body. Its weight rises over the forward swing, peaks at `ContactS` and falls over the follow-through (`PadelContactWarp::BodyWeight`). Below the face, the pelvis drops and the feet stay planted (leg IK). The trunk turns the racket shoulder towards the ball, and the spine bends sideways and forward. If the ball is still out of reach, the spine bends on, up to its limit, and the arm reaches again. The shares and limits are constants at the top of `PadelContactWarp.cpp`.
+- `Padel.Animation.ContactWarp` checks that the face centre is within 5 cm of the target across heights and both sides: the arm alone from 0.9 to 1.8 m, and with the body down to 0.4 m forehand and 0.5 m backhand. It drives the clip path by giving `ApplyFrame` a clip row with contact fields, because no swing clip has them yet.
+
 ## Not covered yet
 
 - Swing clips (0005's list); until then the swing is the arm reaching for the racket target.

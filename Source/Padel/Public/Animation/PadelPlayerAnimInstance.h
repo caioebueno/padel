@@ -70,6 +70,28 @@ public:
 	/** The placeholder racket target, world cm: the C++ pose reaches for it until swing clips exist. */
 	FVector RacketTargetWorld = FVector::ZeroVector;
 
+	/**
+	 * Contact warp (PadelContactWarp.h): the body's share of the reach for the ball, 0..1,
+	 * rising over the forward swing to contact. 0 when the clip's contact fields are all zero
+	 * (the arm alone reaches, as before).
+	 */
+	float ContactWarpWeight = 0.0f;
+
+	/** The racket face centre in the racket hand's bone space, cm (set by the component; zero = the hand). */
+	FVector RacketFaceInHand = FVector::ZeroVector;
+
+	/** False while a MetaHuman shows this pose: the warp then runs on the MetaHuman, after the retarget. */
+	bool bWarpThisBody = true;
+
+	/**
+	 * How far the arm reaches for RacketTargetWorld, 0..1: through a swing with no swing clip
+	 * (the racket target meets the ball on the contact tick), and a little in the ready stance.
+	 */
+	float WarpArmAlpha() const;
+
+	/** The body's share, 0..1: ContactWarpWeight, but not over an imported swing clip. */
+	float WarpBodyAlpha() const { return SwingSequence ? 0.0f : ContactWarpWeight; }
+
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	EPadelLocomotionState Locomotion = EPadelLocomotionState::Idle;
 
