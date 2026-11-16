@@ -51,6 +51,11 @@ namespace Padel::Animation
 		Positive(Out, W, "ClipCrossfadeS", ClipCrossfadeS);
 		Positive(Out, W, "CelebrationS", CelebrationS);
 		Positive(Out, W, "CelebrationBlendS", CelebrationBlendS);
+		Positive(Out, W, "FacingTurnRateDegPerS", FacingTurnRateDegPerS);
+		if (ReadyCrouchAlphaNet < 0.0 || ReadyCrouchAlphaNet > 1.0 || ReadyCrouchAlphaBack < 0.0 || ReadyCrouchAlphaBack > 1.0)
+		{
+			Out.push_back(W + ": ReadyCrouchAlphaNet and ReadyCrouchAlphaBack must be 0 to 1");
+		}
 		if (StrideRateMax < StrideRateMin)
 		{
 			Out.push_back(W + ": StrideRateMax must be >= StrideRateMin");

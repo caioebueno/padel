@@ -28,6 +28,8 @@ struct PADEL_API FPadelAnimData
 	FString IdleAsset;
 	TArray<FString> WalkAssets;
 	TArray<FString> JogAssets;
+	FString ReadyAsset;
+	TArray<FString> WalkUprightAssets;
 	double WalkClipSpeedMps = 0.0;
 	double ArmReadyAlpha = 0.0;
 	/** Contact warp tuning (Animation.json Warp*), already in Unreal units. */

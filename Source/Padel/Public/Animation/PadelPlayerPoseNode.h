@@ -17,6 +17,9 @@ struct FPadelLocomotionSet
 	/** Index 0 forward, 1 back, 2 left, 3 right; null where not imported. */
 	UPROPERTY() TArray<TObjectPtr<UAnimSequenceBase>> Walk;
 	UPROPERTY() TArray<TObjectPtr<UAnimSequenceBase>> Jog;
+	/** N1: the crouched ready idle, and upright walk cycles mixed with the crouched Walk by CrouchAlpha. Optional. */
+	UPROPERTY() TObjectPtr<UAnimSequenceBase> Ready;
+	UPROPERTY() TArray<TObjectPtr<UAnimSequenceBase>> WalkUpright;
 	double WalkClipSpeedMps = 1.0;
 	double JogClipSpeedMps = 1.0;
 	double WalkMinMps = 0.3;
@@ -70,6 +73,9 @@ private:
 	double SpeedMps = 0.0;
 	double DirectionDeg = 0.0;
 	double JogStridePlayRate = 1.0;
+	/** Ready stance or split-step (a rally on): the idle mixes in the crouched Ready clip. */
+	bool bReadyStance = false;
+	double CrouchAlpha = 1.0;
 	double SwingTime = 0.0;
 	double PrevSwingTime = 0.0;
 	double SwingClipAlpha = 1.0;

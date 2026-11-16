@@ -554,3 +554,146 @@ TEST_CASE("Anim.Contact: an AI swing lines up the same way")
 		CheckContactSync(Rig, false);
 	}
 }
+
+TEST_CASE("Anim.Facing: square to the net by default, toward travel in Crossover, TurnAndRun and Run (N1)")
+{
+	const FAnimSettings Settings = LoadSettings();
+	const FAnimClipLibrary Clips = LoadClips();
+	const FShotLibrary Lib = LoadLibrary();
+	using Padel::EMovementMode;
+
+	// Team A faces the net along -X (yaw 180). Moving toward -Y is moving to the player's right.
+	struct FCase
+	{
+		EMovementMode Mode;
+		FVec3 Velocity;
+		double WantYaw;       // where the body ends up facing
+		double WantDirection; // travel relative to the body
+	};
+	const double Run = Settings.RunClipSpeedMps;
+	const FCase Cases[] = {
+		{ EMovementMode::Adjust, Vec(0.0, -0.2, 0.0), 180.0, 90.0 },
+		{ EMovementMode::Shuffle, Vec(0.0, -2.0, 0.0), 180.0, 90.0 },
+		{ EMovementMode::Backpedal, Vec(2.0, 0.0, 0.0), 180.0, 180.0 },
+		{ EMovementMode::Decel, Vec(0.0, -1.0, 0.0), 180.0, 90.0 },
+		{ EMovementMode::Sprint, Vec(-Run, 0.0, 0.0), 180.0, 0.0 },
+		{ EMovementMode::Crossover, Vec(0.0, -Run, 0.0), -90.0, 0.0 },
+		{ EMovementMode::Run, Vec(0.0, Run, 0.0), 90.0, 0.0 },
+		// Running back to the glass turns the body all the way round.
+		{ EMovementMode::TurnAndRun, Vec(Run, 0.0, 0.0), 0.0, 0.0 },
+	};
+	for (const FCase& C : Cases)
+	{
+		CAPTURE(static_cast<int>(C.Mode));
+		FPlayerAnimModel Model(&Settings, &Clips, &Lib);
+		FPlayerAnimInput In;
+		In.TeamSign = 1.0;
+		In.bRallyLive = true;
+		In.Position = Vec(6.0, 0.0, 0.0);
+		// Start square to the net, then switch to the mode: the body turns at the data rate.
+		Model.Step(In, Dt);
+		In.Mode = C.Mode;
+		In.Velocity = C.Velocity;
+		const double Turn = std::fabs(C.WantYaw - 180.0) > 180.0 ? 360.0 - std::fabs(C.WantYaw - 180.0) : std::fabs(C.WantYaw - 180.0);
+		const int TicksToTurn = static_cast<int>(std::ceil(Turn / (Settings.FacingTurnRateDegPerS * Dt)));
+		if (TicksToTurn > 1)
+		{
+			const FPlayerAnimFrame& First = Model.Step(In, Dt);
+			const double Moved = std::fabs(std::remainder(First.FacingYawDeg - 180.0, 360.0));
+			CHECK(Moved == Approx(Settings.FacingTurnRateDegPerS * Dt).epsilon(0.01));
+		}
+		for (int I = 0; I < TicksToTurn + 2; ++I)
+		{
+			Model.Step(In, Dt);
+		}
+		const FPlayerAnimFrame& F = Model.GetFrame();
+		CHECK(F.Mode == C.Mode);
+		CHECK(std::remainder(F.FacingYawDeg - C.WantYaw, 360.0) == Approx(0.0).epsilon(1e-6));
+		CHECK(std::remainder(F.DirectionDeg - C.WantDirection, 360.0) == Approx(0.0).epsilon(1e-6));
+		CHECK(F.NetYawDeg == Approx(180.0));
+	}
+
+	// A swing squares the body up again, whatever the gait.
+	FPlayerAnimModel Model(&Settings, &Clips, &Lib);
+	FPlayerAnimInput In;
+	In.TeamSign = 1.0;
+	In.Mode = EMovementMode::Run;
+	In.Velocity = Vec(0.0, Run, 0.0);
+	for (int I = 0; I < 60; ++I)
+	{
+		Model.Step(In, Dt);
+	}
+	CHECK(Model.GetFrame().FacingYawDeg == Approx(90.0));
+	In.Phase = ESwingPhase::Windup;
+	for (int I = 0; I < 60; ++I)
+	{
+		In.PhaseTimeS = I * Dt;
+		Model.Step(In, Dt);
+	}
+	CHECK(Model.GetFrame().FacingYawDeg == Approx(180.0));
+}
+
+TEST_CASE("Anim.Ready: the stance is taller at the net and lower at the back glass (N1)")
+{
+	const FAnimSettings Settings = LoadSettings();
+	const FAnimClipLibrary Clips = LoadClips();
+	const FShotLibrary Lib = LoadLibrary();
+	FPlayerAnimModel Model(&Settings, &Clips, &Lib);
+	FPlayerAnimInput In;
+	In.TeamSign = 1.0;
+	In.bRallyLive = true;
+	// Net players stand taller with the racket up; back-court players stay low to dig balls off the glass.
+	CHECK(Settings.ReadyCrouchAlphaBack > Settings.ReadyCrouchAlphaNet);
+	In.Position = Vec(0.0, 0.0, 0.0);
+	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(Settings.ReadyCrouchAlphaNet));
+	In.Position = Vec(10.0, 0.0, 0.0);
+	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(Settings.ReadyCrouchAlphaBack));
+	// Halfway in between in the middle of the half, about 0.4 (movement doc 2.1).
+	In.Position = Vec(5.0, 0.0, 0.0);
+	const double Mid = Model.Step(In, Dt).CrouchAlpha;
+	CHECK(Mid == Approx(0.5 * (Settings.ReadyCrouchAlphaNet + Settings.ReadyCrouchAlphaBack)));
+	CHECK(Mid == Approx(0.4).epsilon(0.15));
+}
+
+TEST_CASE("Anim.Contact: the forward swing runs over ForwardS with no jump, contact only on the hit tick (N2)")
+{
+	for (const FShotCase& Case : SliceCases())
+	{
+		for (const double Offset : { -0.16, 0.0, 0.13 })
+		{
+			CAPTURE(std::string(Case.Name));
+			CAPTURE(Offset);
+			FAnimRig Rig;
+			FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Case.Start, 7);
+			Rig.Feed(Case.Feed);
+			FAnimPlan Plan = Case.Plan;
+			Plan.OffsetS = Offset;
+			Rig.Play(P, Plan);
+			REQUIRE(Rig.ContactTick >= 0);
+			CheckContactSync(Rig, false);
+			// The forward phase: at least ForwardS of it, and the clip moves on smoothly.
+			int Forward = 0;
+			double Biggest = 0.0;
+			double Last = -1.0;
+			const FTick& C = Rig.Contact();
+			REQUIRE(C.Frame.Clip != nullptr);
+			for (int I = 0; I <= Rig.ContactTick; ++I)
+			{
+				const FTick& T = Rig.Ticks[static_cast<std::size_t>(I)];
+				if (T.Phase == ESwingPhase::Forward || I == Rig.ContactTick)
+				{
+					if (Last >= 0.0)
+					{
+						Biggest = std::max(Biggest, T.Frame.SwingProgress - Last);
+					}
+					Forward += T.Phase == ESwingPhase::Forward ? 1 : 0;
+				}
+				Last = T.Frame.SwingProgress;
+			}
+			const double ForwardS = Rig.Lib.Get(C.Frame.Clip->Shot).ForwardS;
+			CHECK(Forward >= static_cast<int>(ForwardS / Dt) - 1);
+			// No tick moves more than about twice an even share of the forward swing.
+			CHECK(Biggest <= 2.0 * Dt / std::max(ForwardS, Dt) + 0.05);
+		}
+	}
+}
