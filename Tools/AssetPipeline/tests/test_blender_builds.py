@@ -75,18 +75,28 @@ class BlenderBuildTest(unittest.TestCase):
 
     def test_court_matches_courtspec(self) -> None:
         _, solid = self.build("CourtIndoor", "build_court")
-        _, glass = self.build("CourtIndoorGlass", "build_court")
-        # Glass inner faces sit on the playing-area limits; its height is the back glass.
-        self.assertAlmostEqual(glass["bounds_max_m"][0], 10.0 + 0.012, delta=0.002)
-        self.assertAlmostEqual(glass["bounds_max_m"][1], 5.0 + 0.012, delta=0.002)
-        self.assertAlmostEqual(glass["bounds_max_m"][2], 3.0, delta=0.002)
-        self.assertEqual(glass["materials"], ["MI_Court_Glass"])
         self.assertNotIn("MI_Court_Glass", solid["materials"])
         # Floor top at Z = 0, run-off around the court.
         self.assertAlmostEqual(solid["bounds_max_m"][0], 12.0, delta=0.01)
         self.assertLess(solid["bounds_min_m"][2], 0.0)
         for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Net", "MI_Court_Mesh", "MI_Court_Frame"):
             self.assertIn(slot, solid["materials"])
+
+    def test_glass_walls_match_courtspec(self) -> None:
+        asset = self.cat.get("CourtGlass")
+        report, fbx = self.build("CourtGlass", "build_court_glass")
+        self.assertEqual(report["panels"], 18)
+        # Glass from the floor to the 3 m back glass; nothing on the court side of the walls
+        # but the sub-millimetre bolt heads, and the nuts behind the 50 mm posts.
+        self.assertAlmostEqual(fbx["bounds_min_m"][2], 0.0, delta=0.001)
+        self.assertAlmostEqual(fbx["bounds_max_m"][2], 3.0, delta=0.002)
+        outside = 0.012 + 0.003 + 0.05 + 0.0025 + 0.01 + 0.004
+        self.assertAlmostEqual(fbx["bounds_max_m"][0], 10.0 + outside, delta=0.002)
+        self.assertAlmostEqual(fbx["bounds_min_m"][1], -5.0 - outside, delta=0.002)
+        self.assertEqual(fbx["materials"], ["MI_Court_Glass", "MI_Court_GlassBolt", "MI_Court_GlassEdge",
+                                            "MI_Court_GlassGasket"])
+        self.assertLessEqual(report["triangles"], asset.budget_tris)
+        self.assertEqual(fbx["triangles"], report["triangles"])
 
     def test_placeholder_player_is_rigged_for_unreal_and_sized(self) -> None:
         asset = self.cat.get("PlayerPlaceholderA")

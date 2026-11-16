@@ -27,10 +27,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from asset_lib import INCOMING_DIR, RAW_DIR, REPO_ROOT, SOURCE_ART_DIR, UNREAL_DIR  # noqa: E402
-from asset_lib import blender_runner, catalogue, court_spec, manifest, providers, textures  # noqa: E402
+from asset_lib import blender_runner, catalogue, court_spec, glass, manifest, providers, textures  # noqa: E402
 from asset_lib.catalogue import Asset  # noqa: E402
 
-PROCEDURAL_SCRIPTS = {"court": "build_court", "ball": "build_equipment", "racket": "build_equipment",
+PROCEDURAL_SCRIPTS = {"court": "build_court", "court_glass": "build_court_glass", "ball": "build_equipment", "racket": "build_equipment",
                       "character": "build_character"}
 
 
@@ -147,9 +147,11 @@ def cmd_build(args: argparse.Namespace) -> None:
     if unknown:
         raise SystemExit(f"unknown asset id(s): {', '.join(sorted(unknown))}")
     rows: list[dict] = []
-    for tex in textures.generate_all(palette):
+    generated = [(tex, "textures.py") for tex in textures.generate_all(palette)]
+    generated += [(tex, "glass.py") for tex in glass.generate_textures()]
+    for tex, script in generated:
         log(f"texture {_rel(tex)}")
-        rows.append({"path": _rel(tex), "source": "procedural: Tools/AssetPipeline/asset_lib/textures.py",
+        rows.append({"path": _rel(tex), "source": f"procedural: Tools/AssetPipeline/asset_lib/{script}",
                      "licence": "original (this repo)", "notes": "texture"})
     for asset in cat.assets:
         if wanted and asset.id not in wanted:
@@ -232,6 +234,7 @@ def cmd_check(args: argparse.Namespace) -> None:
     cat = catalogue.load()
     catalogue.load_palette()
     court_spec.load()
+    glass.load_config()
     for asset in cat.assets:
         if asset.source == "ai":
             catalogue.render_prompt(asset)

@@ -14,14 +14,14 @@
       "_note": "Floor, lines, frame, mesh, net and lights. Glass is a separate mesh because Nanite does not render translucent materials."
     },
     {
-      "id": "CourtIndoorGlass",
+      "id": "CourtGlass",
       "kind": "static",
       "category": "Court",
       "source": "procedural",
-      "builder": "court",
-      "part": "glass",
+      "builder": "court_glass",
       "nanite": false,
-      "budget_tris": 2000
+      "budget_tris": 28000,
+      "_note": "Tempered glass walls with their bolt fixings (blender/build_court_glass.py, config/glass.json). Not Nanite: Nanite does not render translucent materials."
     },
     {
       "id": "Ball",
