@@ -8,9 +8,9 @@ python3 Tools/AssetPipeline/pipeline.py all
 
 That command does three things:
 
-1. It writes the procedural textures to `SourceArt/Textures/` (the turf ones from `config/court_surface.json`).
+1. It writes the procedural textures to `SourceArt/Textures/` (the turf ones from `config/court_surface.json`, the ball's from `config/ball.json`).
 2. It builds every enabled asset in Blender and exports it to `SourceArt/<Category>/` as FBX in Unreal units, then updates `SourceArt/manifest.csv`.
-3. It runs `unreal/import_assets.py` in the editor. That script builds the master materials and one material instance per palette entry, imports the meshes into `Content/Padel/`, assigns the materials, turns on Nanite and imports the LODs.
+3. It runs `unreal/import_assets.py` in the editor. That script builds the master materials and one material instance per palette entry, imports the meshes into `Content/Padel/`, assigns the materials, turns on Nanite and imports the LODs (skeletal, and the ball's hand-built static LODs).
 
 | Asset | Unreal path | Source |
 |---|---|---|
@@ -19,7 +19,8 @@ That command does three things:
 | `CourtMesh` | `/Game/Padel/Court/SM_CourtMesh` | Blender script (`build_court_frame.py`): one quad per mesh opening; the `WireMesh` material draws the wires. Masked, not Nanite |
 | `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0006](../../docs/decisions/0006-net-and-hit-reaction.md)) |
 | `CourtGlass` | `/Game/Padel/Court/SM_CourtGlass` | Blender script `build_court_glass.py` with `config/glass.json`: 18 tempered panels with arrised edges and their bolt fixings, plus the glass dirt textures. Not Nanite, because Nanite can't render translucent materials. See [0006](../../docs/decisions/0006-court-glass.md) |
-| `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script, 65 mm, felt texture with the seam |
+| `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script (`build_equipment.py`) with `config/ball.json`: 65 mm, Cloth-shaded felt, seam groove, original printed mark, fuzz shell at LOD0, hand-built LOD1 and LOD2. See [0007](../../docs/decisions/0007-ball.md) |
+| `BallTrail` | `/Game/Padel/Equipment/SM_BallTrail` | Blender script: a tapered tube 1 m long along -X, stretched by `APadelBall` at high speed. Translucent |
 | `RacketPlaceholder` | `/Game/Padel/Equipment/SM_RacketPlaceholder` | Blender script, 455 × 260 × 38 mm, perforated face, invented design |
 | `PlayerPlaceholderA`, `PlayerPlaceholderB` | `/Game/Padel/Characters/SK_*` | Blender script, rigged on Unreal mannequin bones, in the team A and team B kits |
 | `VenueHall`, `VenueStands`, `VenueBoards`, `VenueGround` | `/Game/Padel/Venue/SM_*` | Blender script (`build_venue.py`): the indoor hall, stands, perimeter boards and outdoor ground |
@@ -34,6 +35,15 @@ That command does three things:
 - **Posts** are 100 × 50 mm rectangular tube with rounded corners, centred on every glass and mesh joint, their court-side face 15 mm outside the court limit (12 mm glass plus a 3 mm gasket), so the glass bolts land on steel. Each corner is one L-shaped post that backs both the back glass and the side glass. Every post has a plastic cap, a 12 mm base plate with four galvanised anchors, and a rear gusset, all outside the court limit.
 - **Mesh panels** cover exactly the mesh zones of `CourtSpec.h` (`BackWallSurfaceAt`, `SideWallSurfaceAt`), at most 2 m long, each welded into a 30 × 15 mm tube frame flush with the glass inner face and bolted to the posts. Panels taller than 2.5 m get a mid rail at 1.5 m. The exits stay open to full height.
 - **Materials** (`unreal/metal_materials.py`). `M_PadelMetal` is physically based steel: powder coat is a paint (metallic 0), galvanised zinc is a metal (metallic 1), with a tiling orange-peel normal map (`T_PowderCoat_N`, written by `asset_lib/metal_textures.py`) at real scale, slight roughness variation, and dirt near the floor in world space. `M_PadelWireMesh` draws the 4 mm wires on a 50 mm grid analytically from the UVs (one UV unit is one cell) with a box filter sized by the screen-space derivatives. Up close the wires are sharp and round; once a wire is thinner than a pixel it turns into the right amount of partial coverage, which is dithered into the masked opacity and resolved by TSR. That avoids the moire and flicker that a mask texture with mipmaps gives from the broadcast camera, and there are no textures or LODs to manage.
+
+## Ball
+
+`build_equipment.py` builds `SM_Ball` from `config/ball.json`, and `asset_lib/ball_textures.py` writes its textures (tested without Blender in `tests/test_ball.py`):
+
+- **Mesh.** UV spheres with equirectangular UVs (U is the longitude from +X towards +Y, row 0 of every texture is +Z). LOD0 is 64 × 32 plus a fuzz shell 0.6 mm outside; LOD1 and LOD2 are built at 32 × 16 and 16 × 10 rather than decimated, and imported as the mesh's LODs with the catalogue's screen sizes.
+- **Textures.** `T_Ball_Masks` holds the seam as a distance field (R), the dye mottle (G) and the printed mark (B), uncompressed so the seam edge has no steps. `T_Ball_N` is the seam groove. `T_Felt_N` and `T_Felt_Mask` are one tiling patch of felt fibres.
+- **Materials** (`unreal/ball_material.py`). `M_PadelBallFelt` is Cloth-shaded felt with the seam cut from the distance field, never thinner than `min_seam_pixels` on screen so spin stays readable from the broadcast camera. `M_PadelBallFuzz` draws the shell's loose fibres. `M_PadelBallTrail` is the translucent speed trail; `APadelBall` sets its opacity through custom primitive data.
+- **Preview.** `pipeline.py preview-ball out.png` renders three balls on the turf in Cycles with the same textures.
 
 ## Setup
 
@@ -59,6 +69,7 @@ pipeline.py generate Id [Id ...]     # call the AI service and download to Sourc
 pipeline.py preview out.png [--preset IndoorClub] [--camera Broadcast]
                                      # Cycles render lit like the game: a Data/Lighting.json preset
                                      # (candela, lux, kelvin, EV100) from a Data/LookDev.json camera
+pipeline.py preview-ball out.png     # Cycles close-up of the ball: felt, seam, printed mark
 ```
 
 `build` never calls an AI service unless you pass `--generate`. An AI asset that hasn't been generated yet is skipped with a note. Once it has been downloaded, `build` cleans it up again from the saved file at no cost.

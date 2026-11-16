@@ -10,7 +10,7 @@ run it again.
 
   /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid,
                                             and Metal, WireMesh from metal_materials.py); M_PadelGlass is
-                                            built by glass_material.py
+                                            built by glass_material.py, M_PadelBall* by ball_material.py
   /Game/Padel/Materials/MPC_NetReaction     the net hit reaction's parameters (written by UPadelNetReactionSubsystem)
   /Game/Padel/Materials/MI_<Group>_<Name>   one instance per palette entry
   /Game/Padel/Materials/T_*                 textures
@@ -31,7 +31,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
-from asset_lib import SOURCE_ART_DIR, catalogue  # noqa: E402
+from asset_lib import SOURCE_ART_DIR, ball_textures, catalogue  # noqa: E402
+import ball_material  # noqa: E402
 import glass_material  # noqa: E402
 import turf_material  # noqa: E402
 
@@ -113,6 +114,13 @@ def import_textures() -> None:
             # Packed linear data (turf_textures.py), not colour.
             tex.set_editor_property("srgb", False)
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
+        if png.stem.startswith("T_Ball_"):
+            # Equirectangular over the ball: wraps round the equator, clamps at the poles.
+            tex.set_editor_property("address_y", unreal.TextureAddress.TA_CLAMP)
+        if png.stem == "T_Ball_Masks":
+            # R is a distance field the seam edge is cut from: block compression would
+            # quantise it into visible steps along the seam, so keep it uncompressed.
+            tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
         if png.stem.startswith("T_CourtSurface_"):
             # Covers the court once: clamp, or the far edge bleeds into the near one.
             tex.set_editor_property("address_x", unreal.TextureAddress.TA_CLAMP)
@@ -255,6 +263,13 @@ def build_masters() -> None:
 
     glass_material.build(_material("M_PadelGlass"), glass_texture, linear)
 
+    # The ball, its fuzz shell and its speed trail (unreal/ball_material.py).
+    ball_cfg = ball_textures.load_config()
+    ball_radius_mm = catalogue.load().get("Ball").size["diameter_m"] * 500.0
+    ball_material.build_felt(_material("M_PadelBallFelt"), MATERIAL_DIR, ball_cfg, ball_radius_mm, fail)
+    ball_material.build_fuzz(_material("M_PadelBallFuzz"), MATERIAL_DIR, ball_cfg, ball_radius_mm)
+    ball_material.build_trail(_material("M_PadelBallTrail"), fail)
+
     # Masked: welded mesh and the net, cut out by a mask texture. UVs are in
     # metres divided by the cell size (Blender sets them), so one tile = one cell.
     mat = _material("M_PadelMasked")
@@ -309,7 +324,7 @@ def build_masters() -> None:
     MEL.recompile_material(mat)
 
     for name in ("M_PadelOpaque", "M_PadelTurf", "M_PadelGlass", "M_PadelMasked", "M_PadelEmissive",
-                 "M_PadelNet", "M_PadelNetSolid"):
+                 "M_PadelNet", "M_PadelNetSolid", "M_PadelBallFelt", "M_PadelBallFuzz", "M_PadelBallTrail"):
         ASSETS.save_asset(f"{MATERIAL_DIR}/{name}", only_if_is_dirty=False)
     log("master materials built")
 
@@ -351,6 +366,8 @@ def build_instances(palette: dict) -> None:
                 MEL.set_material_instance_vector_parameter_value(mi, "EdgeTint", linear(settings["edge_tint"]))
             if settings["master"] == "Glass":
                 glass_material.apply_instance(mi, settings, linear)
+            if settings["master"].startswith("Ball"):
+                ball_material.apply_instance(mi, settings, linear)
             for key, param in (("mask", "Mask"), ("texture", "BaseTexture"), ("normal", "NormalMap")):
                 if key in settings:
                     tex = unreal.load_asset(f"{MATERIAL_DIR}/{settings[key]}")
@@ -399,7 +416,7 @@ def _delete_unused_imported_materials(folder: str) -> None:
 def _set_nanite(mesh: unreal.StaticMesh, enabled: bool) -> None:
     settings = mesh.get_editor_property("nanite_settings")
     settings.set_editor_property("enabled", enabled)
-    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    subsystem = _static_mesh_editor()
     if hasattr(subsystem, "set_nanite_settings"):
         subsystem.set_nanite_settings(mesh, settings, apply_changes=True)
     else:
@@ -414,6 +431,13 @@ def _set_bounds_extension(mesh: unreal.StaticMesh, metres) -> None:
     extent = unreal.Vector(*(float(m) * 100.0 for m in metres))
     mesh.set_editor_property("positive_bounds_extension", extent)
     mesh.set_editor_property("negative_bounds_extension", extent)
+
+
+def _static_mesh_editor():
+    """The StaticMeshEditorSubsystem, or in the commandlet (where UE 5.8 returns no editor
+    subsystem) the older EditorStaticMeshLibrary, which has the same import_lod and UV calls
+    but no set_lod_screen_sizes."""
+    return unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem) or unreal.EditorStaticMeshLibrary
 
 
 def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
@@ -439,10 +463,36 @@ def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
     mesh.set_editor_property("lod_info", lod_info)
 
 
+def _import_static_lods(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
+    """Hand-built LODs (the ball's spheres) instead of Unreal's automatic reduction, with
+    the catalogue's screen sizes."""
+    subsystem = _static_mesh_editor()
+    for i in range(1, len(asset.lods) + 1):
+        if subsystem.import_lod(mesh, i, str(asset.lod_fbx_path(i))) < 0:
+            # The commandlet's EditorStaticMeshLibrary can't import LODs in UE 5.8: keep LOD0
+            # and Unreal's own reduction rather than failing the whole import.
+            log(f"{asset.asset_name}: LOD{i} not imported in this engine; Unreal reduces LOD0 instead")
+            return
+    sizes = [1.0] + [lod.screen_size for lod in asset.lods]
+    setter = getattr(subsystem, "set_lod_screen_sizes", None)
+    if setter is None:
+        log(f"{asset.asset_name}: no set_lod_screen_sizes in this engine; Unreal picks the LOD screen sizes")
+        return
+    try:
+        mesh.set_editor_property("auto_compute_lod_screen_size", False)
+    except Exception:  # noqa: BLE001 - the property moved between versions; the setter still applies
+        pass
+    if not setter(mesh, sizes):
+        fail(f"{asset.asset_name}: LOD screen sizes {sizes}")
+
+
 def _keep_uv1(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
     """The court surface carries its court-space UVs in channel 1. Lightmap UV
     generation would write over that channel, and Lumen needs no lightmaps."""
     subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    if subsystem is None:
+        log(f"{asset.asset_name}: no StaticMeshEditorSubsystem in the commandlet; UV channels not checked")
+        return
     if hasattr(subsystem, "set_generate_lightmap_uv"):
         subsystem.set_generate_lightmap_uv(mesh, False)
     channels = subsystem.get_num_uv_channels(mesh, 0) if hasattr(subsystem, "get_num_uv_channels") else 2
@@ -468,6 +518,8 @@ def import_mesh(asset: catalogue.Asset) -> None:
             _keep_uv1(asset, mesh)
         _set_nanite(mesh, asset.nanite)
         _set_bounds_extension(mesh, asset.raw.get("bounds_extension_m"))
+        if asset.lods:
+            _import_static_lods(asset, mesh)
     elif asset.lods:
         _import_skeletal_lods(asset, mesh)
     ASSETS.save_loaded_asset(mesh)

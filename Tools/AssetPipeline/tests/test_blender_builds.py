@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from asset_lib import blender_runner, catalogue, court_spec, lighting
+from asset_lib import ball_textures, blender_runner, catalogue, court_spec, lighting
 
 try:
     blender_runner.command(Path("x.py"), Path("job.json"))
@@ -60,10 +60,31 @@ class BlenderBuildTest(unittest.TestCase):
 
     def test_ball_is_65_mm(self) -> None:
         report, fbx = self.build("Ball", "build_equipment")
+        # GDD 2: 65 mm. LOD0 carries the fuzz shell, a fraction of a millimetre outside.
+        shell_m = ball_textures.load_config()["mesh"]["shell_offset_mm"] / 1000.0
         for size in self.extent(fbx):
-            self.assertAlmostEqual(size, 0.065, delta=0.001)
+            self.assertAlmostEqual(size, 0.065 + 2 * shell_m, delta=0.0005)
         self.assertLessEqual(report["triangles"], self.cat.get("Ball").budget_tris)
-        self.assertEqual(fbx["materials"], ["MI_Ball_Felt"])
+        self.assertEqual(fbx["materials"], ["MI_Ball_Felt", "MI_Ball_Fuzz"])
+        # Hand-built LODs: plain spheres (felt only) that shrink with each LOD.
+        lods = report["lod_triangles"]
+        self.assertEqual(len(lods), len(self.cat.get("Ball").lods))
+        self.assertTrue(report["triangles"] > lods[0] > lods[1] > 0)
+        for i in range(1, len(lods) + 1):
+            lod = blender_runner.run("inspect_fbx", {"file": str(self.out / f"SM_Ball_LOD{i}.fbx")})
+            self.assertEqual(lod["materials"], ["MI_Ball_Felt"])
+            for size in self.extent(lod):
+                # A coarse sphere's polygon sits slightly inside the true radius.
+                self.assertAlmostEqual(size, 0.065, delta=0.0015)
+
+    def test_ball_trail_is_a_metre_long_behind_the_origin(self) -> None:
+        report, fbx = self.build("BallTrail", "build_equipment")
+        lo, hi = fbx["bounds_min_m"], fbx["bounds_max_m"]
+        self.assertAlmostEqual(lo[0], -1.0, delta=1e-3)
+        self.assertAlmostEqual(hi[0], 0.0, delta=1e-3)
+        self.assertLessEqual(hi[1] - lo[1], 0.065 + 1e-3)
+        self.assertEqual(fbx["materials"], ["MI_Ball_Trail"])
+        self.assertLessEqual(report["triangles"], self.cat.get("BallTrail").budget_tris)
 
     def test_racket_is_within_the_regulation_size(self) -> None:
         report, fbx = self.build("RacketPlaceholder", "build_equipment")
