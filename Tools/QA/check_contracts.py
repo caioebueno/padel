@@ -8,6 +8,10 @@ Checks (IDs match docs/TEST_PLAN.md section 0):
   G-02  every reason code is mentioned by at least one native test (Tests/Native/)
   G-03  UPadelMatchEvents declares On<Event> for every GDD 3.4 event, with the GDD's
         parameter count
+  G-09  PadelCore calls no libm transcendental (std::sin, std::atan2, std::exp...): their
+        last bit differs between glibc, Apple and MSVC, so it uses PadelMath.h instead
+  G-10  every PadelCore source reaches PadelCoreApi.h through its includes, so the
+        no-FMA / no-reassociation pragmas there apply to all simulation code
   G-08  PadelCore's IMatchEventListener has a virtual On<Event> for every GDD 3.4 event,
         with the GDD's parameter count
   G-04  PadelCore has no global RNG, wall clock, frame time, UObjects or Chaos, and no
@@ -283,6 +287,63 @@ def check_core_rules(root: Path, report: Report) -> None:
     report.ok("G-04/G-05", f"scanned {len(files)} PadelCore files")
 
 
+LIBM_UNSAFE = re.compile(
+    r"(?<![\w.>])(?:std::)?(sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|"
+    r"exp|exp2|expm1|log|log2|log10|log1p|pow|hypot|cbrt|erf|erfc|tgamma|lgamma)[fl]?\s*\("
+)
+PORTABLE_MATH_FILE = "Source/PadelCore/Private/PadelMath.cpp"
+
+
+def check_portable_math(root: Path, report: Report) -> None:
+    for path in source_files(root, "Source/PadelCore"):
+        rel = path.relative_to(root).as_posix()
+        if rel == PORTABLE_MATH_FILE or CORE_UNREAL_ALLOWED.search(rel):
+            continue
+        code = strip_comments_and_strings(path.read_text(encoding="utf-8"))
+        for m in LIBM_UNSAFE.finditer(code):
+            line = code.count("\n", 0, m.start()) + 1
+            report.error("G-09", f"{rel}:{line} calls {m.group(0).rstrip('( ')}: libm rounds differently per platform; "
+                         "use Padel::Math (PadelMath.h)")
+
+
+def check_fp_pragmas_reach(root: Path, report: Report) -> None:
+    core = root / "Source/PadelCore"
+    api = core / "Public/PadelCoreApi.h"
+    if not api.is_file():
+        report.skip("G-10", "PadelCoreApi.h not found")
+        return
+    include_re = re.compile(r'(?m)^\s*#\s*include\s*"([^"]+)"')
+    dirs = [core / "Public", core / "Private"]
+    cache: dict[Path, bool] = {}
+
+    def reaches(path: Path, seen: frozenset[Path]) -> bool:
+        if path == api:
+            return True
+        if path in cache:
+            return cache[path]
+        result = False
+        for name in include_re.findall(path.read_text(encoding="utf-8")):
+            for base in [path.parent] + dirs:
+                target = (base / name).resolve()
+                if target.is_file() and target not in seen:
+                    if reaches(target, seen | {target}):
+                        result = True
+                    break
+            if result:
+                break
+        cache[path] = result
+        return result
+
+    for path in source_files(root, "Source/PadelCore"):
+        rel = path.relative_to(root).as_posix()
+        if CORE_UNREAL_ALLOWED.search(rel):
+            continue
+        resolved = path.resolve()
+        if not reaches(resolved, frozenset({resolved})):
+            report.error("G-10", f"{rel} doesn't include PadelCoreApi.h (directly or through another PadelCore header), "
+                         "so its maths may be contracted to FMA on some compilers")
+
+
 def check_no_chaos_ball(root: Path, report: Report) -> None:
     for path in source_files(root, "Source/Padel"):
         rel = path.relative_to(root).as_posix()
@@ -304,6 +365,8 @@ def run(root: Path) -> Report:
         check_listener(root, events, report)
     check_core_rules(root, report)
     check_no_chaos_ball(root, report)
+    check_portable_math(root, report)
+    check_fp_pragmas_reach(root, report)
     return report
 
 

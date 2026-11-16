@@ -8,6 +8,9 @@
 
 #pragma once
 
+// Determinism pragmas (no FMA contraction) for the inline maths below; see PadelCoreApi.h.
+#include "PadelCoreApi.h"
+
 #include "AI/AiMath.h"
 
 namespace Padel::AI::TeamFrame

@@ -1,4 +1,5 @@
 #include "LaunchSolver.h"
+#include "PadelMath.h"
 
 #include <algorithm>
 #include <cmath>
@@ -64,7 +65,7 @@ namespace Padel
 
 		FVec3 Horizontal(double Yaw)
 		{
-			return { std::cos(Yaw), std::sin(Yaw), 0.0 };
+			return { Padel::Math::Cos(Yaw), Padel::Math::Sin(Yaw), 0.0 };
 		}
 	}
 
@@ -85,7 +86,7 @@ namespace Padel
 		const double Distance = std::max(SizeXY(ToTarget), 0.01);
 		const FVec3 Dir0 = SafeNormal(ToTarget);
 		const FVec3 Perp0 = Cross(UpVector, Dir0);
-		const double BaseYaw = std::atan2(Dir0.Y, Dir0.X);
+		const double BaseYaw = Padel::Math::Atan2(Dir0.Y, Dir0.X);
 		const double G = P.Gravity;
 		const double Rise = BallRadius - Origin.Z;
 
@@ -142,7 +143,7 @@ namespace Padel
 		const double Speed = std::max(Request.Speed, 0.1);
 		auto VelocityAt = [&](double Elevation)
 		{
-			return Horizontal(Yaw) * (Speed * std::cos(Elevation)) + UpVector * (Speed * std::sin(Elevation));
+			return Horizontal(Yaw) * (Speed * Padel::Math::Cos(Elevation)) + UpVector * (Speed * Padel::Math::Sin(Elevation));
 		};
 		double Low = -1.3;
 		double High = 0.75;
@@ -161,7 +162,7 @@ namespace Padel
 		// Start from the drag-free angle, which is usually within a few degrees.
 		const double V2 = Speed * Speed;
 		const double Disc = V2 * V2 - G * (G * Distance * Distance + 2.0 * Rise * V2);
-		double Elevation = Disc >= 0.0 ? std::atan((V2 - std::sqrt(Disc)) / (G * Distance)) : 0.5 * (Low + High);
+		double Elevation = Disc >= 0.0 ? Padel::Math::Atan((V2 - std::sqrt(Disc)) / (G * Distance)) : 0.5 * (Low + High);
 		Elevation = std::clamp(Elevation, Low, High);
 		int Side = 0;
 		for (int Iteration = 0; Iteration < 30 && Best.Miss > Tolerance * 0.5; ++Iteration)
