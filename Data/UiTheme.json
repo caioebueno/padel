@@ -61,7 +61,8 @@
 		"ReduceMotionFade": 0.16,
 		"ToastSeconds": 2.5, "ToastFade": 0.2,
 		"HintFlash": 0.12,
-		"StatsSetStagger": 0.12, "StatsBarGrow": 0.4
+		"StatsSetStagger": 0.12, "StatsBarGrow": 0.4,
+		"BadgeSwap": 0.16, "VsScaleFrom": 1.2, "VsScale": 0.2, "LoadingLoop": 0.6, "LoadingBounce": 12
 	},
 	"Input": {
 		"EntryLock": 0.12,
