@@ -30,4 +30,20 @@ namespace Padel::Ui
 	// ("Gamepad_FaceButton_Bottom", PlayStation) -> "Cross". Returns "" for a key that
 	// isn't a known gamepad key, so the caller can fall back to the engine's key name.
 	std::string GamepadKeyLabel(std::string_view KeyName, EPadFamily Family);
+
+	// How a glyph draws a pad key (spec 4.5, board "Controls7"): face buttons and sticks
+	// are circles, shoulders, triggers and the menu buttons are rounded caps that fit
+	// their label, and the D-pad is a drawn cross with the pressed arm marked.
+	enum class EGlyphShape
+	{
+		Circle,
+		Cap,
+		DPad,
+	};
+
+	EGlyphShape PadKeyShape(std::string_view KeyName);
+
+	// The short text inside a pad key's glyph: "A", "LB", "Menu", "LS" for the left stick.
+	// Empty for the D-pad (drawn) and for unknown keys.
+	std::string PadKeyGlyphText(std::string_view KeyName, EPadFamily Family);
 }
