@@ -42,8 +42,10 @@ namespace
 	constexpr float PlayerCardStrapSmall = 72.0f;
 	constexpr float PlayerCardBand = 72.0f;           // the Overall band
 	constexpr float PlayerCardPortraitX = 24.0f;
-	constexpr FVector2D PlayerCardPortraitSize{200.0f, 280.0f};
-	constexpr FVector2D PlayerCardOutlinePos{20.0f, 16.0f};
+	constexpr float PlayerCardPortraitW = 200.0f;
+	constexpr float PlayerCardPortraitH = 280.0f;
+	constexpr float PlayerCardOutlineX = 20.0f;
+	constexpr float PlayerCardOutlineY = 16.0f;
 	constexpr float PlayerCardOutlineStroke = 2.0f;
 	constexpr float PlayerCardOutlineAlpha = 0.08f;
 	constexpr float PlayerCardProfileX = 216.0f;
@@ -218,10 +220,10 @@ void UPadelPlayerCard::BuildLarge(UCanvasPanel* Canvas)
 	OutlineFont.OutlineSettings.bSeparateFillAlpha = true;
 	TeamOutline->SetFont(OutlineFont);
 	TeamOutline->SetColorAndOpacity(FSlateColor(FLinearColor::Transparent));
-	PlayerCardPlace(Canvas, TeamOutline, PlayerCardOutlinePos.X, PlayerCardOutlinePos.Y, 0.0f, 0.0f);
+	PlayerCardPlace(Canvas, TeamOutline, PlayerCardOutlineX, PlayerCardOutlineY, 0.0f, 0.0f);
 
 	Portrait = WidgetTree->ConstructWidget<UPadelSilhouette>(UPadelSilhouette::StaticClass());
-	PlayerCardPlace(Canvas, Portrait, PlayerCardPortraitX, 0.0f, PlayerCardPortraitSize.X, PlayerCardPortraitSize.Y);
+	PlayerCardPlace(Canvas, Portrait, PlayerCardPortraitX, 0.0f, PlayerCardPortraitW, PlayerCardPortraitH);
 
 	// The profile line, in words. At Text size Largest it shrinks to stay above the strap.
 	ProfileText = MakeTokenText(FText::GetEmpty(), EUiType::BodySmall, EUiColour::TextSecondary);
