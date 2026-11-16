@@ -6,16 +6,20 @@
 #include "PadelNameStrap.generated.h"
 
 class UBorder;
+class UHorizontalBox;
 class UImage;
 class UPadelBadge;
 class USizeBox;
 class UTextBlock;
+class UVerticalBox;
 
 /**
  * The broadcast name strap on top of a player card (spec 6.6): the full card width in the
- * team colour at 0.9, a 4 px white top edge, the first name (Type.Label) over the surname
- * (Type.Title), both in OnAccent, and an optional You / Partner badge top right. 96 px on
- * the large card, 72 px on the small one. Our own lower-third look, not a trading card.
+ * team colour at 0.9, a 4 px white top edge, the first name (Type.Label) and the surname
+ * (Type.Title), both in OnAccent, and an optional You / Partner badge on the right. The
+ * large card's strap is 96 px with the first name over the surname; the small card's is
+ * 72 px with them side by side (design board "PlayerCard"). Our own lower-third look, not
+ * a trading card.
  */
 UCLASS()
 class PADEL_API UPadelNameStrap : public UPadelWidgetBase
@@ -27,6 +31,8 @@ public:
 	void SetCompact(bool bInCompact);
 	/** Shows a badge in the top-right corner; bShow false hides it. */
 	void SetBadge(bool bShow, EPadelBadgeKind InKind = EPadelBadgeKind::You);
+	/** The badge's opacity, for the card's You / Partner cross-fade (spec 7.3). */
+	void SetBadgeOpacity(float Opacity);
 
 	FString GetSurnameText() const;
 	bool IsBadgeShown() const { return bShowBadge; }
@@ -50,6 +56,13 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UBorder> Band;
+
+	/** The large strap stacks the names; the compact one lines them up. */
+	UPROPERTY()
+	TObjectPtr<UVerticalBox> StackedNames;
+
+	UPROPERTY()
+	TObjectPtr<UHorizontalBox> InlineNames;
 
 	UPROPERTY()
 	TObjectPtr<UTextBlock> FirstText;
