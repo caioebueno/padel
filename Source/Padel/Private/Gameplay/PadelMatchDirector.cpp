@@ -4,7 +4,6 @@
 #include "AI/PadelPartnerCommands.h"
 #include "Animation/PadelPlayerAnimComponent.h"
 #include "BallState.h"
-#include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
 #include "Gameplay/PadelPlayerController.h"
@@ -14,18 +13,16 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "PadelLog.h"
+#include "Presentation/PadelBall.h"
 #include "Presentation/PadelMatchEvents.h"
 #include "UI/Model/PadelUiCoreAdapter.h"
 #include "UI/PadelHUD.h"
-#include "UObject/ConstructorHelpers.h"
 
 #include <optional>
 #include <string>
 
 namespace PadelMatchDirectorDetail
 {
-	// Engine sphere is 100 cm across; the ball is 6.5 cm (GDD 2).
-	constexpr double BallMeshScale = Padel::BallRadius * 2.0;
 	// A long hitch runs at most this many fixed ticks in one frame, then drops the
 	// backlog rather than spiral (same rule as the practice director).
 	constexpr int32 MaxTicksPerFrame = 12;
@@ -71,29 +68,26 @@ APadelMatchDirector::APadelMatchDirector()
 	// GDD 6.4: the four slice players, ids as in the match (0, 1 Team A; 2, 3 Team B).
 	PlayerRows = { FName(TEXT("selva_arunde")), FName(TEXT("mikko_ventara")), FName(TEXT("ilan_corvisa")),
 		FName(TEXT("ruben_halvaro")) };
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	BallMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Ball"));
-	BallMesh->SetupAttachment(RootComponent);
-	BallMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BallMesh->SetCastShadow(true);
-	if (Sphere.Succeeded())
-	{
-		BallMesh->SetStaticMesh(Sphere.Object);
-		BallMesh->SetWorldScale3D(FVector(PadelMatchDirectorDetail::BallMeshScale));
-	}
-	BallMesh->SetVisibility(false);
 }
 
 void APadelMatchDirector::BeginPlay()
 {
 	Super::BeginPlay();
 	LoadData();
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	BallView = GetWorld()->SpawnActor<APadelBall>(APadelBall::StaticClass(), FTransform::Identity, Params);
 }
 
 void APadelMatchDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	CloseMatch();
+	if (BallView)
+	{
+		BallView->Destroy();
+		BallView = nullptr;
+	}
 	if (BoundHud)
 	{
 		BoundHud->OnMatchRequested.RemoveAll(this);
@@ -250,7 +244,10 @@ void APadelMatchDirector::CloseMatch()
 	Runner.Reset();
 	Match.Reset();
 	DestroyPawns();
-	BallMesh->SetVisibility(false);
+	if (BallView)
+	{
+		BallView->Hide();
+	}
 	HumanPlayerId = -1;
 }
 
@@ -275,7 +272,7 @@ void APadelMatchDirector::SpawnPawns()
 		Pawns[Id] = World->SpawnActor<APadelPlayerPawn>(APadelPlayerPawn::StaticClass(), FTransform::Identity, Params);
 		if (Pawns[Id])
 		{
-			Pawns[Id]->InitAnimation(&ShotData.Library, Padel::TeamIndex(Padel::TeamOfPlayer(Id)));
+			Pawns[Id]->InitAnimation(&ShotData.Library, Padel::TeamIndex(Padel::TeamOfPlayer(Id)), PlayerRows[Id]);
 		}
 	}
 
@@ -386,10 +383,9 @@ void APadelMatchDirector::SyncView()
 	// The ball the players see: the server's toss while the match holds the ball, the
 	// match ball during the rally.
 	const Padel::Shots::FBallView Ball = Runner->Ball().Current();
-	BallMesh->SetVisibility(Ball.bLive);
-	if (Ball.bLive)
+	if (BallView)
 	{
-		BallMesh->SetWorldLocation(Padel::ToWorld(Ball.Position));
+		BallView->Present(Ball.Position, Ball.Velocity, Ball.Spin, Ball.bLive);
 	}
 }
 

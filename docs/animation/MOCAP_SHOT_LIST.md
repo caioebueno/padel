@@ -31,6 +31,8 @@ Long, continuous takes are better than short loops for Motion Matching. About 2 
 
 ## Swings
 
+What each body should do in these takes (phases, contact points, racket path, early and late versions), plus the extra height variants, off-the-glass takes and post-slice strokes, is in [`BIOMECHANICS_SHOTS.md`](BIOMECHANICS_SHOTS.md) section 6.
+
 Three versions each: **early** (contact well in front, racket comes across the body), **perfect** (contact at the ideal point, about 0.8 m to the side and 0.3 m in front), **late** (contact beside or behind the body, racket pushed). Five good takes per version, so the best can be picked.
 
 | Shot | Sides | Takes | What to capture |

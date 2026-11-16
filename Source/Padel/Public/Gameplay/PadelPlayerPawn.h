@@ -39,10 +39,13 @@ public:
 	 */
 	void ShowController(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FPlayerRatings& Ratings);
 
-	/** Creates the shot controller. The pointers must outlive the pawn. */
+	/**
+	 * Creates the shot controller. The pointers must outlive the pawn. PlayerKey is the
+	 * player's row in Players.json, which picks the player's MetaHuman (Data/PlayerBodies.json).
+	 */
 	void InitShots(int32 PlayerId, double TeamSign, const Padel::Shots::FPlayerRatings* Ratings,
 		const Padel::Shots::FShotLibrary* Library, const Padel::Shots::FMovementTuning* Movement,
-		const Padel::Court::FVec3& StartMetres, uint64 Seed);
+		const Padel::Court::FVec3& StartMetres, uint64 Seed, FName PlayerKey = NAME_None);
 
 	/** This tick's input, in the team-relative frame the controller expects. */
 	Padel::Shots::FPlayerInputFrame SampleInput() const;
@@ -61,7 +64,7 @@ public:
 	 * StepAnimation with that controller and its events. Don't cache the controller: the
 	 * runner rebuilds them at a change of ends.
 	 */
-	void InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex);
+	void InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex, FName PlayerKey = NAME_None);
 	void StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
 
 	/** Applies the latest animation frame; SyncFromSimulation does this for the pawn's own controller. */

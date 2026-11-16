@@ -13,7 +13,10 @@
 		"BackswingUpM": 1.0,
 		"FollowRightM": -0.7,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "drive_fore_perfect",
@@ -29,7 +32,10 @@
 		"BackswingUpM": 1.0,
 		"FollowRightM": -0.5,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "drive_fore_late",
@@ -45,7 +51,10 @@
 		"BackswingUpM": 1.0,
 		"FollowRightM": -0.3,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "drive_back_early",
@@ -61,7 +70,10 @@
 		"BackswingUpM": 1.0,
 		"FollowRightM": -0.7,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "drive_back_perfect",
@@ -77,7 +89,10 @@
 		"BackswingUpM": 1.0,
 		"FollowRightM": -0.5,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "drive_back_late",
@@ -93,7 +108,10 @@
 		"BackswingUpM": 1.0,
 		"FollowRightM": -0.3,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "volley_fore_early",
@@ -109,7 +127,10 @@
 		"BackswingUpM": 1.2,
 		"FollowRightM": -0.1,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 1.1
+		"FollowUpM": 1.1,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "volley_fore_perfect",
@@ -125,7 +146,10 @@
 		"BackswingUpM": 1.2,
 		"FollowRightM": 0.1,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 1.1
+		"FollowUpM": 1.1,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "volley_fore_late",
@@ -141,7 +165,10 @@
 		"BackswingUpM": 1.2,
 		"FollowRightM": 0.3,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 1.1
+		"FollowUpM": 1.1,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "volley_back_early",
@@ -157,7 +184,10 @@
 		"BackswingUpM": 1.2,
 		"FollowRightM": -0.1,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 1.1
+		"FollowUpM": 1.1,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "volley_back_perfect",
@@ -173,7 +203,10 @@
 		"BackswingUpM": 1.2,
 		"FollowRightM": 0.1,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 1.1
+		"FollowUpM": 1.1,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "volley_back_late",
@@ -189,7 +222,10 @@
 		"BackswingUpM": 1.2,
 		"FollowRightM": 0.3,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 1.1
+		"FollowUpM": 1.1,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "lob_fore_early",
@@ -205,7 +241,10 @@
 		"BackswingUpM": 0.5,
 		"FollowRightM": -0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 2.0
+		"FollowUpM": 2.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "lob_fore_perfect",
@@ -221,7 +260,10 @@
 		"BackswingUpM": 0.5,
 		"FollowRightM": 0.0,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 2.0
+		"FollowUpM": 2.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "lob_fore_late",
@@ -237,7 +279,10 @@
 		"BackswingUpM": 0.5,
 		"FollowRightM": 0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 2.0
+		"FollowUpM": 2.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "lob_back_early",
@@ -253,7 +298,10 @@
 		"BackswingUpM": 0.5,
 		"FollowRightM": -0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 2.0
+		"FollowUpM": 2.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "lob_back_perfect",
@@ -269,7 +317,10 @@
 		"BackswingUpM": 0.5,
 		"FollowRightM": 0.0,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 2.0
+		"FollowUpM": 2.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "lob_back_late",
@@ -285,7 +336,10 @@
 		"BackswingUpM": 0.5,
 		"FollowRightM": 0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 2.0
+		"FollowUpM": 2.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "bandeja_fore_early",
@@ -301,7 +355,10 @@
 		"BackswingUpM": 2.1,
 		"FollowRightM": -0.6,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.0
+		"FollowUpM": 1.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "bandeja_fore_perfect",
@@ -317,7 +374,10 @@
 		"BackswingUpM": 2.1,
 		"FollowRightM": -0.4,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.0
+		"FollowUpM": 1.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "bandeja_fore_late",
@@ -333,7 +393,10 @@
 		"BackswingUpM": 2.1,
 		"FollowRightM": -0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.0
+		"FollowUpM": 1.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "bandeja_back_early",
@@ -349,7 +412,10 @@
 		"BackswingUpM": 2.1,
 		"FollowRightM": -0.6,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.0
+		"FollowUpM": 1.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "bandeja_back_perfect",
@@ -365,7 +431,10 @@
 		"BackswingUpM": 2.1,
 		"FollowRightM": -0.4,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.0
+		"FollowUpM": 1.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "bandeja_back_late",
@@ -381,7 +450,10 @@
 		"BackswingUpM": 2.1,
 		"FollowRightM": -0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.0
+		"FollowUpM": 1.0,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "vibora_fore_early",
@@ -397,7 +469,10 @@
 		"BackswingUpM": 2.2,
 		"FollowRightM": -0.8,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 0.8
+		"FollowUpM": 0.8,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "vibora_fore_perfect",
@@ -413,7 +488,10 @@
 		"BackswingUpM": 2.2,
 		"FollowRightM": -0.6,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 0.8
+		"FollowUpM": 0.8,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "vibora_fore_late",
@@ -429,7 +507,10 @@
 		"BackswingUpM": 2.2,
 		"FollowRightM": -0.4,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 0.8
+		"FollowUpM": 0.8,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "smash_fore_early",
@@ -445,7 +526,10 @@
 		"BackswingUpM": 2.3,
 		"FollowRightM": -0.5,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.6
+		"FollowUpM": 0.6,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "smash_fore_perfect",
@@ -461,7 +545,10 @@
 		"BackswingUpM": 2.3,
 		"FollowRightM": -0.3,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.6
+		"FollowUpM": 0.6,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "smash_fore_late",
@@ -477,7 +564,10 @@
 		"BackswingUpM": 2.3,
 		"FollowRightM": -0.1,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.6
+		"FollowUpM": 0.6,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "chiquita_fore_early",
@@ -493,7 +583,10 @@
 		"BackswingUpM": 0.6,
 		"FollowRightM": 0.0,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.9
+		"FollowUpM": 0.9,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "chiquita_fore_perfect",
@@ -509,7 +602,10 @@
 		"BackswingUpM": 0.6,
 		"FollowRightM": 0.2,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.9
+		"FollowUpM": 0.9,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "chiquita_fore_late",
@@ -525,7 +621,10 @@
 		"BackswingUpM": 0.6,
 		"FollowRightM": 0.4,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.9
+		"FollowUpM": 0.9,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "chiquita_back_early",
@@ -541,7 +640,10 @@
 		"BackswingUpM": 0.6,
 		"FollowRightM": 0.0,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.9
+		"FollowUpM": 0.9,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "chiquita_back_perfect",
@@ -557,7 +659,10 @@
 		"BackswingUpM": 0.6,
 		"FollowRightM": 0.2,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.9
+		"FollowUpM": 0.9,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "chiquita_back_late",
@@ -573,7 +678,10 @@
 		"BackswingUpM": 0.6,
 		"FollowRightM": 0.4,
 		"FollowForwardM": 0.6,
-		"FollowUpM": 0.9
+		"FollowUpM": 0.9,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "serve_flat_fore_early",
@@ -589,7 +697,10 @@
 		"BackswingUpM": 0.9,
 		"FollowRightM": -0.6,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "serve_flat_fore_perfect",
@@ -605,7 +716,10 @@
 		"BackswingUpM": 0.9,
 		"FollowRightM": -0.4,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "serve_flat_fore_late",
@@ -621,7 +735,10 @@
 		"BackswingUpM": 0.9,
 		"FollowRightM": -0.2,
 		"FollowForwardM": 0.5,
-		"FollowUpM": 1.4
+		"FollowUpM": 1.4,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "serve_kick_fore_early",
@@ -637,7 +754,10 @@
 		"BackswingUpM": 0.8,
 		"FollowRightM": -0.5,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.7
+		"FollowUpM": 1.7,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "serve_kick_fore_perfect",
@@ -653,7 +773,10 @@
 		"BackswingUpM": 0.8,
 		"FollowRightM": -0.3,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.7
+		"FollowUpM": 1.7,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	},
 	{
 		"Name": "serve_kick_fore_late",
@@ -669,6 +792,9 @@
 		"BackswingUpM": 0.8,
 		"FollowRightM": -0.1,
 		"FollowForwardM": 0.4,
-		"FollowUpM": 1.7
+		"FollowUpM": 1.7,
+		"ContactRightM": 0.0,
+		"ContactForwardM": 0.0,
+		"ContactUpM": 0.0
 	}
 ]

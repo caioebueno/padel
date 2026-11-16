@@ -20,10 +20,16 @@ Padel::Shots::FShotParams FPadelShotRow::ToCore(Padel::EShotType Type) const
 	P.ContactHeightMinM = ContactHeightMinM;
 	P.ContactHeightMaxM = ContactHeightMaxM;
 	P.PreferredContactHeightM = PreferredContactHeightM;
+	P.ContactHeightPerBodyHeight = ContactHeightPerBodyHeight;
+	P.IdealContactSideM = IdealContactSideM;
+	P.IdealContactForwardM = IdealContactForwardM;
+	P.IdealContactSideBackM = IdealContactSideBackM;
+	P.IdealContactForwardBackM = IdealContactForwardBackM;
 	P.DepthShortM = DepthShortM;
 	P.DepthDeepM = DepthDeepM;
 	P.DepthNeutralM = DepthNeutralM;
 	P.LateralMaxM = LateralMaxM;
+	P.ForwardS = ForwardS;
 	P.FollowThroughS = FollowThroughS;
 	P.RecoveryS = RecoveryS;
 	P.SwingMoveMult = SwingMoveMult;

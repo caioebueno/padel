@@ -1,8 +1,7 @@
 path,source,licence,notes
 SourceArt/Textures/T_NetGrid_Mask.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
-SourceArt/Textures/T_Ball_Felt.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
-SourceArt/Equipment/SM_Ball.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 720 tris; Unreal: /Game/Padel/Equipment/SM_Ball"
-SourceArt/Equipment/SM_RacketPlaceholder.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 4150 tris; Unreal: /Game/Padel/Equipment/SM_RacketPlaceholder"
+SourceArt/Equipment/SM_Ball.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 6176 tris, LODs [960, 288]; Unreal: /Game/Padel/Equipment/SM_Ball"
+SourceArt/Equipment/SM_RacketPlaceholder.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 4154 tris; Unreal: /Game/Padel/Equipment/SM_RacketPlaceholder"
 SourceArt/Characters/SK_PlayerPlaceholderA.fbx,procedural: Tools/AssetPipeline/blender/build_character.py,original (this repo),"skeletal mesh, 3040 tris, LODs [1520, 607]; Unreal: /Game/Padel/Characters/SK_PlayerPlaceholderA"
 SourceArt/Characters/SK_PlayerPlaceholderA_LOD1.fbx,procedural: Tools/AssetPipeline/blender/build_character.py,original (this repo),LOD1 of SK_PlayerPlaceholderA
 SourceArt/Characters/SK_PlayerPlaceholderA_LOD2.fbx,procedural: Tools/AssetPipeline/blender/build_character.py,original (this repo),LOD2 of SK_PlayerPlaceholderA
@@ -23,3 +22,16 @@ SourceArt/Court/SM_CourtSurface.fbx,procedural: Tools/AssetPipeline/blender/buil
 SourceArt/Textures/T_PowderCoat_N.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
 SourceArt/Court/SM_CourtFrame.fbx,procedural: Tools/AssetPipeline/blender/build_court_frame.py,original (this repo),"static mesh, 40336 tris; Unreal: /Game/Padel/Court/SM_CourtFrame"
 SourceArt/Court/SM_CourtMesh.fbx,procedural: Tools/AssetPipeline/blender/build_court_frame.py,original (this repo),"static mesh, 68 tris; Unreal: /Game/Padel/Court/SM_CourtMesh"
+SourceArt/Textures/T_NetGrid_Normal.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
+SourceArt/Textures/T_Glass_Smudge_Mask.png,procedural: Tools/AssetPipeline/asset_lib/glass.py,original (this repo),texture
+SourceArt/Textures/T_Glass_BallMarks_Mask.png,procedural: Tools/AssetPipeline/asset_lib/glass.py,original (this repo),texture
+SourceArt/Textures/T_Glass_RollerWave_N.png,procedural: Tools/AssetPipeline/asset_lib/glass.py,original (this repo),texture
+SourceArt/Court/SM_CourtGlass.fbx,procedural: Tools/AssetPipeline/blender/build_court_glass.py,original (this repo),"static mesh, 25208 tris; Unreal: /Game/Padel/Court/SM_CourtGlass"
+SourceArt/Court/SM_CourtNet.fbx,procedural: Tools/AssetPipeline/blender/build_net.py,original (this repo),"static mesh, 11284 tris; Unreal: /Game/Padel/Court/SM_CourtNet"
+SourceArt/Textures/T_Ball_Masks.png,procedural: Tools/AssetPipeline/asset_lib/ball_textures.py (config/ball.json),original (this repo),texture
+SourceArt/Textures/T_Ball_N.png,procedural: Tools/AssetPipeline/asset_lib/ball_textures.py (config/ball.json),original (this repo),texture
+SourceArt/Textures/T_Felt_N.png,procedural: Tools/AssetPipeline/asset_lib/ball_textures.py (config/ball.json),original (this repo),texture
+SourceArt/Textures/T_Felt_Mask.png,procedural: Tools/AssetPipeline/asset_lib/ball_textures.py (config/ball.json),original (this repo),texture
+SourceArt/Equipment/SM_Ball_LOD1.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),LOD1 of SM_Ball
+SourceArt/Equipment/SM_Ball_LOD2.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),LOD2 of SM_Ball
+SourceArt/Equipment/SM_BallTrail.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 240 tris; Unreal: /Game/Padel/Equipment/SM_BallTrail"

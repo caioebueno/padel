@@ -16,5 +16,6 @@ bool FPadelAnimClipRow::ToCore(FName RowName, Padel::Animation::FAnimClip& Out, 
 	Out.EndS = EndS;
 	Out.Backswing = { BackswingRightM, BackswingForwardM, BackswingUpM };
 	Out.Follow = { FollowRightM, FollowForwardM, FollowUpM };
+	Out.Contact = { ContactRightM, ContactForwardM, ContactUpM };
 	return true;
 }

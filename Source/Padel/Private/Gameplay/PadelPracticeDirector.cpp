@@ -1,6 +1,5 @@
 #include "Gameplay/PadelPracticeDirector.h"
 
-#include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
@@ -10,7 +9,7 @@
 #include "Gameplay/PadelShotUnits.h"
 #include "Kismet/GameplayStatics.h"
 #include "PadelLog.h"
-#include "UObject/ConstructorHelpers.h"
+#include "Presentation/PadelBall.h"
 
 namespace PadelPracticeDirectorDetail
 {
@@ -19,8 +18,6 @@ namespace PadelPracticeDirectorDetail
 	constexpr double HumanTeamSign = 1.0;
 	// Start spot in metres: a placement, not tuning.
 	const Padel::Court::FVec3 HumanStart{ 8.5, -1.5, 0.0 };
-	// Engine sphere is 100 cm across; the ball is 6.5 cm (GDD 2).
-	constexpr double BallMeshScale = 0.065;
 	// The machine stands in for the opponents' hit, so it seeds that stream differently.
 	constexpr uint64 MachineSeedSalt = 0x9E3779B97F4A7C15ull;
 }
@@ -29,23 +26,16 @@ APadelPracticeDirector::APadelPracticeDirector()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> Sphere(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-	BallMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Ball"));
-	BallMesh->SetupAttachment(RootComponent);
-	BallMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BallMesh->SetCastShadow(true);
-	if (Sphere.Succeeded())
-	{
-		BallMesh->SetStaticMesh(Sphere.Object);
-		BallMesh->SetWorldScale3D(FVector(PadelPracticeDirectorDetail::BallMeshScale));
-	}
-	BallMesh->SetVisibility(false);
 }
 
 void APadelPracticeDirector::BeginPlay()
 {
 	Super::BeginPlay();
+
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	BallView = GetWorld()->SpawnActor<APadelBall>(APadelBall::StaticClass(), FTransform::Identity, Params);
 
 	Data = FPadelShotData::Load();
 	if (!Data.bOk || !FPadelShotData::LoadPlayer(PlayerRow, Ratings))
@@ -57,6 +47,16 @@ void APadelPracticeDirector::BeginPlay()
 	Ball = MakeUnique<Padel::Shots::FPracticeBall>(&Data.PracticeBall);
 	Machine = MakeUnique<Padel::Shots::FBallMachine>(Data.Feeds, PadelPracticeDirectorDetail::HumanTeamSign,
 		static_cast<uint64>(Seed) ^ PadelPracticeDirectorDetail::MachineSeedSalt);
+}
+
+void APadelPracticeDirector::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (BallView)
+	{
+		BallView->Destroy();
+		BallView = nullptr;
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 void APadelPracticeDirector::SpawnAndPossessPlayer()
@@ -71,7 +71,7 @@ void APadelPracticeDirector::SpawnAndPossessPlayer()
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	PlayerPawn = GetWorld()->SpawnActor<APadelPlayerPawn>(APadelPlayerPawn::StaticClass(), FTransform::Identity, Params);
-	PlayerPawn->InitShots(HumanPlayerId, HumanTeamSign, &Ratings, &Data.Library, &Data.Movement, HumanStart, static_cast<uint64>(Seed));
+	PlayerPawn->InitShots(HumanPlayerId, HumanTeamSign, &Ratings, &Data.Library, &Data.Movement, HumanStart, static_cast<uint64>(Seed), PlayerRow);
 
 	// Keep the broadcast camera (GDD 9) instead of switching the view to the pawn.
 	AActor* Camera = PC->GetViewTarget();
@@ -132,8 +132,12 @@ void APadelPracticeDirector::Tick(float DeltaSeconds)
 	}
 
 	PlayerPawn->SyncFromSimulation();
-	BallMesh->SetVisibility(Ball->IsLive() || !Ball->IsDone());
-	BallMesh->SetWorldLocation(Padel::ToWorld(Ball->GetPosition()));
+	if (BallView)
+	{
+		// The stand-in practice ball models no spin (FBallView::Spin is zero).
+		const Padel::Shots::FBallView View = Ball->Current();
+		BallView->Present(View.Position, View.Velocity, View.Spin, Ball->IsLive() || !Ball->IsDone());
+	}
 	DebugInfo.Drill = UTF8_TO_TCHAR(Machine->GetDrill().c_str());
 	DebugInfo.bMachinePaused = Machine->IsPaused();
 	DrawDebug();

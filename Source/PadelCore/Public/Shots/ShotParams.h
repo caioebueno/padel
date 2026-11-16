@@ -45,6 +45,16 @@ namespace Padel::Shots
 		double ContactHeightMinM = 0.0;
 		double ContactHeightMaxM = 0.0;
 		double PreferredContactHeightM = 0.0;
+		// GDD 5.2: preferred and max height scale by 1 + this * (HeightM / 1.82 - 1);
+		// 0 = the same for every body (BIOMECHANICS_SHOTS 5).
+		double ContactHeightPerBodyHeight = 0.0;
+		// GDD 5.2: the ideal contact point for this shot, beside (toward the hitting side)
+		// and in front of the player, on the forehand and on the backhand. ShotModel's
+		// IdealContactSideM / ForwardM stay the generic point for code that has no shot yet.
+		double IdealContactSideM = 0.0;
+		double IdealContactForwardM = 0.0;
+		double IdealContactSideBackM = 0.0;
+		double IdealContactForwardBackM = 0.0;
 
 		// Aim, in metres from the net on the opponents' half (GDD 7).
 		double DepthShortM = 0.0;
@@ -54,6 +64,8 @@ namespace Padel::Shots
 		// Furthest across from the centre line (for serves, from the box centre).
 		double LateralMaxM = 0.0;
 
+		// GDD 5.1: the forward swing, from the release to contact; 0 = contact at the release.
+		double ForwardS = 0.0;
 		// Swing phases after contact, for animation sync (docs/decisions/0004-shot-system.md).
 		double FollowThroughS = 0.0;
 		double RecoveryS = 0.0;

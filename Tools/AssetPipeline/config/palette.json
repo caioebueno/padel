@@ -202,12 +202,31 @@
   },
   "ball": {
     "Felt": {
-      "master": "Opaque",
-      "color": "#e8ff1f",
-      "roughness": 0.95,
-      "emission": 0.6,
-      "texture": "T_Ball_Felt",
-      "seam_color": "#fbfff2"
+      "master": "BallFelt",
+      "color": "#cfef26",
+      "roughness": 0.9,
+      "fuzz_color": "#f3ffb0",
+      "seam_color": "#ecebe1",
+      "seam_roughness": 0.55,
+      "ink_color": "#24272d",
+      "mottle_amount": 0.12,
+      "readability_lift": 0.06,
+      "min_seam_pixels": 1.4,
+      "_note": "Optic-yellow felt (an albedo of about 0.8, so under 1,000 lux it is already the brightest surface on court), the white rubber seam and the printed mark. readability_lift is a floor on the ball's brightness on screen, relative to the exposure, so it never sinks into a player's shadow (GDD 10). min_seam_pixels keeps the seam at least that wide on screen so spin stays readable from the broadcast camera."
+    },
+    "Fuzz": {
+      "master": "BallFuzz",
+      "color": "#e2f75e",
+      "roughness": 1.0,
+      "density": 0.35,
+      "rim": 1.4,
+      "_note": "The loose fibres on the LOD0 shell: denser towards the outline, where real felt looks hazy."
+    },
+    "Trail": {
+      "master": "BallTrail",
+      "color": "#f0ff7a",
+      "brightness": 0.55,
+      "_note": "The speed trail's colour and brightness (relative to the exposure, like the felt's lift). Its opacity and length come from Data/Ball.json at run time."
     }
   },
   "racket_a": {

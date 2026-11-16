@@ -2,7 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimInstanceProxy.h"
 #include "Animation/Model/PlayerAnimModel.h"
+#include "Animation/PadelPlayerPoseNode.h"
 #include "PadelPlayerAnimInstance.generated.h"
 
 class UAnimSequenceBase;
@@ -18,6 +20,23 @@ enum class EPadelLocomotionState : uint8
 	SplitStep,
 };
 
+/** Runs FAnimNode_PadelPlayerPose as the root when the class is used without an AnimBP. */
+USTRUCT()
+struct FPadelPlayerAnimInstanceProxy : public FAnimInstanceProxy
+{
+	GENERATED_BODY()
+
+	FPadelPlayerAnimInstanceProxy() = default;
+	FPadelPlayerAnimInstanceProxy(UAnimInstance* InAnimInstance, FAnimNode_PadelPlayerPose* InPoseNode)
+		: FAnimInstanceProxy(InAnimInstance), PoseNode(InPoseNode) {}
+
+	// Used only when there's no AnimBP graph (an ABP_PadelPlayer subclass brings its own root).
+	virtual FAnimNode_Base* GetCustomRootNode() override { return PoseNode; }
+	virtual void GetCustomNodes(TArray<FAnimNode_Base*>& OutNodes) override { OutNodes.Add(PoseNode); }
+
+	FAnimNode_PadelPlayerPose* PoseNode = nullptr;
+};
+
 /**
  * Parent class of ABP_PadelPlayer (docs/decisions/0005-player-animation.md). Every value
  * the graph reads is computed in C++ by Padel::Animation::FPlayerAnimModel and pushed here
@@ -27,6 +46,9 @@ enum class EPadelLocomotionState : uint8
  *
  * Swing playheads are explicit times, not montages, so the contact frame is on screen on
  * the simulation tick that hits the ball (FPlayerAnimFrame::bContactFrame).
+ *
+ * Used directly (no AnimBP), it runs FAnimNode_PadelPlayerPose, the same recipe in C++
+ * (docs/decisions/0006-metahuman-players.md), on the clips in LocomotionSet.
  */
 UCLASS(Transient, Blueprintable)
 class PADEL_API UPadelPlayerAnimInstance : public UAnimInstance
@@ -37,6 +59,16 @@ public:
 	/** Sequences are resolved by the component (the frame names them by asset path). */
 	void ApplyFrame(const Padel::Animation::FPlayerAnimFrame& Frame, UAnimSequenceBase* InSwing, UAnimSequenceBase* InPrevSwing,
 		UAnimSequenceBase* InCelebration, const TArray<FVector>& InTrajectoryWorld);
+
+	/** Clips for the C++ pose; set once by the component. */
+	UPROPERTY(Transient)
+	FPadelLocomotionSet LocomotionSet;
+
+	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
+	float RawSwingWeight = 0.0f;
+
+	/** The placeholder racket target, world cm: the C++ pose reaches for it until swing clips exist. */
+	FVector RacketTargetWorld = FVector::ZeroVector;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	EPadelLocomotionState Locomotion = EPadelLocomotionState::Idle;
@@ -96,4 +128,10 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Celebration")
 	float CelebrationWeight = 0.0f;
+
+protected:
+	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
+
+	UPROPERTY(Transient)
+	FAnimNode_PadelPlayerPose PoseNode;
 };

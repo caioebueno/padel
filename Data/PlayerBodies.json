@@ -1,0 +1,22 @@
+[
+	{
+		"Name": "selva_arunde",
+		"MetaHumanClass": "/Game/Padel/Characters/MetaHumans/SelvaArunde/BP_SelvaArunde.BP_SelvaArunde_C",
+		"BodyComponent": "Body"
+	},
+	{
+		"Name": "mikko_ventara",
+		"MetaHumanClass": "/Game/Padel/Characters/MetaHumans/MikkoVentara/BP_MikkoVentara.BP_MikkoVentara_C",
+		"BodyComponent": "Body"
+	},
+	{
+		"Name": "ilan_corvisa",
+		"MetaHumanClass": "/Game/Characters/IlanCorvisa/BP_IlanCorvisa.BP_IlanCorvisa_C",
+		"BodyComponent": "Body"
+	},
+	{
+		"Name": "ruben_halvaro",
+		"MetaHumanClass": "/Game/Padel/Characters/MetaHumans/RubenHalvaro/BP_RubenHalvaro.BP_RubenHalvaro_C",
+		"BodyComponent": "Body"
+	}
+]

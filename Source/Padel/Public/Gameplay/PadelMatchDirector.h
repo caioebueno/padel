@@ -17,9 +17,9 @@
 
 #include "PadelMatchDirector.generated.h"
 
+class APadelBall;
 class APadelHUD;
 class APadelPlayerPawn;
-class UStaticMeshComponent;
 
 /**
  * Owns the real match (GDD 11 mode 1, Quick Match vs AI): the FMatchSimulation, the
@@ -92,8 +92,9 @@ private:
 	void CmdMiddle() { GiveCommand(EPadelInputAction::CmdMiddle); }
 	void CmdYours() { GiveCommand(EPadelInputAction::CmdYours); }
 
-	UPROPERTY(VisibleAnywhere, Category = "Match")
-	TObjectPtr<UStaticMeshComponent> BallMesh;
+	/** The ball the camera sees (Presentation/PadelBall.h), spawned in BeginPlay. */
+	UPROPERTY(Transient)
+	TObjectPtr<APadelBall> BallView;
 
 	/** By player id; null slots when no match is running. */
 	UPROPERTY()

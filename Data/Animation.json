@@ -39,6 +39,24 @@
 			"/Game/Padel/Characters/SK_PlayerPlaceholderB"
 		],
 		"AnimClass": "/Game/Padel/Animations/ABP_PadelPlayer.ABP_PadelPlayer_C",
-		"RacketBone": "hand_r"
+		"RacketBone": "hand_r",
+		"MetaHumanRetargeter": "/Game/Padel/Animations/Retarget/RTG_PadelPlaceholder_To_MetaHuman.RTG_PadelPlaceholder_To_MetaHuman",
+		"MetaHumanMinLod": 1,
+		"MetaHumanIkLodThreshold": 1,
+		"IdleAsset": "/Game/Padel/Animations/Locomotion/A_Idle",
+		"WalkAssets": [
+			"/Game/Padel/Animations/Locomotion/A_Walk_Fwd",
+			"/Game/Padel/Animations/Locomotion/A_Walk_Bwd",
+			"/Game/Padel/Animations/Locomotion/A_Walk_Left",
+			"/Game/Padel/Animations/Locomotion/A_Walk_Right"
+		],
+		"JogAssets": [
+			"/Game/Padel/Animations/Locomotion/A_Jog_Fwd",
+			"/Game/Padel/Animations/Locomotion/A_Jog_Bwd",
+			"/Game/Padel/Animations/Locomotion/A_Jog_Left",
+			"/Game/Padel/Animations/Locomotion/A_Jog_Right"
+		],
+		"WalkClipSpeedMps": 1.6,
+		"ArmReadyAlpha": 0.6
 	}
 ]

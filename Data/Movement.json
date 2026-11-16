@@ -22,6 +22,17 @@
 		"HomeDriftAt99": 0.45,
 		"HomeArriveM": 0.15,
 		"WallMarginM": 0.3,
-		"NetMarginM": 0.35
+		"NetMarginM": 0.35,
+		"AccelFalloff": 0.0,
+		"ShuffleSpeedFrac": 1.0,
+		"BackpedalSpeedFrac": 1.0,
+		"TurnToRunS": 0.0,
+		"CrossoverMinDistM": 2.5,
+		"TurnBackMinDistM": 1.5,
+		"FatigueHardAccelMps2": 3.0,
+		"FatigueDrainPerHardAccel": 0.0,
+		"FatigueRallyStartS": 15.0,
+		"FatigueDrainPerRallyS": 0.0,
+		"FatigueTopSpeedLossAtZero": 0.0
 	}
 ]

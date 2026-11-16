@@ -18,6 +18,7 @@ namespace AiMatchBallPortDetail
 		V.T = T;
 		V.Position = Ball.Position;
 		V.Velocity = Ball.Velocity;
+		V.Spin = Ball.Spin;
 		V.GroundBounces = Bounces;
 		V.bOffGlass = bOffGlass;
 		V.bLive = bLive;

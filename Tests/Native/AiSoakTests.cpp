@@ -7,6 +7,7 @@
 // PADEL_SOAK_DEBUG=1 prints every stuck point and whiff.
 #include "doctest.h"
 #include "AI/AiMatchRunner.h"
+#include "AI/AiMovementMetrics.h"
 #include "ShotTestData.h"
 #include "Support/AiTestData.h"
 #include "TestSupport.h"
@@ -42,6 +43,8 @@ namespace
 		std::map<std::string, int> Unreached;
 		// The shot that won a point the opponents couldn't reach.
 		std::map<std::string, int> Winners;
+		// How the players moved (realism plan A1).
+		FAiMovementMetrics Movement;
 
 		void Add(const FSoakStats& O)
 		{
@@ -59,6 +62,7 @@ namespace
 			for (const auto& [K, V] : O.Grades) Grades[K] += V;
 			for (const auto& [K, V] : O.Unreached) Unreached[K] += V;
 			for (const auto& [K, V] : O.Winners) Winners[K] += V;
+			Movement.Merge(O.Movement);
 		}
 		double ShotsPerPoint() const { return Points > 0 ? static_cast<double>(Shots) / Points : 0.0; }
 		double GlassShare() const { return Points > 0 ? static_cast<double>(PointsWithGlassShot) / Points : 0.0; }
@@ -96,11 +100,14 @@ namespace
 		Padel::Shots::FShotIntent LastShot;
 		const FAiMatchRunner* Runner = nullptr;
 		std::array<bool, 2> bWhiffed = { false, false };
+		int ServerId = -1;
 
+		void OnServeStarted(int Server) override { ServerId = Server; }
 		void OnServeFault(Padel::EServeFault Reason) override { ++Stats->Faults[std::to_string(static_cast<int>(Reason))]; }
 		void OnPointEnded(Padel::ETeam Winner, Padel::EPointReason Reason, int) override
 		{
 			++Stats->Points;
+			Stats->Movement.EndPoint(ServerId);
 			if (Reason == Padel::EPointReason::DoubleBounce && Runner)
 			{
 				const Padel::ETeam Loser = Padel::OtherTeam(Winner);
@@ -176,6 +183,23 @@ namespace
 		return Setup;
 	}
 
+	// The ball is in play from the serve's contact to the point's end (Live).
+	// LastEdgeStops carries each player's FPlayerMotion edge-stop count between ticks.
+	void SampleMovement(const FMatchSimulation& Match, const FAiMatchRunner& Runner, std::array<int, Padel::NumPlayers>& LastEdgeStops,
+		FAiMovementMetrics& Metrics)
+	{
+		std::array<FAiMovementSample, FAiMovementMetrics::NumTracked> Players;
+		int Hitter = -1;
+		for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+		{
+			const Padel::Shots::FPlayerMotion& M = Runner.Player(Id).GetMotion();
+			Players[Id] = { M.GetPosition(), M.GetVelocity(), M.GetEdgeStopCount() != LastEdgeStops[Id] };
+			LastEdgeStops[Id] = M.GetEdgeStopCount();
+			Hitter = Runner.HitAccepted(Id) ? Id : Hitter;
+		}
+		Metrics.Tick(Match.Phase() == EMatchPhase::Live, Players, Hitter);
+	}
+
 	// Plays one match to the end and returns what happened.
 	struct FSoakMatch
 	{
@@ -195,6 +219,12 @@ namespace
 			FAiMatchRunner Runner(Match, Data().Library, Data().Movement, TestData::Tactics(), MakeSetup(A, B, Seed));
 			Listener.Runner = &Runner;
 			Runner.Start();
+			Stats.Movement.BeginMatch();
+			std::array<int, Padel::NumPlayers> EdgeStops{};
+			for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+			{
+				EdgeStops[Id] = Runner.Player(Id).GetMotion().GetEdgeStopCount();
+			}
 
 			double LastHit = Match.Time();
 			while (!Listener.bMatchOver)
@@ -210,6 +240,7 @@ namespace
 							Ball.Position.Z, Ball.Velocity.X, Ball.Velocity.Y, Ball.Velocity.Z, Match.ServerId());
 					}
 					++Stats.Unfinished;
+					Stats.Movement.EndMatch();
 					return Stats;
 				}
 				Runner.Tick();
@@ -217,6 +248,7 @@ namespace
 				{
 					LastHit = Match.Time();  // between points the clock is the runner's
 				}
+				SampleMovement(Match, Runner, EdgeStops, Stats.Movement);
 				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
 				{
 					const Padel::Shots::FSwingEvents& E = Runner.LastEvents(Id);
@@ -262,6 +294,7 @@ namespace
 					}
 				}
 			}
+			Stats.Movement.EndMatch();
 			Winner = Padel::TeamIndex(Match.Score().Winner());
 			Match.RemoveListener(&Listener);
 			return Stats;
@@ -286,6 +319,36 @@ namespace
 		return Total;
 	}
 
+	// Realism plan A1: each metric with its real-padel band (BIOMECHANICS_MOVEMENT.md
+	// section 4). Reported, not asserted yet; "!" marks a value outside its band.
+	// Acceleration is smoothed over 0.2 s and events last 0.3 s, like the GNSS/IMU
+	// data the bands come from; the wall and net dead stops are counted on their own.
+	void ReportMovement(const FAiMovementSummary& M)
+	{
+		const auto Line = [](const char* Name, double Value, const char* Unit, double Lo, double Hi, const char* Band)
+		{
+			const bool bOut = Value < Lo || Value > Hi;
+			std::printf("[soak]     %-40s %8.2f %-6s [%s]%s\n", Name, Value, Unit, Band, bOut ? " !" : "");
+		};
+		constexpr double Any = 1e9;
+		std::printf("[soak]   movement: %.0f s ball in play, %d player-matches, %d reactions\n", M.BallInPlaySeconds, M.PlayerMatches, M.ReactionSamples);
+		Line("distance per point, median", M.DistancePerPointMedian, "m", 6.0, 12.0, "6 to 12");
+		Line("distance per point, p95", M.DistancePerPointP95, "m", 0.0, 30.0, "under 30");
+		Line("average speed, ball in play", M.AverageSpeed, "m/s", 0.9, 1.3, "0.9 to 1.3");
+		Line("rally time below 2 m/s", 100.0 * M.SlowShare, "%", 65.0, 75.0, "65 to 75");
+		Line("rally time above 4 m/s", 100.0 * M.FastShare, "%", 0.0, 5.0, "under 5");
+		Line("peak speed per match, median", M.PeakSpeedMedian, "m/s", 4.0, 5.0, "4 to 5");
+		Line("peak speed per match, max", M.PeakSpeedMax, "m/s", 0.0, 7.0, "7 or less");
+		Line("peak acceleration per match, median", M.PeakAccelMedian, "m/s2", 4.0, 8.0, "4 to 8");
+		Line("peak acceleration per match, max", M.PeakAccelMax, "m/s2", -Any, Any, "-");
+		Line("accel > 1.12 m/s2 for 0.3 s, per minute", M.AccelEventsPerMinute, "/min", 15.0, 20.0, "about 15 to 20");
+		Line("wall/net dead stops per match", M.EdgeStopsPerMatch, "", 0.0, 0.0, "0: real players slow down");
+		Line("first foot movement, median", M.ReactionMedianMs, "ms", 250.0, 300.0, "250 to 300 (Hard)");
+		Line("server distance per point", M.ServerDistancePerPoint, "m", M.ServerPartnerDistancePerPoint, Any, "above partner");
+		Line("server's partner distance per point", M.ServerPartnerDistancePerPoint, "m", -Any, Any, "-");
+		Line("points the server moved more", 100.0 * M.ServerFartherShare, "%", 50.0, 100.0, "over 50");
+	}
+
 	void Report(const char* Label, const FSoakStats& S)
 	{
 		std::printf("[soak] %s: %d matches (%d unfinished), %d points, %.2f shots/point, %.0f%% points with an off-the-glass shot, "
@@ -305,6 +368,7 @@ namespace
 		std::printf("\n[soak]   timing:");
 		for (const auto& [Grade, Count] : S.Grades) std::printf(" %s=%d", Grade.c_str(), Count);
 		std::printf("\n");
+		ReportMovement(S.Movement.Summarize());
 	}
 }
 
@@ -336,7 +400,7 @@ TEST_CASE("Ai.Soak: every difficulty plays without getting stuck")
 {
 	for (const char* Level : { "Easy", "Hard" })
 	{
-		const FSoakStats S = Soak(Level, 2, 2000);
+		const FSoakStats S = Soak(Level, SoakMatches(2), 2000);
 		Report(Level, S);
 		CHECK(S.StuckPoints == 0);
 		CHECK(S.InvariantFailures == 0);
@@ -354,4 +418,18 @@ TEST_CASE("Ai.Soak: a match replays identically from its seed (GDD 8 determinism
 	CHECK(SA.Points == SB.Points);
 	CHECK(A.Hitters == B.Hitters);
 	CHECK(SA.Reasons == SB.Reasons);
+	// Realism plan A1: the movement metrics replay too.
+	const FAiMovementSummary MA = SA.Movement.Summarize();
+	const FAiMovementSummary MB = SB.Movement.Summarize();
+	CHECK(MA.BallInPlaySeconds > 0.0);
+	CHECK(MA.DistancePerPointMedian == MB.DistancePerPointMedian);
+	CHECK(MA.DistancePerPointP95 == MB.DistancePerPointP95);
+	CHECK(MA.AverageSpeed == MB.AverageSpeed);
+	CHECK(MA.PeakSpeedMax == MB.PeakSpeedMax);
+	CHECK(MA.PeakAccelMedian == MB.PeakAccelMedian);
+	CHECK(MA.AccelEventsPerMinute == MB.AccelEventsPerMinute);
+	CHECK(MA.EdgeStopsPerMatch == MB.EdgeStopsPerMatch);
+	CHECK(MA.ReactionSamples == MB.ReactionSamples);
+	CHECK(MA.ReactionMedianMs == MB.ReactionMedianMs);
+	CHECK(MA.ServerFartherShare == MB.ServerFartherShare);
 }

@@ -1,0 +1,46 @@
+{
+  "_doc": "The padel ball (GDD 2: 65 mm, lower pressure than a tennis ball; GDD 10: bright yellow, the brightest thing on screen, a seam that shows spin). Build and texture details that are not regulation numbers: the seam curve, the felt, the printed mark, the fuzz shell and the LOD spheres. Millimetres unless a key says otherwise. Read by asset_lib/ball_textures.py and blender/build_equipment.py; colours are in palette.json 'ball'. See docs/decisions/0007-ball.md.",
+  "seed": 20261116,
+  "seam": {
+    "_doc": "Two-lobe seam on the unit sphere: x = a cos t + b cos 3t, y = a sin t - b sin 3t, z = 2 sqrt(ab) sin 2t, with a = 1 - b, so it closes and splits the ball into two equal dog-bone halves. The curve crosses the equator on the X and Y axes and the halves bulge at the equator diagonals.",
+    "b": 0.3,
+    "half_width_mm": 1.5,
+    "groove_depth_mm": 0.35,
+    "shoulder_mm": 0.9,
+    "curve_samples": 1440
+  },
+  "felt": {
+    "_doc": "Low-frequency dye and nap variation over the whole ball (mottle), and the tiling fibre texture the material repeats every tile_mm.",
+    "mottle_cells": 6,
+    "mottle_octaves": 3,
+    "tile_mm": 9.0,
+    "fibre_px": 256,
+    "fibres": 2600,
+    "fibre_length_px": [18.0, 48.0],
+    "fibre_width_px": 1.1,
+    "fibre_height": 1.0,
+    "base_noise": 0.35
+  },
+  "mark": {
+    "_doc": "An original printed mark, no text and no brand: a small court seen from above (rounded outline, the net line and a dot for the ball), once on each half at the bulge on the equator diagonals (+X+Y and -X+Y).",
+    "enabled": true,
+    "length_mm": 15.0,
+    "width_mm": 8.5,
+    "stroke_mm": 0.9,
+    "corner_mm": 1.6,
+    "dot_mm": 1.1,
+    "centres": [[1.0, 1.0, 0.0], [-1.0, 1.0, 0.0]]
+  },
+  "textures": {
+    "_doc": "T_Ball_Masks is equirectangular over UV0 (U = longitude from +X towards +Y, V = latitude, row 0 at +Z). SDF range is the angular distance from the seam centre line, in radians, that maps to 1.0 in the red channel.",
+    "masks_px": [1024, 512],
+    "sdf_range_rad": 0.25,
+    "coarse_px": [192, 96]
+  },
+  "mesh": {
+    "_doc": "UV spheres (segments around, rings pole to pole): LOD0 for close-ups and replays, the last LOD for the broadcast camera, where the ball is about ten pixels across. The fuzz shell is a slightly larger sphere with a masked material that only LOD0 carries.",
+    "lod_segments": [[64, 32], [32, 16], [16, 10]],
+    "shell_offset_mm": 0.6,
+    "shell_segments": [48, 24]
+  }
+}

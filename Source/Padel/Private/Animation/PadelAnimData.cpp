@@ -42,6 +42,30 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.TeamMeshes = Row->TeamMeshes;
 		Out.AnimClass = Row->AnimClass;
 		Out.RacketBone = FName(*Row->RacketBone);
+		Out.MetaHumanRetargeter = Row->MetaHumanRetargeter;
+		Out.MetaHumanMinLod = Row->MetaHumanMinLod;
+		Out.MetaHumanIkLodThreshold = Row->MetaHumanIkLodThreshold;
+		Out.IdleAsset = Row->IdleAsset;
+		Out.WalkAssets = Row->WalkAssets;
+		Out.JogAssets = Row->JogAssets;
+		Out.WalkClipSpeedMps = Row->WalkClipSpeedMps;
+		Out.ArmReadyAlpha = Row->ArmReadyAlpha;
+		if (Row->WalkClipSpeedMps <= 0.0 || Row->WalkClipSpeedMps >= Row->RunClipSpeedMps)
+		{
+			Out.Errors.Add(TEXT("Animation.json: WalkClipSpeedMps must be above 0 and below RunClipSpeedMps"));
+		}
+		if (Row->WalkAssets.Num() != 4 || Row->JogAssets.Num() != 4)
+		{
+			Out.Errors.Add(TEXT("Animation.json: WalkAssets and JogAssets list forward, back, left, right"));
+		}
+		if (Row->ArmReadyAlpha < 0.0 || Row->ArmReadyAlpha > 1.0)
+		{
+			Out.Errors.Add(TEXT("Animation.json: ArmReadyAlpha must be 0 to 1"));
+		}
+		if (Row->MetaHumanMinLod < 0)
+		{
+			Out.Errors.Add(TEXT("Animation.json: MetaHumanMinLod must be 0 or more"));
+		}
 		for (const std::string& Problem : Out.Settings.Validate())
 		{
 			Out.Errors.Add(UTF8_TO_TCHAR(Problem.c_str()));
@@ -71,6 +95,19 @@ FPadelAnimData FPadelAnimData::Load()
 		{
 			Out.Errors.Add(UTF8_TO_TCHAR(Problem.c_str()));
 		}
+	}
+
+	if (UDataTable* Bodies = LoadAnimTable(TEXT("PlayerBodies.json"), FPadelPlayerBodyRow::StaticStruct(), Out.Errors))
+	{
+		Bodies->ForeachRow<FPadelPlayerBodyRow>(TEXT("PlayerBodies.json"), [&Out](const FName& Key, const FPadelPlayerBodyRow& Row)
+		{
+			if (Row.MetaHumanClass.IsEmpty() || Row.BodyComponent.IsEmpty())
+			{
+				Out.Errors.Add(FString::Printf(TEXT("PlayerBodies.json: %s needs MetaHumanClass and BodyComponent"), *Key.ToString()));
+				return;
+			}
+			Out.PlayerBodies.Add(Key, Row);
+		});
 	}
 
 	for (const FString& Error : Out.Errors)

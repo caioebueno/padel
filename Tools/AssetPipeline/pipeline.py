@@ -7,6 +7,7 @@
     python3 Tools/AssetPipeline/pipeline.py generate PlayerGenA   # call the AI service (costs credits)
     python3 Tools/AssetPipeline/pipeline.py unreal           # import SourceArt into Content/Padel
     python3 Tools/AssetPipeline/pipeline.py preview out.png  # render the procedural assets in Blender (--preset, --camera)
+    python3 Tools/AssetPipeline/pipeline.py preview-ball out.png  # close-up render of the ball (felt, seam, mark)
     python3 Tools/AssetPipeline/pipeline.py check            # validate config, prompts and names (no Blender)
 
 See Tools/AssetPipeline/README.md for setup (Blender, API keys, Unreal).
@@ -27,11 +28,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from asset_lib import INCOMING_DIR, RAW_DIR, REPO_ROOT, SOURCE_ART_DIR, UNREAL_DIR  # noqa: E402
-from asset_lib import blender_runner, catalogue, court_spec, glass, lighting, manifest, providers, textures, turf_textures  # noqa: E402
+from asset_lib import ball_textures, blender_runner, catalogue, court_spec, glass, lighting, manifest, providers, textures, turf_textures  # noqa: E402
 from asset_lib.catalogue import Asset  # noqa: E402
 
 PROCEDURAL_SCRIPTS = {"court_glass": "build_court_glass", "court_frame": "build_court_frame",
-                      "ball": "build_equipment", "racket": "build_equipment", "character": "build_character",
+                      "ball": "build_equipment", "ball_trail": "build_equipment", "racket": "build_equipment", "character": "build_character",
                       "net": "build_net", "court_surface": "build_court_surface", "venue": "build_venue"}
 
 
@@ -154,6 +155,9 @@ def cmd_build(args: argparse.Namespace) -> None:
     rows: list[dict] = []
     generated = [(tex, "textures.py") for tex in textures.generate_all(palette)]
     generated += [(tex, "glass.py") for tex in glass.generate_textures()]
+    ball = cat.get("Ball")
+    generated += [(tex, "ball_textures.py (config/ball.json)")
+                  for tex in ball_textures.generate_all(ball.size["diameter_m"] * 500.0, textures.TEXTURE_DIR)]
     for tex, script in generated:
         log(f"texture {_rel(tex)}")
         rows.append({"path": _rel(tex), "source": f"procedural: Tools/AssetPipeline/asset_lib/{script}",
@@ -215,18 +219,39 @@ def unreal_editor() -> Path:
     return exe
 
 
+def run_editor(command: list[str], log_path: Path, timeout_s: float = 3600.0) -> tuple[int, str]:
+    """Runs the editor and returns (exit code, its output).
+
+    The output goes to a file, not a pipe. On macOS the editor starts
+    UnrealTraceServer, which inherits the editor's stdout and outlives it; with a
+    pipe, waiting for end-of-file meant waiting for the trace server, so the
+    import hung after the editor had already exited. With a file, only the
+    editor process itself is waited on.
+    """
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w", encoding="utf-8", errors="replace") as handle:
+        proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=handle, stderr=subprocess.STDOUT)
+        try:
+            code = proc.wait(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            raise SystemExit(f"Unreal import still running after {int(timeout_s)} s; see {log_path}") from None
+    return code, log_path.read_text(encoding="utf-8", errors="replace")
+
+
 def cmd_unreal(args: argparse.Namespace) -> None:
     editor = unreal_editor()
     script = UNREAL_DIR / "import_assets.py"
-    log(f"importing into Unreal with {editor.name} (the editor must be closed)")
+    log_path = REPO_ROOT / "Saved" / "Logs" / "AssetImport.log"
+    log(f"importing into Unreal with {editor.name} (the editor must be closed); log: {_rel(log_path)}")
     # The Python Script Plugin's commandlet runs the import without opening the editor UI.
-    proc = subprocess.run([str(editor), str(REPO_ROOT / "Padel.uproject"), "-run=pythonscript",
-                           f"-script={script}", "-unattended", "-nullrhi", "-nosplash", "-nosound", "-stdout",
-                           "-FullStdOutLogOutput"], text=True, capture_output=True)
-    out = proc.stdout + proc.stderr
+    code, out = run_editor([str(editor), str(REPO_ROOT / "Padel.uproject"), "-run=pythonscript",
+                            f"-script={script}", "-unattended", "-nullrhi", "-nosplash", "-nosound", "-stdout",
+                            "-FullStdOutLogOutput"], log_path)
     lines = [line for line in out.splitlines() if "[padel-import]" in line]
     print("\n".join(lines) or out[-4000:])
-    if proc.returncode != 0 or not any("[padel-import] done" in line for line in lines):
+    if code != 0 or not any("[padel-import] done" in line for line in lines):
         raise SystemExit("Unreal import failed; see the log above")
 
 
@@ -251,11 +276,23 @@ def cmd_preview(args: argparse.Namespace) -> None:
     log(f"preview written to {args.out}")
 
 
+def cmd_preview_ball(args: argparse.Namespace) -> None:
+    cat = catalogue.load()
+    ball = cat.get("Ball")
+    if not (textures.TEXTURE_DIR / "T_Ball_Masks.png").is_file():
+        ball_textures.generate_all(ball.size["diameter_m"] * 500.0, textures.TEXTURE_DIR)
+    job = {"ball": ball.raw, "palette": catalogue.load_palette(), "textures_dir": str(textures.TEXTURE_DIR),
+           "out": str(Path(args.out).resolve()), "samples": args.samples, "resolution": [1600, 900]}
+    blender_runner.run("render_ball", job)
+    log(f"ball preview written to {args.out}")
+
+
 def cmd_check(args: argparse.Namespace) -> None:
     cat = catalogue.load()
     catalogue.load_palette()
     court_spec.load()
     glass.load_config()
+    ball_textures.load_config()
     for asset in cat.assets:
         if asset.source == "ai":
             catalogue.render_prompt(asset)
@@ -283,6 +320,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--preset", default=None, help="Data/Lighting.json preset (default: the file's Default)")
     p.add_argument("--camera", default="Broadcast", help="Data/LookDev.json camera name")
     p.set_defaults(func=cmd_preview)
+    p = sub.add_parser("preview-ball", help="render a close-up of the ball in Blender (felt, seam, mark)")
+    p.add_argument("out")
+    p.add_argument("--samples", type=int, default=64)
+    p.set_defaults(func=cmd_preview_ball)
     p = sub.add_parser("check", help="validate the catalogue, palette, prompts and names")
     p.set_defaults(func=cmd_check)
     args = parser.parse_args(argv)

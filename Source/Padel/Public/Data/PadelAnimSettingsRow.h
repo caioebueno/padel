@@ -40,5 +40,27 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	/** Bone the racket attaches to once a skeletal body is shown. */
 	UPROPERTY(EditAnywhere, Category = "Assets") FString RacketBone;
 
+	/**
+	 * MetaHuman players (docs/decisions/0006-metahuman-players.md): the IK Retargeter from the
+	 * placeholder skeleton to the MetaHuman body, the first LOD the MetaHumans may draw (their
+	 * LOD 0 face is far more than a broadcast-distance player needs at 60 fps) and the last LOD
+	 * that runs the retargeter's IK pass (-1 = every LOD).
+	 */
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString MetaHumanRetargeter;
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") int32 MetaHumanMinLod = 0;
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") int32 MetaHumanIkLodThreshold = -1;
+
+	/**
+	 * The C++ pose used when ABP_PadelPlayer isn't there (0006): idle, walk and jog cycles
+	 * (forward, back, left, right) on the placeholder skeleton, the walk cycle's ground speed
+	 * (the jog's is RunClipSpeedMps), and how far the arm reaches for the racket target in the
+	 * ready stance while no swing clip is imported.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Locomotion") FString IdleAsset;
+	UPROPERTY(EditAnywhere, Category = "Locomotion") TArray<FString> WalkAssets;
+	UPROPERTY(EditAnywhere, Category = "Locomotion") TArray<FString> JogAssets;
+	UPROPERTY(EditAnywhere, Category = "Locomotion") double WalkClipSpeedMps = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Placeholder") double ArmReadyAlpha = 0.0;
+
 	Padel::Animation::FAnimSettings ToCore() const;
 };
