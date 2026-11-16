@@ -46,7 +46,7 @@ TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral (GDD 8)")
 	CHECK(T.FirstStepExtraS == Approx(0.0));
 }
 
-TEST_CASE("Contracts.Realism: Shots.json's new fields are neutral on every row (GDD 5.1, 5.2)")
+TEST_CASE("Contracts.Realism: Shots.json's forward swing is still neutral (GDD 5.1)")
 {
 	using namespace Padel::Shots;
 	const FShotLibrary Lib = ShotTestData::LoadLibrary();
@@ -58,15 +58,8 @@ TEST_CASE("Contracts.Realism: Shots.json's new fields are neutral on every row (
 		{
 			continue;
 		}
-		const FShotParams& P = Lib.Get(Type);
 		CAPTURE(Padel::ShotTypeName(Type));
-		// Today's single contact point, from ShotModel.json, on both sides.
-		CHECK(P.IdealContactSideM == Approx(Lib.Model.IdealContactSideM));
-		CHECK(P.IdealContactForwardM == Approx(Lib.Model.IdealContactForwardM));
-		CHECK(P.IdealContactSideBackM == Approx(Lib.Model.IdealContactSideM));
-		CHECK(P.IdealContactForwardBackM == Approx(Lib.Model.IdealContactForwardM));
-		CHECK(P.ContactHeightPerBodyHeight == Approx(0.0));
-		CHECK(P.ForwardS == Approx(0.0));
+		CHECK(Lib.Get(Type).ForwardS == Approx(0.0));
 	}
 }
 

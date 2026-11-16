@@ -93,8 +93,7 @@ namespace
 					if (Plan.bChase && !bPressed)
 					{
 						// Stand so the ideal ball position is at the ideal contact point.
-						const FVec3 Want = Sub(P.GetIdealBallPosition(), Add(Scale(RightAxis(P.GetTeamSign()), Plan.Side * Lib.Model.IdealContactSideM),
-							Scale(ForwardAxis(P.GetTeamSign()), Lib.Model.IdealContactForwardM)));
+						const FVec3 Want = Sub(P.GetIdealBallPosition(), Sub(P.IdealContactPoint(P.ContactShot(), Plan.Side, 0.0), P.GetMotion().GetPosition()));
 						const FVec3 To = Sub(Want, P.GetMotion().GetPosition());
 						const double D = LengthXY(To);
 						if (D > 0.05)

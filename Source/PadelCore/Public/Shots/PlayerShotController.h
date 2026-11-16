@@ -91,8 +91,12 @@ namespace Padel::Shots
 		// Seconds from now to the ideal contact moment (negative once it has passed).
 		double TimeToIdealS() const { return IdealTimeS - NowS; }
 		const FVec3& GetIdealBallPosition() const { return IdealBallPosition; }
-		// The ideal contact point beside the player, on the given side (+1 right).
-		FVec3 IdealContactPoint(double Side, double Height) const;
+		// The ideal contact point for a shot beside the player, on the given side (+1
+		// right): the shot's forehand point on the forehand side, else its backhand one.
+		FVec3 IdealContactPoint(const FShotParams& Shot, double Side, double Height) const;
+		// The shot the ideal moment is found for: the AI's requested shot, or the one a
+		// press would most likely play (FamilyShot).
+		const FShotParams& ContactShot() const { return ContactShot(bIdealBounced); }
 		double MaxContactHeight() const;
 		double ReachM() const;
 		int GetPlayerId() const { return PlayerId; }
@@ -107,6 +111,7 @@ namespace Padel::Shots
 		void SetPhase(ESwingPhase InPhase) { Phase = InPhase; PhaseTimeS = 0.0; }
 		// The shot a press would most likely play, for timing windows and swing lengths.
 		const FShotParams& FamilyShot(bool bBallBounced) const;
+		const FShotParams& ContactShot(bool bBallBounced) const;
 		bool IsPlayable(const FBallView& View, int LastHitter) const;
 
 		int PlayerId = 0;

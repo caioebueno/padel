@@ -6,10 +6,26 @@
 
 #pragma once
 
+#include "AI/AiTypes.h"
+
+#include <array>
 #include <string>
 
 namespace Padel::AI
 {
+	// One shot's ideal contact point (GDD 5.2): beside the player toward the hitting
+	// side, and in front, on the forehand and the backhand.
+	struct FAiContactPoint
+	{
+		double SideM = 0.0;
+		double ForwardM = 0.0;
+		double SideBackM = 0.0;
+		double ForwardBackM = 0.0;
+
+		double SideFor(bool bForehand) const { return bForehand ? SideM : SideBackM; }
+		double ForwardFor(bool bForehand) const { return bForehand ? ForwardM : ForwardBackM; }
+	};
+
 	// One row of Data/Difficulty.json (GDD 8 difficulty table).
 	struct FAiDifficulty
 	{
@@ -94,9 +110,23 @@ namespace Padel::AI
 		double OverheadIdealHeightM = 0.0; // the planner's favourite overhead contact near the net (GDD 4)
 		// GDD 5.2: where the ball should meet the player, beside and in front of them.
 		// The same numbers as Data/ShotModel.json IdealContactSideM / ForwardM (a test
-		// keeps them equal), so the AI stands where the shot model wants the ball.
+		// keeps them equal): the generic point, used until the shot points are known.
 		double ContactSideM = 0.0;
 		double ContactForwardM = 0.0;
+		// GDD 5.2: each shot has its own point. Not in AiTactics.json: the match runner
+		// copies them from Data/Shots.json (Bridge::WithShotContactPoints), one shot per
+		// contact kind, so the AI stands where the shot model wants the ball.
+		std::array<FAiContactPoint, 3> ShotContactPoints;
+		bool bHasShotContactPoints = false;
+		// The point the planner stands for, by contact kind and side.
+		double ContactSideFor(EContactKind Kind, bool bForehand) const
+		{
+			return bHasShotContactPoints ? ShotContactPoints[static_cast<int>(Kind)].SideFor(bForehand) : ContactSideM;
+		}
+		double ContactForwardFor(EContactKind Kind, bool bForehand) const
+		{
+			return bHasShotContactPoints ? ShotContactPoints[static_cast<int>(Kind)].ForwardFor(bForehand) : ContactForwardM;
+		}
 		double InterceptWallMarginM = 0.0;
 		double ScoreHeightWeight = 0.0;
 		double ScoreSlackWeight = 0.0;

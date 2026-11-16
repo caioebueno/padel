@@ -16,7 +16,7 @@ FAiMatchRunner::FAiMatchRunner(FMatchSimulation& InMatch, const Shots::FShotLibr
 	: Match(InMatch)
 	, Library(InLibrary)
 	, Movement(InMovement)
-	, Tactics(InTactics)
+	, Tactics(Bridge::WithShotContactPoints(InTactics, InLibrary))
 	, Setup(InSetup)
 	, Model(InMatch.BallSim())
 	, Port(InMatch)

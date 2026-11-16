@@ -42,11 +42,12 @@ namespace Padel::Shots
 	{
 	}
 
-	FVec3 FPlayerShotController::IdealContactPoint(double Side, double Height) const
+	FVec3 FPlayerShotController::IdealContactPoint(const FShotParams& Shot, double Side, double Height) const
 	{
-		const FShotModel& M = Library->Model;
-		FVec3 Point = Add(Motion.GetPosition(), Add(Scale(RightAxis(TeamSign), Side * M.IdealContactSideM),
-			Scale(ForwardAxis(TeamSign), M.IdealContactForwardM)));
+		// GDD 5.2: each shot has its own point, mirrored to the backhand side.
+		const bool bForehand = Side * Ratings->ForehandSign() > 0.0;
+		FVec3 Point = Add(Motion.GetPosition(), Add(Scale(RightAxis(TeamSign), Side * Shot.ContactSideFor(bForehand)),
+			Scale(ForwardAxis(TeamSign), Shot.ContactForwardFor(bForehand))));
 		Point.Z = Height;
 		return Point;
 	}
@@ -77,6 +78,16 @@ namespace Padel::Shots
 		}
 	}
 
+	const FShotParams& FPlayerShotController::ContactShot(bool bBallBounced) const
+	{
+		// The AI knows its shot before the swing, so the ideal moment uses that shot's point.
+		if ((bAiPending || bAiSwinging))
+		{
+			return Library->Get(AiShotType);
+		}
+		return FamilyShot(bBallBounced);
+	}
+
 	bool FPlayerShotController::IsPlayable(const FBallView& View, int LastHitter) const
 	{
 		// One touch per team (GDD 3.3), on our half, before the second bounce.
@@ -103,13 +114,13 @@ namespace Padel::Shots
 			{
 				continue;
 			}
-			const FShotParams& Shot = FamilyShot(S.GroundBounces >= 1);
+			const FShotParams& Shot = ContactShot(S.GroundBounces >= 1);
 			const double H = S.Position.Z;
-			const double Planar = std::fmin(DistanceXY(S.Position, IdealContactPoint(1.0, 0.0)), DistanceXY(S.Position, IdealContactPoint(-1.0, 0.0)));
-			const double OutsideBand = std::fmax(0.0, std::fmax(Shot.ContactHeightMinM - H, H - Shot.ContactHeightMaxM));
+			const double Planar = std::fmin(DistanceXY(S.Position, IdealContactPoint(Shot, 1.0, 0.0)), DistanceXY(S.Position, IdealContactPoint(Shot, -1.0, 0.0)));
+			const double OutsideBand = std::fmax(0.0, std::fmax(Shot.ContactHeightMinM - H, H - Shot.MaxHeightFor(Ratings->HeightM)));
 			// Earlier wins a tie, so a ball that passes the same height twice (rising and
 			// falling after a bounce) picks the first chance.
-			const double Cost = Planar + M.HeightCostWeight * std::abs(H - Shot.PreferredContactHeightM)
+			const double Cost = Planar + M.HeightCostWeight * std::abs(H - Shot.PreferredHeightFor(Ratings->HeightM))
 				+ M.OutOfBandCostWeight * OutsideBand + M.TimeCostPerS * S.T;
 			if (!Best || Cost < BestCost)
 			{
@@ -178,7 +189,7 @@ namespace Padel::Shots
 	void FPlayerShotController::TossForServe(IBallPort& Ball)
 	{
 		// Dropped at the forehand contact point, so it comes back up where the swing meets it.
-		const FVec3 At = IdealContactPoint(Ratings->ForehandSign(), Library->Model.ServeTossHeightM);
+		const FVec3 At = IdealContactPoint(Library->Get(EShotType::ServeFlat), Ratings->ForehandSign(), Library->Model.ServeTossHeightM);
 		Ball.ServeToss(At, static_cast<int>(TeamSign));
 		bAwaitingServe = false;
 		bServing = true;
@@ -403,12 +414,12 @@ namespace Padel::Shots
 		C.bPressurePoint = bPressurePoint;
 		C.bWrongSide = bWrongSide;
 
-		// GDD 5.2: distance from the ideal point at the chosen shot's preferred height;
+		// GDD 5.2: distance from the chosen shot's own ideal point;
 		// heights inside the shot's band don't count against the player.
 		const FShotParams& Shot = Library->Get(FShotSelector::Select(C, *Library).ShotType);
 		const double H = Judged.Z;
-		const double OutsideBand = std::fmax(0.0, std::fmax(Shot.ContactHeightMinM - H, H - Shot.ContactHeightMaxM));
-		C.PositionDistanceM = DistanceXY(Judged, IdealContactPoint(C.ContactSide, H)) + OutsideBand;
+		const double OutsideBand = std::fmax(0.0, std::fmax(Shot.ContactHeightMinM - H, H - Shot.MaxHeightFor(Ratings->HeightM)));
+		C.PositionDistanceM = DistanceXY(Judged, IdealContactPoint(Shot, C.ContactSide, H)) + OutsideBand;
 
 		Events.Intent = FShotResolver::Resolve(C, *Library, Rng);
 		Events.Intent.Origin = View.Position;
