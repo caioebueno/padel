@@ -362,12 +362,13 @@ void APadelMatchDirector::SyncView()
 			Pawn->ShowController(Runner->Player(Id), Players[Id]);
 		}
 	}
-	const bool bLive = Match->Phase() == Padel::EMatchPhase::Live;
-	BallMesh->SetVisibility(bLive);
-	if (bLive)
+	// The ball the players see: the server's toss while the match holds the ball, the
+	// match ball during the rally.
+	const Padel::Shots::FBallView Ball = Runner->Ball().Current();
+	BallMesh->SetVisibility(Ball.bLive);
+	if (Ball.bLive)
 	{
-		const Padel::FVec3& Ball = Match->Ball().Position;
-		BallMesh->SetWorldLocation(Padel::ToWorld(Ball));
+		BallMesh->SetWorldLocation(Padel::ToWorld(Ball.Position));
 	}
 }
 
