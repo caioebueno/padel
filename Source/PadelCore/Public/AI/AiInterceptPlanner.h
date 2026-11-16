@@ -39,7 +39,7 @@ namespace Padel::AI
 
 	namespace InterceptPlanner
 	{
-		// Constant acceleration up to top speed, then cruise.
+		// Constant acceleration up to top speed, then cruise: Shots::MotionCurve with no falloff.
 		PADELCORE_API double TimeToCover(double Distance, double TopSpeed, double AccelTime);
 
 		// The best reachable sample, or the one the player misses by the least when

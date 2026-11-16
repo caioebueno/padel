@@ -11,7 +11,8 @@ namespace Padel::Shots
 {
 	struct PADELCORE_API FMovementTuning
 	{
-		// GDD 6.1 Speed and Acceleration
+		// GDD 6.1 Speed and Acceleration. TimeToTop is top speed over the push from standing
+		// (a0 = TopSpeed / TimeToTop): the time to top speed only when AccelFalloff is 0.
 		double TopSpeedAt1Mps = 0.0;
 		double TopSpeedAt99Mps = 0.0;
 		double TimeToTopAt1S = 0.0;

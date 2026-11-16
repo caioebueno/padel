@@ -1,6 +1,7 @@
 #include "AI/AiInterceptPlanner.h"
 
 #include "AI/AiTeamFrame.h"
+#include "Shots/MotionCurve.h"
 
 #include <cmath>
 #include <limits>
@@ -31,25 +32,9 @@ namespace
 
 double TimeToCover(double Distance, double TopSpeed, double AccelTime)
 {
-	if (Distance <= 0.0)
-	{
-		return 0.0;
-	}
-	if (TopSpeed <= 0.0)
-	{
-		return std::numeric_limits<double>::infinity();
-	}
-	if (AccelTime <= 0.0)
-	{
-		return Distance / TopSpeed;
-	}
-	const double Accel = TopSpeed / AccelTime;
-	const double AccelDistance = 0.5 * TopSpeed * AccelTime;
-	if (Distance <= AccelDistance)
-	{
-		return std::sqrt(2.0 * Distance / Accel);
-	}
-	return AccelTime + (Distance - AccelDistance) / TopSpeed;
+	// The players' shared curve with no falloff: constant acceleration, then cruise. A3
+	// passes the movement tuning's AccelFalloff once the planner models it.
+	return Shots::MotionCurve::TimeToCover(Distance, TopSpeed, AccelTime, 0.0);
 }
 
 std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples, const FInterceptQuery& Query,

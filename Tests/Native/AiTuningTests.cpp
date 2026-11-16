@@ -56,7 +56,7 @@ TEST_CASE("Ai.Tuning: AiTactics.json loads every field and keeps GDD 8 distances
 	CHECK(T.SpeedAt1Mps == Approx(4.5));
 	CHECK(T.SpeedAt99Mps == Approx(6.5));
 	CHECK(T.AccelTimeAt1S == Approx(0.9));
-	CHECK(T.AccelTimeAt99S == Approx(0.45));
+	CHECK(T.AccelTimeAt99S == Approx(0.73)); // M1: matches Movement.json TimeToTopAt99S
 	CHECK(T.ReachSideAt1M == Approx(0.9));
 	CHECK(T.ReachSideAt99M == Approx(1.2));
 	// GDD 5.1 base timing windows.
