@@ -144,6 +144,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	BodyAlpha = Anim->WarpBodyAlpha();
 	bWarp = Anim->bWarpThisBody;
 	FaceInHand = Anim->RacketFaceInHand;
+	WarpTuning = Anim->WarpTuning;
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
@@ -253,5 +254,5 @@ void FAnimNode_PadelPlayerPose::ApplyArmReach(FPoseContext& Output) const
 	In.FaceInHand = FaceInHand;
 	In.ArmAlpha = static_cast<float>(ArmAlpha);
 	In.BodyAlpha = static_cast<float>(BodyAlpha);
-	PadelContactWarp::Apply(Output.Pose, WarpBones, In);
+	PadelContactWarp::Apply(Output.Pose, WarpBones, In, WarpTuning);
 }

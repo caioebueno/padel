@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Animation/PadelContactWarp.h"
 #include "Animation/Model/PlayerAnimTuning.h"
 #include "Data/PadelPlayerBodyRow.h"
 
@@ -29,6 +30,8 @@ struct PADEL_API FPadelAnimData
 	TArray<FString> JogAssets;
 	double WalkClipSpeedMps = 0.0;
 	double ArmReadyAlpha = 0.0;
+	/** Contact warp tuning (Animation.json Warp*), already in Unreal units. */
+	FPadelWarpTuning Warp;
 	bool bOk = false;
 	TArray<FString> Errors;
 

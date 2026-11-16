@@ -34,6 +34,7 @@ struct FAnimNode_PadelMetaHumanWarp : public FAnimNode_Base
 private:
 	FPadelWarpBones Bones;
 	FPadelWarpInput Request;
+	FPadelWarpTuning Tuning;
 };
 
 /** Runs the anim instance's root node (retarget, then contact warp) with no AnimBP graph. */

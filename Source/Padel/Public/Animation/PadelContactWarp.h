@@ -37,6 +37,27 @@ struct PADEL_API FPadelWarpBones
 	bool HasArm() const { return UpperArm.GetInt() != INDEX_NONE && LowerArm.GetInt() != INDEX_NONE && Hand.GetInt() != INDEX_NONE; }
 };
 
+/**
+ * How the reach splits across the body: Data/Animation.json's Warp* fields, in Unreal units
+ * and degrees (FPadelAnimData converts the metres once, at load). Defaults match the file.
+ */
+struct PADEL_API FPadelWarpTuning
+{
+	double PelvisDownShare = 0.8;
+	double MaxPelvisDropUnits = 50.0;
+	double PelvisForwardShare = 0.25;
+	double MaxPelvisForwardUnits = 15.0;
+	double SpineSideShare = 0.45;
+	double SpineForwardShare = 0.25;
+	double SpineDownShare = 0.75;
+	double MaxSpineDeg = 55.0;
+	double TrunkTurnShare = 0.7;
+	double MaxTrunkTurnDeg = 50.0;
+	double KneeBendUnits = 20.0;
+	double ElbowBendUnits = 20.0;
+	double MaxReachShare = 0.98;
+};
+
 /** One frame's warp request, in the skeletal mesh component's space (Unreal units). */
 struct PADEL_API FPadelWarpInput
 {
@@ -53,7 +74,7 @@ struct PADEL_API FPadelWarpInput
 namespace PadelContactWarp
 {
 	/** Warps Pose in place. Does nothing when ArmAlpha and BodyAlpha are both 0. */
-	PADEL_API void Apply(FCompactPose& Pose, const FPadelWarpBones& Bones, const FPadelWarpInput& In);
+	PADEL_API void Apply(FCompactPose& Pose, const FPadelWarpBones& Bones, const FPadelWarpInput& In, const FPadelWarpTuning& Tuning);
 
 	/**
 	 * Body weight over the swing (shots doc 4.2): 0 through the backswing, rising over the

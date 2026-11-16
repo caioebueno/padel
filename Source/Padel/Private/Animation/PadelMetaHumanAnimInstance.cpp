@@ -54,6 +54,7 @@ void FAnimNode_PadelMetaHumanWarp::PreUpdate(const UAnimInstance* InAnimInstance
 	Request.FaceInHand = FaceInHand;
 	Request.ArmAlpha = Anim->WarpArmAlpha();
 	Request.BodyAlpha = Anim->WarpBodyAlpha();
+	Tuning = Anim->WarpTuning;
 }
 
 void FAnimNode_PadelMetaHumanWarp::Evaluate_AnyThread(FPoseContext& Output)
@@ -66,7 +67,7 @@ void FAnimNode_PadelMetaHumanWarp::Evaluate_AnyThread(FPoseContext& Output)
 	{
 		Output.ResetToRefPose();
 	}
-	PadelContactWarp::Apply(Output.Pose, Bones, Request);
+	PadelContactWarp::Apply(Output.Pose, Bones, Request, Tuning);
 }
 
 void UPadelMetaHumanAnimInstance::Configure(USkeletalMeshComponent* Source, UIKRetargeter* Retargeter, int32 IkLodThreshold)
