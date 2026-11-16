@@ -25,12 +25,20 @@ bool FPadelBallActorTest::RunTest(const FString& Parameters)
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld=*/false);
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 	Context.SetCurrentWorld(World);
+	// APadelBall loads its meshes in PostInitializeComponents, which SpawnActor only calls
+	// once the world's actors are initialized.
+	World->InitializeActorsForPlay(FURL());
 
 	APadelBall* Ball = World->SpawnActor<APadelBall>();
 	if (TestNotNull(TEXT("Ball spawned"), Ball))
 	{
 		UStaticMeshComponent* Mesh = Ball->GetBallMesh();
-		TestNotNull(TEXT("It has a mesh"), Mesh->GetStaticMesh().Get());
+		if (!TestNotNull(TEXT("It has a mesh"), Mesh->GetStaticMesh().Get()))
+		{
+			GEngine->DestroyWorldContext(World);
+			World->DestroyWorld(false);
+			return false;
+		}
 		TestFalse(TEXT("Hidden until presented"), Mesh->IsVisible());
 
 		// GDD 2: 65 mm across, imported or not.
