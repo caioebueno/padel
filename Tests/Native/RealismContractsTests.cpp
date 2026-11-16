@@ -15,9 +15,11 @@ TEST_CASE("Contracts.Realism: Movement.json's new fields are neutral (GDD 6.1, 6
 	CHECK(M.Validate().empty());
 	// M1 turned the falloff on (PlayerMotionTests and MotionCurveTests pin its shape).
 	CHECK(M.AccelFalloff == Approx(0.3));
-	CHECK(M.ShuffleSpeedFrac == Approx(1.0));
-	CHECK(M.BackpedalSpeedFrac == Approx(1.0));
-	CHECK(M.TurnToRunS == Approx(0.0));
+	// M2 turned these on (PlayerMotionTests pins their behaviour).
+	CHECK(M.ShuffleSpeedFrac == Approx(0.65));
+	CHECK(M.BackpedalSpeedFrac == Approx(0.5));
+	CHECK(M.TurnToRunAt1S == Approx(0.27));
+	CHECK(M.TurnToRunAt99S == Approx(0.09));
 	CHECK(M.CrossoverMinDistM == Approx(2.5));
 	CHECK(M.TurnBackMinDistM == Approx(1.5));
 	CHECK(M.FatigueHardAccelMps2 == Approx(3.0));
@@ -48,7 +50,7 @@ TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by
 	CHECK(T.FirstStepExtraS == Approx(0.0));
 }
 
-TEST_CASE("Contracts.Realism: Shots.json's new fields are neutral on every row (GDD 5.1, 5.2)")
+TEST_CASE("Contracts.Realism: Shots.json's forward swing is still neutral (GDD 5.1)")
 {
 	using namespace Padel::Shots;
 	const FShotLibrary Lib = ShotTestData::LoadLibrary();
@@ -60,15 +62,8 @@ TEST_CASE("Contracts.Realism: Shots.json's new fields are neutral on every row (
 		{
 			continue;
 		}
-		const FShotParams& P = Lib.Get(Type);
 		CAPTURE(Padel::ShotTypeName(Type));
-		// Today's single contact point, from ShotModel.json, on both sides.
-		CHECK(P.IdealContactSideM == Approx(Lib.Model.IdealContactSideM));
-		CHECK(P.IdealContactForwardM == Approx(Lib.Model.IdealContactForwardM));
-		CHECK(P.IdealContactSideBackM == Approx(Lib.Model.IdealContactSideM));
-		CHECK(P.IdealContactForwardBackM == Approx(Lib.Model.IdealContactForwardM));
-		CHECK(P.ContactHeightPerBodyHeight == Approx(0.0));
-		CHECK(P.ForwardS == Approx(0.0));
+		CHECK(Lib.Get(Type).ForwardS == Approx(0.0));
 	}
 }
 

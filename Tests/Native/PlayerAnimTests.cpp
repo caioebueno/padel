@@ -87,8 +87,7 @@ namespace
 				{
 					if (!bServe && !bPressed)
 					{
-						const FVec3 Want = Sub(P.GetIdealBallPosition(), Add(Scale(RightAxis(P.GetTeamSign()), Plan.Side * Lib.Model.IdealContactSideM),
-							Scale(ForwardAxis(P.GetTeamSign()), Lib.Model.IdealContactForwardM)));
+						const FVec3 Want = Sub(P.GetIdealBallPosition(), Sub(P.IdealContactPoint(P.ContactShot(), Plan.Side, 0.0), P.GetMotion().GetPosition()));
 						const FVec3 To = Sub(Want, P.GetMotion().GetPosition());
 						const double D = LengthXY(To);
 						if (D > 0.05)
@@ -342,9 +341,10 @@ TEST_CASE("Anim.Contact: the windup is scrubbed by the charge, the early forward
 			LastP = T.Frame.SwingProgress;
 		}
 	}
-	// 0.15 s early is about 18 ticks of forward swing, and the last one is nearly at contact.
+	// 0.15 s early is about 18 ticks of forward swing, and the last one is nearly at contact
+	// (within about two ticks of progress: M2's slower sideways chase shifts the ideal moment).
 	CHECK(ForwardTicks >= 15);
-	CHECK(LastP > 1.9);
+	CHECK(LastP > 1.85);
 }
 
 TEST_CASE("Anim.Contact: a ball on the backhand side plays the backhand clip")
@@ -528,8 +528,7 @@ TEST_CASE("Anim.Contact: an AI swing lines up the same way")
 			FPlayerInputFrame In;
 			if (P.HasIdealMoment() && Rig.ContactTick < 0)
 			{
-				const FVec3 Want = Sub(P.GetIdealBallPosition(), Add(Scale(RightAxis(1.0), Rig.Lib.Model.IdealContactSideM),
-					Scale(ForwardAxis(1.0), Rig.Lib.Model.IdealContactForwardM)));
+				const FVec3 Want = Sub(P.GetIdealBallPosition(), Sub(P.IdealContactPoint(P.ContactShot(), 1.0, 0.0), P.GetMotion().GetPosition()));
 				const FVec3 To = Sub(Want, P.GetMotion().GetPosition());
 				const double D = LengthXY(To);
 				if (D > 0.05)

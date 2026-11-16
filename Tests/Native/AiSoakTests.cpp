@@ -299,8 +299,9 @@ namespace
 						if (std::getenv("PADEL_SOAK_DEBUG") && !Padel::IsServeShot(E.Intent.ShotType))
 						{
 							const Padel::Shots::FPlayerShotController& C = Runner.Player(Id);
-							const double Off = std::min(Padel::Shots::DistanceXY(E.Intent.Origin, C.IdealContactPoint(1.0, 0.0)),
-								Padel::Shots::DistanceXY(E.Intent.Origin, C.IdealContactPoint(-1.0, 0.0)));
+							const Padel::Shots::FShotParams& Played = E.Intent.ShotType == Padel::EShotType::Mishit ? C.ContactShot() : C.GetLibrary().Get(E.Intent.ShotType);
+							const double Off = std::min(Padel::Shots::DistanceXY(E.Intent.Origin, C.IdealContactPoint(Played, 1.0, 0.0)),
+								Padel::Shots::DistanceXY(E.Intent.Origin, C.IdealContactPoint(Played, -1.0, 0.0)));
 							std::printf("hit id=%d shot=%s off=%.2f depth=%.2f z=%.2f speed=%.1f charge=%.2f\n", Id, Padel::ShotTypeName(E.Intent.ShotType), Off, std::abs(E.Intent.Origin.X),
 								E.Intent.Origin.Z, E.Intent.SpeedMps, E.Intent.Charge);
 						}

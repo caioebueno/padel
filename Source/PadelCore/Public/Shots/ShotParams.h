@@ -14,6 +14,9 @@
 namespace Padel::Shots
 {
 	inline constexpr int ShotTypeCount = static_cast<int>(EShotType::Count);
+	// GDD 5.2: the body height the contact heights in Shots.json are written for. Part of
+	// the ContactHeightPerBodyHeight contract (K1), not a tuning value.
+	inline constexpr double ContactHeightReferenceBodyM = 1.82;
 
 	struct PADELCORE_API FShotParams
 	{
@@ -71,6 +74,17 @@ namespace Padel::Shots
 		double RecoveryS = 0.0;
 		// Movement speed multiplier while swinging: planted feet.
 		double SwingMoveMult = 0.0;
+
+		// The ideal contact offset on the forehand (true) or the backhand side (GDD 5.2).
+		double ContactSideFor(bool bForehand) const { return bForehand ? IdealContactSideM : IdealContactSideBackM; }
+		double ContactForwardFor(bool bForehand) const { return bForehand ? IdealContactForwardM : IdealContactForwardBackM; }
+		// GDD 5.2: a taller player meets overheads higher. A body height of 0 means unknown.
+		double BodyHeightScale(double BodyHeightM) const
+		{
+			return BodyHeightM > 0.0 ? 1.0 + ContactHeightPerBodyHeight * (BodyHeightM / ContactHeightReferenceBodyM - 1.0) : 1.0;
+		}
+		double PreferredHeightFor(double BodyHeightM) const { return PreferredContactHeightM * BodyHeightScale(BodyHeightM); }
+		double MaxHeightFor(double BodyHeightM) const { return ContactHeightMaxM * BodyHeightScale(BodyHeightM); }
 
 		double SpeedMinMps() const { return SpeedMinKmh / 3.6; }
 		double SpeedMaxMps() const { return SpeedMaxKmh / 3.6; }

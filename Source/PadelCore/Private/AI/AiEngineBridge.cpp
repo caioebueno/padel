@@ -63,4 +63,18 @@ Shots::FPlayerRatings WithOffset(const Shots::FPlayerRatings& Ratings, int Offse
 	}
 	return Out;
 }
+FAiTactics WithShotContactPoints(const FAiTactics& Tactics, const Shots::FShotLibrary& Library)
+{
+	auto PointOf = [&Library](EShotType Type)
+	{
+		const Shots::FShotParams& Shot = Library.Get(Type);
+		return FAiContactPoint{ Shot.IdealContactSideM, Shot.IdealContactForwardM, Shot.IdealContactSideBackM, Shot.IdealContactForwardBackM };
+	};
+	FAiTactics Out = Tactics;
+	Out.ShotContactPoints[static_cast<int>(EContactKind::Groundstroke)] = PointOf(EShotType::Drive);
+	Out.ShotContactPoints[static_cast<int>(EContactKind::Volley)] = PointOf(EShotType::Volley);
+	Out.ShotContactPoints[static_cast<int>(EContactKind::Overhead)] = PointOf(EShotType::Bandeja);
+	Out.bHasShotContactPoints = true;
+	return Out;
+}
 }

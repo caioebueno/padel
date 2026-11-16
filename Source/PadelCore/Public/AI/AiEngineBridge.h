@@ -6,11 +6,13 @@
 #include "PadelCoreApi.h"
 #include "AI/AiBallModel.h"
 #include "AI/AiPlayerProfile.h"
+#include "AI/AiTuning.h"
 #include "AI/AiTypes.h"
 #include "BallState.h"
 #include "PadelTypes.h"
 #include "Shots/PlayerInputFrame.h"
 #include "Shots/PlayerRatings.h"
+#include "Shots/ShotLibrary.h"
 
 namespace Padel::AI::Bridge
 {
@@ -50,6 +52,11 @@ namespace Padel::AI::Bridge
 	PADELCORE_API FAiPlayerProfile ProfileFromRatings(const Shots::FPlayerRatings& Ratings);
 	// GDD 8: the difficulty's attribute scale, on every rating, clamped to 1..99.
 	PADELCORE_API Shots::FPlayerRatings WithOffset(const Shots::FPlayerRatings& Ratings, int Offset);
+
+	// GDD 5.2: the tactics with each contact kind's stand point taken from the shot it
+	// usually plays (groundstroke: drive, volley: volley, overhead: bandeja), so the AI
+	// stands where the shot model grades the ball.
+	PADELCORE_API FAiTactics WithShotContactPoints(const FAiTactics& Tactics, const Shots::FShotLibrary& Library);
 
 	// The AI's move as a stick frame. Both are team-relative (X right, Y toward the net).
 	inline Shots::FPlayerInputFrame InputFrom(const FAiIntent& Intent)

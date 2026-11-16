@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "PadelTypes.h"
 #include "Shots/MovementTuning.h"
 #include "Shots/PlayerRatings.h"
 #include "Shots/ShotMath.h"
@@ -18,8 +19,10 @@ namespace Padel::Shots
 		FPlayerMotion(const FPlayerRatings* InRatings, const FMovementTuning* InTuning, double InTeamSign, const FVec3& InStart);
 
 		// MoveDir is team-relative: X = the player's right, Y = toward the net, length 0..1.
-		// SpeedMult < 1 while swinging (planted feet).
-		void Step(const FVec2& MoveDir, bool bSprint, double Dt, double SpeedMult = 1.0);
+		// SpeedMult < 1 while swinging (planted feet). PlannedDistanceM is how far the move
+		// is going, when the caller knows it (the AI); below 0 it is unknown (the stick),
+		// and how long the stick has been held in one direction stands in for it.
+		void Step(const FVec2& MoveDir, bool bSprint, double Dt, double SpeedMult = 1.0, double PlannedDistanceM = -1.0);
 
 		// GDD 6.3: called at the opponent's contact. Returns true if the player split-stepped.
 		bool NotifyOpponentContact();
@@ -31,6 +34,12 @@ namespace Padel::Shots
 		void Teleport(const FVec3& InPosition);
 
 		double TopSpeed(bool bSprinting) const;
+		// GDD 6.1 Agility: the hip turn into a crossover or turn-and-run.
+		double TurnTimeS() const;
+		// GDD 6.3: the top-speed fraction for a team-relative unit direction while square
+		// to the net (1 forward, ShuffleSpeedFrac sideways, BackpedalSpeedFrac backwards).
+		double SquareSpeedFrac(const FVec2& UnitDir) const;
+		EMovementMode GetMode() const { return Mode; }
 		// Top speed over the initial acceleration (MotionCurve); the real time to top speed
 		// is longer when Movement.json's AccelFalloff is above 0.
 		double TimeToTopSpeed() const;
@@ -49,6 +58,14 @@ namespace Padel::Shots
 		int GetEdgeStopCount() const { return EdgeStopCount; }
 
 	private:
+		// Stick directions the gait logic tells apart (team-relative).
+		enum class EHeld : std::uint8_t { None, Forward, Right, Left, Back };
+		enum class EGait : std::uint8_t { Square, Turning, Turned };
+
+		static EHeld Classify(const FVec2& UnitDir);
+		void UpdateGait(EHeld Held, const FVec2& UnitDir, double Top, double Dt, double PlannedDistanceM);
+		void LimitAtMargins(FVec3& Desired, double Brake, double Dt) const;
+		void OwnHalfLimits(double& Lo, double& Hi, double& Side) const;
 		void ClampToOwnHalf();
 
 		const FPlayerRatings* Ratings = nullptr;
@@ -66,5 +83,11 @@ namespace Padel::Shots
 		bool bSplitPending = false;
 		int SplitStepCount = 0;
 		int EdgeStopCount = 0;
+		EMovementMode Mode = EMovementMode::Adjust;
+		EGait Gait = EGait::Square;
+		EHeld HeldDir = EHeld::None;
+		EHeld TurnDir = EHeld::None;
+		double HeldS = 0.0;
+		double TurnLeftS = 0.0;
 	};
 }
