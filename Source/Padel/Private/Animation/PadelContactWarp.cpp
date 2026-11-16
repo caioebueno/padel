@@ -5,22 +5,6 @@
 
 namespace PadelContactWarpDetail
 {
-	// How the reach splits across the body (shots doc 4.2), Unreal units and degrees. The arm
-	// closes whatever the body leaves, so these only shape the look, not whether it connects.
-	constexpr double PelvisDownShare = 0.8;      // of a target below the face
-	constexpr double MaxPelvisDropUnits = 50.0;  // a deep knee bend, not a squat
-	constexpr double PelvisForwardShare = 0.25;
-	constexpr double MaxPelvisForwardUnits = 15.0;
-	constexpr double SpineSideShare = 0.45;      // of the sideways reach, as side-bend
-	constexpr double SpineForwardShare = 0.25;
-	constexpr double SpineDownShare = 0.75;      // of what's left below after the knees
-	constexpr double MaxSpineDeg = 55.0;
-	constexpr double TrunkTurnShare = 0.7;       // of the angle from the racket shoulder to the ball, about the vertical
-	constexpr double MaxTrunkTurnDeg = 50.0;
-	constexpr double KneeBendUnits = 20.0;       // knees bend forward (+Y, the way the body faces)
-	constexpr double ElbowBendUnits = 20.0;
-	constexpr double MaxReachShare = 0.98;      // of the arm's length: never lock the elbow straight
-
 	const FVector FacingAxis(0.0, 1.0, 0.0); // the placeholder and every MetaHuman face +Y
 
 	void SetCS(FCSPose<FCompactPose>& CS, FCompactPoseBoneIndex Bone, const FTransform& Transform)
@@ -113,7 +97,7 @@ namespace PadelContactWarp
 		return RacketRelativeToHand.TransformPosition(FVector(0.0, 0.0, FaceCentreUnits));
 	}
 
-	void Apply(FCompactPose& Pose, const FPadelWarpBones& Bones, const FPadelWarpInput& In)
+	void Apply(FCompactPose& Pose, const FPadelWarpBones& Bones, const FPadelWarpInput& In, const FPadelWarpTuning& Tuning)
 	{
 		using namespace PadelContactWarpDetail;
 		if ((In.ArmAlpha <= 0.0f && In.BodyAlpha <= 0.0f) || !Bones.HasArm())
@@ -142,8 +126,8 @@ namespace PadelContactWarp
 			if (Valid(Bones.Pelvis))
 			{
 				const FVector D = In.TargetCS - FaceAt(CS, Bones.Hand, In.FaceInHand);
-				const double Drop = FMath::Clamp(D.Z * PelvisDownShare, -MaxPelvisDropUnits, 0.0) * W;
-				const double Ahead = FMath::Clamp(FVector::DotProduct(D, FacingAxis) * PelvisForwardShare, -MaxPelvisForwardUnits, MaxPelvisForwardUnits) * W;
+				const double Drop = FMath::Clamp(D.Z * Tuning.PelvisDownShare, -Tuning.MaxPelvisDropUnits, 0.0) * W;
+				const double Ahead = FMath::Clamp(FVector::DotProduct(D, FacingAxis) * Tuning.PelvisForwardShare, -Tuning.MaxPelvisForwardUnits, Tuning.MaxPelvisForwardUnits) * W;
 				FTransform Pelvis = CS.GetComponentSpaceTransform(Bones.Pelvis);
 				Pelvis.AddToTranslation(FVector(0.0, 0.0, Drop) + FacingAxis * Ahead);
 				SetCS(CS, Bones.Pelvis, Pelvis);
@@ -151,7 +135,7 @@ namespace PadelContactWarp
 				{
 					if (bLeg[Side])
 					{
-						SolveLimb(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side].GetLocation(), FacingAxis * KneeBendUnits);
+						SolveLimb(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side].GetLocation(), FacingAxis * Tuning.KneeBendUnits);
 					}
 				}
 			}
@@ -166,7 +150,7 @@ namespace PadelContactWarp
 				if (!From.IsNearlyZero() && !To.IsNearlyZero())
 				{
 					const double Full = FMath::Atan2(FVector::CrossProduct(From, To).Z, FVector::DotProduct(From, To));
-					const double Yaw = FMath::Clamp(Full * TrunkTurnShare, -FMath::DegreesToRadians(MaxTrunkTurnDeg), FMath::DegreesToRadians(MaxTrunkTurnDeg)) * W;
+					const double Yaw = FMath::Clamp(Full * Tuning.TrunkTurnShare, -FMath::DegreesToRadians(Tuning.MaxTrunkTurnDeg), FMath::DegreesToRadians(Tuning.MaxTrunkTurnDeg)) * W;
 					if (FMath::Abs(Yaw) > KINDA_SMALL_NUMBER)
 					{
 						const FQuat Step(FVector::UpVector, Yaw / Bones.Spine.Num());
@@ -190,12 +174,12 @@ namespace PadelContactWarp
 				const double Below = FMath::Min(FVector::DotProduct(D, Up), 0.0);
 				const FVector Pivot = CS.GetComponentSpaceTransform(Bones.Spine[0]).GetLocation();
 				const FVector Shoulder = CS.GetComponentSpaceTransform(Bones.UpperArm).GetLocation();
-				const FVector Want = Shoulder + Side * SpineSideShare + Along * SpineForwardShare + Up * (Below * SpineDownShare);
+				const FVector Want = Shoulder + Side * Tuning.SpineSideShare + Along * Tuning.SpineForwardShare + Up * (Below * Tuning.SpineDownShare);
 				FQuat Bend = FQuat::FindBetweenVectors(Shoulder - Pivot, Want - Pivot);
 				FVector Axis;
 				double Angle;
 				Bend.ToAxisAndAngle(Axis, Angle);
-				Angle = FMath::Min(Angle, FMath::DegreesToRadians(MaxSpineDeg)) * W;
+				Angle = FMath::Min(Angle, FMath::DegreesToRadians(Tuning.MaxSpineDeg)) * W;
 				SpineUsed = Angle;
 				if (Angle > KINDA_SMALL_NUMBER && Axis.IsNormalized())
 				{
@@ -222,7 +206,7 @@ namespace PadelContactWarp
 			const FTransform Upper = CS.GetComponentSpaceTransform(Bones.UpperArm);
 			const FTransform Lower = CS.GetComponentSpaceTransform(Bones.LowerArm);
 			const FTransform HandCS = CS.GetComponentSpaceTransform(Bones.Hand);
-			const double Reach = (FVector::Dist(Upper.GetLocation(), Lower.GetLocation()) + FVector::Dist(Lower.GetLocation(), HandCS.GetLocation())) * MaxReachShare;
+			const double Reach = (FVector::Dist(Upper.GetLocation(), Lower.GetLocation()) + FVector::Dist(Lower.GetLocation(), HandCS.GetLocation())) * Tuning.MaxReachShare;
 			const FVector FaceOffset = HandCS.GetRotation().RotateVector(In.FaceInHand);
 			FVector HandGoal = In.TargetCS - FaceOffset;
 			FQuat Turn = FQuat::Identity;
@@ -236,7 +220,7 @@ namespace PadelContactWarp
 			const FVector Effector = FMath::Lerp(HandCS.GetLocation(), HandGoal, A);
 			// Keep the elbow bending the way the current pose bends it.
 			const FVector Mid = (Upper.GetLocation() + HandCS.GetLocation()) * 0.5;
-			const FVector Bend = (Lower.GetLocation() - Mid).GetSafeNormal() * ElbowBendUnits;
+			const FVector Bend = (Lower.GetLocation() - Mid).GetSafeNormal() * Tuning.ElbowBendUnits;
 			SolveLimb(CS, Bones.UpperArm, Bones.LowerArm, Bones.Hand, Effector, Bend);
 			if (!Turn.Equals(FQuat::Identity))
 			{
@@ -252,7 +236,7 @@ namespace PadelContactWarp
 		if (In.BodyAlpha > 0.0f && In.ArmAlpha > 0.0f && Bones.Spine.Num() > 0)
 		{
 			const FVector Miss = In.TargetCS - FaceAt(CS, Bones.Hand, In.FaceInHand);
-			const double Left = FMath::DegreesToRadians(MaxSpineDeg) * In.BodyAlpha - SpineUsed;
+			const double Left = FMath::DegreesToRadians(Tuning.MaxSpineDeg) * In.BodyAlpha - SpineUsed;
 			if (Miss.Size() > 1.0 && Left > KINDA_SMALL_NUMBER)
 			{
 				const FVector Pivot = CS.GetComponentSpaceTransform(Bones.Spine[0]).GetLocation();

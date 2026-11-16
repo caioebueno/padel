@@ -82,6 +82,7 @@ private:
 	bool bWarp = true;
 	FVector RacketTargetComponent = FVector::ZeroVector;
 	FVector FaceInHand = FVector::ZeroVector;
+	FPadelWarpTuning WarpTuning;
 
 	// Advanced in Update.
 	double CyclePhase = 0.0;

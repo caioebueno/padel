@@ -100,6 +100,7 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 			if (UPadelPlayerAnimInstance* Anim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
 			{
 				Anim->LocomotionSet = Set;
+				Anim->WarpTuning = Data->Warp;
 			}
 			if (Racket && !Data->RacketBone.IsNone())
 			{

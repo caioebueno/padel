@@ -1,5 +1,6 @@
 #include "Animation/PadelAnimData.h"
 
+#include "Court/PadelCourtUnits.h"
 #include "Data/PadelAnimClipRow.h"
 #include "Data/PadelAnimSettingsRow.h"
 #include "Data/PadelShotData.h"
@@ -50,6 +51,42 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.JogAssets = Row->JogAssets;
 		Out.WalkClipSpeedMps = Row->WalkClipSpeedMps;
 		Out.ArmReadyAlpha = Row->ArmReadyAlpha;
+		{
+			// Metres to Unreal units once, here (CLAUDE.md, "Coordinates and units").
+			const double Cm = Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			FPadelWarpTuning& W = Out.Warp;
+			W.PelvisDownShare = Row->WarpPelvisDownShare;
+			W.MaxPelvisDropUnits = Row->WarpMaxPelvisDropM * Cm;
+			W.PelvisForwardShare = Row->WarpPelvisForwardShare;
+			W.MaxPelvisForwardUnits = Row->WarpMaxPelvisForwardM * Cm;
+			W.SpineSideShare = Row->WarpSpineSideShare;
+			W.SpineForwardShare = Row->WarpSpineForwardShare;
+			W.SpineDownShare = Row->WarpSpineDownShare;
+			W.MaxSpineDeg = Row->WarpMaxSpineDeg;
+			W.TrunkTurnShare = Row->WarpTrunkTurnShare;
+			W.MaxTrunkTurnDeg = Row->WarpMaxTrunkTurnDeg;
+			W.KneeBendUnits = Row->WarpKneeBendM * Cm;
+			W.ElbowBendUnits = Row->WarpElbowBendM * Cm;
+			W.MaxReachShare = Row->WarpMaxReachShare;
+			for (const double Share : { Row->WarpPelvisDownShare, Row->WarpPelvisForwardShare, Row->WarpSpineSideShare, Row->WarpSpineForwardShare,
+				Row->WarpSpineDownShare, Row->WarpTrunkTurnShare })
+			{
+				if (Share < 0.0 || Share > 1.0)
+				{
+					Out.Errors.Add(TEXT("Animation.json: the Warp*Share fields must be 0 to 1"));
+					break;
+				}
+			}
+			if (Row->WarpMaxPelvisDropM < 0.0 || Row->WarpMaxPelvisForwardM < 0.0 || Row->WarpKneeBendM < 0.0 || Row->WarpElbowBendM < 0.0
+				|| Row->WarpMaxSpineDeg < 0.0 || Row->WarpMaxSpineDeg > 90.0 || Row->WarpMaxTrunkTurnDeg < 0.0 || Row->WarpMaxTrunkTurnDeg > 90.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: Warp limits must be 0 or more (angles up to 90 degrees)"));
+			}
+			if (Row->WarpMaxReachShare <= 0.0 || Row->WarpMaxReachShare > 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: WarpMaxReachShare must be above 0 and at most 1"));
+			}
+		}
 		if (Row->WalkClipSpeedMps <= 0.0 || Row->WalkClipSpeedMps >= Row->RunClipSpeedMps)
 		{
 			Out.Errors.Add(TEXT("Animation.json: WalkClipSpeedMps must be above 0 and below RunClipSpeedMps"));

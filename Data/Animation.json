@@ -57,6 +57,19 @@
 			"/Game/Padel/Animations/Locomotion/A_Jog_Right"
 		],
 		"WalkClipSpeedMps": 1.6,
-		"ArmReadyAlpha": 0.6
+		"ArmReadyAlpha": 0.6,
+		"WarpPelvisDownShare": 0.8,
+		"WarpMaxPelvisDropM": 0.5,
+		"WarpPelvisForwardShare": 0.25,
+		"WarpMaxPelvisForwardM": 0.15,
+		"WarpSpineSideShare": 0.45,
+		"WarpSpineForwardShare": 0.25,
+		"WarpSpineDownShare": 0.75,
+		"WarpMaxSpineDeg": 55.0,
+		"WarpTrunkTurnShare": 0.7,
+		"WarpMaxTrunkTurnDeg": 50.0,
+		"WarpKneeBendM": 0.2,
+		"WarpElbowBendM": 0.2,
+		"WarpMaxReachShare": 0.98
 	}
 ]
