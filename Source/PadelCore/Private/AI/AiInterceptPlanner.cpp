@@ -24,9 +24,10 @@ namespace
 		// Local Y is depth: the player stands deeper than the ball by the forward offset.
 		const FAiVec2 StandLocal = { BallLocal.X - Side * T.ContactSideFor(Kind, bForehand), BallLocal.Y + T.ContactForwardFor(Kind, bForehand) };
 		FAiVec Stand = TeamFrame::ToCourt(Query.HalfSign, StandLocal);
-		const double MaxY = Court::HalfWidth - T.CourtMarginM;
+		const double Margin = T.CourtMarginM + T.StandPointInsetM;
+		const double MaxY = Court::HalfWidth - Margin;
 		Stand.Y = ClampD(Stand.Y, -MaxY, MaxY);
-		const double Depth = ClampD(TeamFrame::Depth(Query.HalfSign, Stand), T.MinPlayerDepthM, Court::HalfLength - T.CourtMarginM);
+		const double Depth = ClampD(TeamFrame::Depth(Query.HalfSign, Stand), T.MinPlayerDepthM, Court::HalfLength - Margin);
 		Stand.X = Depth * Query.HalfSign;
 		return Stand;
 	}

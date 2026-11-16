@@ -225,6 +225,7 @@ namespace
 			{ "AtNetDepthM", &FAiTactics::AtNetDepthM, nullptr },
 			{ "HomeErrorMaxM", &FAiTactics::HomeErrorMaxM, nullptr },
 			{ "CourtMarginM", &FAiTactics::CourtMarginM, nullptr },
+			{ "StandPointInsetM", &FAiTactics::StandPointInsetM, nullptr },
 			{ "MinPlayerDepthM", &FAiTactics::MinPlayerDepthM, nullptr },
 			{ "ArriveRadiusM", &FAiTactics::ArriveRadiusM, nullptr },
 			{ "SlowRadiusM", &FAiTactics::SlowRadiusM, nullptr },

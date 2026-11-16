@@ -53,6 +53,8 @@ TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by
 	CHECK(T.SideSwitchMinLobDepthM == Approx(7.0));
 	// A5 (movement doc 3.2, 5.4): the split-step landing before the first step.
 	CHECK(T.FirstStepExtraS == Approx(0.15));
+	// A3: stand points a little inside FPlayerMotion's wall margin.
+	CHECK(T.StandPointInsetM == Approx(0.02));
 }
 
 TEST_CASE("Contracts.Realism: AnimClips.json has no contact points yet (0005)")
