@@ -39,18 +39,20 @@ namespace
 
 TEST_CASE("Ai.ShotChoice: opponents at the net and a low ball: lob or chiquita")
 {
-	auto Shots = Count(Context(EContactKind::Groundstroke, 6.0, 0.6, 2.5, 2.5), "Hard");
+	auto Shots = Count(Context(EContactKind::Groundstroke, 4.0, 0.6, 2.5, 2.5), "Hard");
 	CHECK(Shots[EAiShot::Lob] + Shots[EAiShot::Chiquita] > 700);
 	CHECK(Shots[EAiShot::Lob] > Shots[EAiShot::Drive]);
 	CHECK(Shots[EAiShot::Chiquita] > 0);
-	// From the back the chiquita is rare: the ball isn't in front.
-	auto Deep = Count(Context(EContactKind::Groundstroke, 8.6, 0.6, 2.5, 2.5), "Hard");
-	CHECK(Deep[EAiShot::Chiquita] < Shots[EAiShot::Chiquita]);
+	// From the back there is no chiquita: the ball isn't in front, and at its pace it
+	// fell short of the net (issue 20: a third of them bounced on the hitter's side).
+	auto Deep = Count(Context(EContactKind::Groundstroke, TestData::Tactics().ChiquitaMaxDepthM + 0.5, 0.6, 2.5, 2.5), "Hard");
+	CHECK(Deep[EAiShot::Chiquita] == 0);
+	CHECK(Deep[EAiShot::Lob] > Deep[EAiShot::Drive]);
 }
 
 TEST_CASE("Ai.ShotChoice: a high ball at the net: bandeja by default, smash when short and high")
 {
-	auto Shots = Count(Context(EContactKind::Overhead, 3.0, 2.0, 8.5, 8.5), "Medium");
+	auto Shots = Count(Context(EContactKind::Overhead, 3.0, TestData::Tactics().SmashMinHeightM - 0.1, 8.5, 8.5), "Medium");
 	CHECK(Shots[EAiShot::Bandeja] > Shots[EAiShot::Vibora]);
 	CHECK(Shots[EAiShot::Smash] == 0);  // not high enough to smash
 	auto High = Count(Context(EContactKind::Overhead, 3.0, 2.6, 8.5, 8.5), "Hard");
@@ -95,16 +97,50 @@ TEST_CASE("Ai.ShotChoice: against a split pair, the drive goes through the middl
 TEST_CASE("Ai.ShotChoice: targets land on the opponents' half, lobs deep, chiquitas short")
 {
 	const FAiTactics& T = TestData::Tactics();
-	const FShotContext C = Context(EContactKind::Groundstroke, 7.0, 0.8, 2.5, 2.5);
+	const FShotContext C = Context(EContactKind::Groundstroke, 4.0, 0.8, 2.5, 2.5);
 	FPadelRng Rng(2);
 	for (int I = 0; I < 50; ++I)
 	{
 		const FAiVec Lob = ShotChooser::IntendedTarget(EAiShot::Lob, C, T, TestData::Difficulty("Medium"), Rng);
 		const FAiVec Chiquita = ShotChooser::IntendedTarget(EAiShot::Chiquita, C, T, TestData::Difficulty("Medium"), Rng);
-		CHECK(TeamFrame::Depth(-1, Lob) == doctest::Approx(T.LobDepthM));
+		CHECK(TeamFrame::Depth(-1, Lob) <= T.LobDepthM);
+		CHECK(TeamFrame::Depth(-1, Lob) >= T.LobDepthM - T.LobShortSpreadM * TestData::Difficulty("Medium").AimScatterMult);
 		CHECK(TeamFrame::Depth(-1, Chiquita) == doctest::Approx(T.ChiquitaDepthM));
 		CHECK(std::abs(Lob.Y) <= T.TargetSideLimitM);
 	}
+}
+
+TEST_CASE("Ai.ShotChoice: some lobs fall short, more of them on Easy (issue 20)")
+{
+	// GDD 12.4: lobs decide points. A short lob is the net pair's smash.
+	const FAiTactics& T = TestData::Tactics();
+	const FShotContext C = Context(EContactKind::Groundstroke, 8.0, 0.8, 2.5, 2.5);
+	auto MeanShortfall = [&](const char* Level)
+	{
+		FPadelRng Rng(6);
+		double Sum = 0.0;
+		for (int I = 0; I < 400; ++I)
+		{
+			Sum += T.LobDepthM - TeamFrame::Depth(-1, ShotChooser::IntendedTarget(EAiShot::Lob, C, T, TestData::Difficulty(Level), Rng));
+		}
+		return Sum / 400.0;
+	};
+	CHECK(MeanShortfall("Medium") > 0.25 * T.LobShortSpreadM);
+	CHECK(MeanShortfall("Easy") > MeanShortfall("Hard"));
+}
+
+TEST_CASE("Ai.ShotChoice: a smash at a pair at the net goes at their feet (issue 20)")
+{
+	// Driven deep, a flat smash passed the net pair at racket height and came back as a
+	// volley. Against a pair at the back it still goes deep.
+	const FAiTactics& T = TestData::Tactics();
+	FPadelRng Rng(3);
+	const FShotContext AtNet = Context(EContactKind::Overhead, 3.0, 2.6, 2.5, 2.5);
+	const FAiVec Feet = ShotChooser::IntendedTarget(EAiShot::Smash, AtNet, T, TestData::Difficulty("Hard"), Rng);
+	CHECK(TeamFrame::Depth(-1, Feet) == doctest::Approx(2.5 + T.FeetDepthOffsetM));
+	const FShotContext Back = Context(EContactKind::Overhead, 3.0, 2.6, 8.5, 8.5);
+	const FAiVec Deep = ShotChooser::IntendedTarget(EAiShot::Smash, Back, T, TestData::Difficulty("Hard"), Rng);
+	CHECK(TeamFrame::Depth(-1, Deep) == doctest::Approx(T.SmashDepthM));
 }
 
 TEST_CASE("Ai.ShotChoice: the serve goes diagonally into the box (GDD 3.2)")

@@ -3,9 +3,11 @@
 #include "AI/AiEngineBridge.h"
 #include "AI/AiTeamFrame.h"
 #include "LaunchSolver.h"
+#include "Shots/TimingGrader.h"
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace Padel::AI
 {
@@ -242,31 +244,93 @@ void FAiMatchRunner::ThinkAi(std::array<Shots::FPlayerInputFrame, 4>& Inputs)
 	ReleasePending();
 }
 
+double FAiMatchRunner::RealTimingOffset(int PlayerId, const FAiShotDecision& Shot) const
+{
+	const Shots::FShotModel& M = Library.Model;
+	// Overheads are graded in the bandeja's windows (the overhead button's family shot).
+	const Shots::FShotParams& Params = Library.Get(IsOverhead(Shot.Shot) ? EShotType::Bandeja : Bridge::ToEngine(Shot.Shot));
+	const Shots::FPlayerRatings& R = Ratings[PlayerId];
+	const double Unit = std::min(R.Unit(Params.ForehandRating), R.Unit(Params.BackhandRating));
+	const double Scale = Shots::FTimingGrader::WindowScale(Unit, M);
+	const std::array<double, 4> AiEdges = { 0.0, Tactics.WindowPerfectS, Tactics.WindowGoodS, Tactics.WindowEarlyLateS };
+	const std::array<double, 4> RealEdges = { 0.0, Params.PerfectWindowMs * Scale / 1000.0, Params.GoodWindowMs * Scale / 1000.0,
+		Params.EarlyLateWindowMs * Scale / 1000.0 };
+	const double Abs = std::abs(Shot.TimingOffsetS);
+	const double Sign = Shot.TimingOffsetS < 0.0 ? -1.0 : 1.0;
+	for (size_t Band = 1; Band < AiEdges.size(); ++Band)
+	{
+		if (Abs <= AiEdges[Band])
+		{
+			const double T = (Abs - AiEdges[Band - 1]) / (AiEdges[Band] - AiEdges[Band - 1]);
+			return Sign * (RealEdges[Band - 1] + T * (RealEdges[Band] - RealEdges[Band - 1]));
+		}
+	}
+	// A miss: as far past the early/late edge as the AI asked.
+	return Sign * (RealEdges[3] + (Abs - AiEdges[3]));
+}
+
 void FAiMatchRunner::ClearShots(int PlayerId)
 {
 	Pending[PlayerId].reset();
 	Controllers[PlayerId]->CancelAiShot();
 }
 
+double FAiMatchRunner::BallDiesAt() const
+{
+	// When the ball stops being playable (its second bounce, or out): no swing can meet
+	// it after that.
+	const double Now = Match.Time();
+	for (const Shots::FBallView& V : Port.Predict(Library.Model.PredictHorizonS, SimTickSeconds))
+	{
+		if (!V.bLive || V.GroundBounces > 1)
+		{
+			return Now + V.T;
+		}
+	}
+	return std::numeric_limits<double>::infinity();
+}
+
 void FAiMatchRunner::ReleasePending()
 {
 	const double Now = Match.Time();
+	double DiesAt = -1.0;
 	for (int Id = 0; Id < NumPlayers; ++Id)
 	{
 		if (!Pending[Id])
 		{
 			continue;
 		}
+		if (DiesAt < 0.0)
+		{
+			DiesAt = BallDiesAt();
+		}
 		const FPendingShot& P = *Pending[Id];
 		const Shots::FPlayerShotController& C = *Controllers[Id];
 		const bool bSameMoment = C.HasIdealMoment() && std::abs(Now + C.TimeToIdealS() - P.ContactTime) <= Tactics.ContactMatchS;
-		// Past the latest start for the planned charge, swing at whatever the controller sees.
-		const bool bLastChance = Now >= P.ContactTime - P.Shot.Charge * Library.Model.ChargeTimeS;
-		if (bSameMoment || bLastChance)
+		// The controller picks its moment from where the player stands now, so on the way
+		// to the stand point it can still see another chance at the ball. Wait for it to
+		// agree, taking backswing off, and only at the very end swing at whatever it sees.
+		// A smash can't spare any backswing (GDD 4: it needs the full charge).
+		const double PlannedOffset = RealTimingOffset(Id, P.Shot);
+		const double FullLead = C.AiSwingLeadS(P.Shot.Charge, PlannedOffset);
+		const bool bNeedsFullCharge = P.Shot.Shot == EAiShot::Smash;
+		const bool bLastChance = Now >= P.ContactTime - (bNeedsFullCharge ? FullLead : std::min(FullLead, Tactics.LateRequestS));
+		// The plan was read from a noisy prediction (GDD 8 Wall Play) and its moment never
+		// comes: the ball dies first. Play the controller's own moment instead.
+		const bool bStale = P.ContactTime >= DiesAt - Tactics.ContactMatchS;
+		if (!bSameMoment && !bLastChance && !bStale)
 		{
-			Controllers[Id]->RequestAiShot(Bridge::ToEngine(P.Shot.Shot), Bridge::ToEngine(P.Shot.Target), P.Shot.Charge, P.Shot.TimingOffsetS);
-			Pending[Id].reset();
+			continue;
 		}
+		// A late swing still has to meet the ball before it dies.
+		const double IdealAt = C.HasIdealMoment() ? Now + C.TimeToIdealS() : P.ContactTime;
+		const double Offset = std::min(PlannedOffset, DiesAt - IdealAt - Tactics.DeadBallMarginS);
+		// A late request gets the backswing there is time for; a smash keeps its full
+		// charge, which the shot system's own lead (AiSwingLeadS) has room for.
+		const double TimeLeft = std::max(0.0, IdealAt + Offset - Now);
+		const double Charge = bNeedsFullCharge ? P.Shot.Charge : std::min(P.Shot.Charge, TimeLeft / Library.Model.ChargeTimeS);
+		Controllers[Id]->RequestAiShot(Bridge::ToEngine(P.Shot.Shot), Bridge::ToEngine(P.Shot.Target), Charge, Offset);
+		Pending[Id].reset();
 	}
 }
 
@@ -311,8 +375,9 @@ bool FAiMatchRunner::ClearsNet(const FVec3& Origin, const FVec3& Target, double 
 
 FAiShotDecision FAiMatchRunner::AimOverNet(const FAiVec& Contact, int HitterHalf, const FAiShotDecision& Decision) const
 {
-	// Lobs are solved for their apex, serves for the box; overheads come down from above the tape.
-	if (Decision.Shot == EAiShot::Lob || IsServe(Decision.Shot) || IsOverhead(Decision.Shot))
+	// Lobs are solved for their apex, serves for the box; overheads come down from above
+	// the tape, except a smash driven down at the feet.
+	if (Decision.Shot == EAiShot::Lob || IsServe(Decision.Shot) || (IsOverhead(Decision.Shot) && Decision.Shot != EAiShot::Smash))
 	{
 		return Decision;
 	}
@@ -375,7 +440,7 @@ void FAiMatchRunner::ServeAi(std::array<Shots::FPlayerInputFrame, 4>& Inputs)
 	const int TeamIdx = TeamIndex(TeamOfPlayer(Server));
 	const FAiShotDecision Serve = Teams[TeamIdx]->ChooseServe(Bridge::ToAi(C.GetMotion().GetPosition()));
 	C.TossForServe(Port);
-	C.RequestAiShot(Bridge::ToEngine(Serve.Shot), Bridge::ToEngine(Serve.Target), Serve.Charge, Serve.TimingOffsetS);
+	C.RequestAiShot(Bridge::ToEngine(Serve.Shot), Bridge::ToEngine(Serve.Target), Serve.Charge, RealTimingOffset(Server, Serve));
 }
 
 void FAiMatchRunner::AfterHit(int HitterId)
