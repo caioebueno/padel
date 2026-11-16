@@ -220,7 +220,7 @@ void UPadelScreenWidget::ApplyEntryAnimation()
 	// and Reduce motion fade only.
 	const float T = EntryTween.Value();
 	float Slide = 0.0f;
-	if (!PadelUi::Options().bReduceMotion)
+	if (!PadelUi::Options().bReduceMotion && UsesStageSlide())
 	{
 		const float Distance = PadelUi::Theme().Motion.ScreenSlideIn;
 		if (EntryTransition == EUiTransition::SlideFromRight)

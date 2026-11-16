@@ -107,6 +107,11 @@ protected:
 	virtual bool OnBack();
 	/** X, Y, LB, RB, Start: anything the focus logic didn't use. True if handled. */
 	virtual bool OnScreenInput(Padel::Ui::EUiInput Input, bool bRepeat) { return false; }
+	/**
+	 * False to keep the entry fade but skip the stage's 48 px slide, for a screen that
+	 * moves its own parts in (the main menu's staggered tiles, spec 7.2).
+	 */
+	virtual bool UsesStageSlide() const { return true; }
 	/** Any key-down by Unreal key name (see HandleAnyKey). Most screens ignore it. */
 	virtual bool OnAnyKey(const FString& KeyName) { return false; }
 
