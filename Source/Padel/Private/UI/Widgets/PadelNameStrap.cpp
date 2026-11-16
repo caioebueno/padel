@@ -127,8 +127,12 @@ void UPadelNameStrap::Refresh()
 	Band->SetPadding(bCompact ? FMargin(NameStrapCompactSide, NameStrapEdge, NameStrapCompactSide, 0.0f)
 		: FMargin(PadelUi::Space(3), 0.0f, PadelUi::Space(3), 0.0f));
 	const FLinearColor BandColour = PadelUi::TeamColour(Team) * FLinearColor(1.0f, 1.0f, 1.0f, NameStrapAlpha);
-	Band->SetBrush(TopRadius > 0.0f ? FSlateRoundedBoxBrush(BandColour, FVector4(TopRadius, TopRadius, 0.0f, 0.0f))
-		: PadelUiPaint::Solid(BandColour));
+	FSlateBrush BandBrush = PadelUiPaint::Solid(BandColour);
+	if (TopRadius > 0.0f)
+	{
+		BandBrush = FSlateRoundedBoxBrush(BandColour, FVector4(TopRadius, TopRadius, 0.0f, 0.0f));
+	}
+	Band->SetBrush(BandBrush);
 	if (TopEdge)
 	{
 		if (UOverlaySlot* EdgeSlot = Cast<UOverlaySlot>(TopEdge->Slot))
