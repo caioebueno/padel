@@ -215,18 +215,39 @@ def unreal_editor() -> Path:
     return exe
 
 
+def run_editor(command: list[str], log_path: Path, timeout_s: float = 3600.0) -> tuple[int, str]:
+    """Runs the editor and returns (exit code, its output).
+
+    The output goes to a file, not a pipe. On macOS the editor starts
+    UnrealTraceServer, which inherits the editor's stdout and outlives it; with a
+    pipe, waiting for end-of-file meant waiting for the trace server, so the
+    import hung after the editor had already exited. With a file, only the
+    editor process itself is waited on.
+    """
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w", encoding="utf-8", errors="replace") as handle:
+        proc = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=handle, stderr=subprocess.STDOUT)
+        try:
+            code = proc.wait(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            raise SystemExit(f"Unreal import still running after {int(timeout_s)} s; see {log_path}") from None
+    return code, log_path.read_text(encoding="utf-8", errors="replace")
+
+
 def cmd_unreal(args: argparse.Namespace) -> None:
     editor = unreal_editor()
     script = UNREAL_DIR / "import_assets.py"
-    log(f"importing into Unreal with {editor.name} (the editor must be closed)")
+    log_path = REPO_ROOT / "Saved" / "Logs" / "AssetImport.log"
+    log(f"importing into Unreal with {editor.name} (the editor must be closed); log: {_rel(log_path)}")
     # The Python Script Plugin's commandlet runs the import without opening the editor UI.
-    proc = subprocess.run([str(editor), str(REPO_ROOT / "Padel.uproject"), "-run=pythonscript",
-                           f"-script={script}", "-unattended", "-nullrhi", "-nosplash", "-nosound", "-stdout",
-                           "-FullStdOutLogOutput"], text=True, capture_output=True)
-    out = proc.stdout + proc.stderr
+    code, out = run_editor([str(editor), str(REPO_ROOT / "Padel.uproject"), "-run=pythonscript",
+                            f"-script={script}", "-unattended", "-nullrhi", "-nosplash", "-nosound", "-stdout",
+                            "-FullStdOutLogOutput"], log_path)
     lines = [line for line in out.splitlines() if "[padel-import]" in line]
     print("\n".join(lines) or out[-4000:])
-    if proc.returncode != 0 or not any("[padel-import] done" in line for line in lines):
+    if code != 0 or not any("[padel-import] done" in line for line in lines):
         raise SystemExit("Unreal import failed; see the log above")
 
 
