@@ -284,6 +284,9 @@ def _face_away_from(bm: bmesh.types.BMesh, centre_of) -> None:
     """Points every face of an open surface (the bumper, the grip's tubes) away from a
     reference point: Blender can't tell inside from outside on a surface that isn't
     closed. Flat ends (the butt) face down."""
+    # New faces have no normal until it is computed: without this every test below read
+    # zero and nothing was flipped, so the butt cap rendered inside out in Unreal.
+    bm.normal_update()
     for f in bm.faces:
         c = f.calc_center_median()
         n = f.normal
@@ -330,13 +333,31 @@ def build_racket(job: dict) -> tuple[list, list]:
     return objects[:1], objects[1:]
 
 
+def inward_faces(obj: bpy.types.Object, cfg: dict) -> int:
+    """Faces of the open surfaces that point into the racket: Unreal culls back faces, so
+    each one is a hole in the shell (the butt cap was inside out once)."""
+    names = [m.name if m else "" for m in obj.data.materials]
+    centre = Vector((0.0, 0.0, layout.widest(cfg)[1] - 0.04))
+    handle_top = cfg["grip"]["tape_top_z_m"] + 0.002
+    count = 0
+    for p in obj.data.polygons:
+        name, c, n = names[p.material_index], p.center, p.normal
+        if name == "MI_Racket_Bumper":
+            count += n.dot(c - centre) < -1e-6
+        elif name in ("MI_Racket_Grip", "MI_Racket_Cap", "MI_Racket_Accent") and c.z < handle_top:
+            radial = Vector((c.x, c.y, 0.0))
+            count += (n.z > 0.0) if radial.length < 0.01 and abs(n.z) > 0.95 else n.dot(radial) < -1e-6
+    return count
+
+
 def main() -> None:
     job = bc.job_from_argv()
     bc.reset_scene()
     objects, lods = build_racket(job)
     cfg = layout.load_config()
     bc.write_report(job, objects, {"lod_triangles": [bc.triangle_count(o) for o in lods],
-                                   "holes": len(layout.hole_centres(cfg))})
+                                   "holes": len(layout.hole_centres(cfg)),
+                                   "inward_faces": [inward_faces(o, cfg) for o in objects + lods]})
     bc.export_fbx(objects, Path(job["out"]))
     for obj, out in zip(lods, job.get("lod_outs", [])):
         bc.export_fbx([obj], Path(out))

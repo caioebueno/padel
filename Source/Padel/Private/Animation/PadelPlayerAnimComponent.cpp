@@ -222,6 +222,9 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 		return;
 	}
 	Racket->AttachToComponent(To, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Data->RacketBone);
+	// The placeholder skeleton is hidden under a MetaHuman; the racket must not inherit that.
+	Racket->SetVisibility(true);
+	Racket->SetHiddenInGame(false);
 	const USkeletalMesh* Mesh = To->GetSkeletalMeshAsset();
 	if (!bImportedRacket || !Mesh)
 	{
@@ -263,6 +266,8 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	FTransform Relative = GripCS.GetRelativeTransform(HandCS);
 	Relative.SetScale3D(FVector::OneVector);
 	Racket->SetRelativeTransform(Relative);
+	UE_LOG(LogPadel, Log, TEXT("Racket in %s's %s: grip %.1f cm from the bone (%s finger bones)."), *Mesh->GetName(),
+		*Data->RacketBone.ToString(), Relative.GetLocation().Size(), In.bHasKnuckle ? TEXT("with") : TEXT("no"));
 }
 
 void UPadelPlayerAnimComponent::RemoveMetaHuman()

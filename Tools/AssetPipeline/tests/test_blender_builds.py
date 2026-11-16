@@ -108,6 +108,9 @@ class BlenderBuildTest(unittest.TestCase):
         self.assertLessEqual(report["triangles"], asset.budget_tris)
         self.assertEqual(set(fbx["materials"]), {f"MI_Racket_{n}" for n in
                                                  ("Face", "Frame", "Core", "Bumper", "Metal", "Accent", "Grip", "Cap")})
+        # Open surfaces (bumper, overgrip, tape, butt cap) face out on every LOD: Unreal
+        # culls back faces, and an inside-out butt cap shipped once.
+        self.assertEqual(report["inward_faces"], [0] * (1 + len(asset.lods)))
         # Built LODs, each a good deal lighter than the one before, and all in the FBXs.
         tris = [report["triangles"]] + report["lod_triangles"]
         self.assertEqual(len(tris), 1 + len(asset.lods))
