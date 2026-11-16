@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace Padel::AI
 {
@@ -34,6 +35,8 @@ void FAiTeamController::OnPointStarted(bool bServing)
 	// service line and follows the serve in (AiPairTactics::OnOwnShot).
 	Pair.SetFormation(EFormation::BothBack);
 	Pair.ClearCommands();
+	// GDD 8: a side switch lasts until the point ends; each point starts on their own sides.
+	Pair.SetSwapped(false);
 	ReadAt = -1.0;
 	bIncoming = false;
 	bShotSent = false;
@@ -52,6 +55,7 @@ void FAiTeamController::OnPointStarted(bool bServing)
 void FAiTeamController::OnPointEnded()
 {
 	Pair.ClearCommands();
+	Pair.SetSwapped(false);
 	ReadAt = -1.0;
 	bIncoming = false;
 	Taker = -1;
@@ -138,12 +142,13 @@ void FAiTeamController::Read(const FAiWorldView& View)
 	PlanTime = View.Time;
 	Plans = {};
 	FTakerQuery Query;
+	std::array<std::vector<FTrajectorySample>, 2> SlotSamples;
 	for (int Slot = 0; Slot < 2; ++Slot)
 	{
 		// The human's read is modelled without noise: the AI only uses it to decide
 		// which of the two should go.
 		const double Noise = IsAi(Slot) ? Profiles[Slot].WallNoise(Tactics, Difficulty) : 0.0;
-		const std::vector<FTrajectorySample> Samples = Predictor.Predict(View.Ball, Noise, Rng);
+		std::vector<FTrajectorySample> Samples = Predictor.Predict(View.Ball, Noise, Rng);
 		FInterceptQuery Intercept;
 		Intercept.PlayerPosition = View.OwnPositions[Slot];
 		Intercept.PlayerVelocity = View.OwnVelocities[Slot];
@@ -154,6 +159,7 @@ void FAiTeamController::Read(const FAiWorldView& View)
 		Query.Plans[Slot] = Plans[Slot];
 		Query.PlayerLocal[Slot] = TeamFrame::ToLocal(HalfSign, View.OwnPositions[Slot]);
 		Query.Profiles[Slot] = Profiles[Slot];
+		SlotSamples[Slot] = std::move(Samples);
 	}
 	if (!Plans[RightSlot] && !Plans[LeftSlot])
 	{
@@ -164,7 +170,16 @@ void FAiTeamController::Read(const FAiWorldView& View)
 	Query.BallLocalX = TeamFrame::ToLocal(HalfSign, Any.Sample.Position).X;
 	Query.Teamwork = std::min(Profiles[RightSlot].Teamwork, Profiles[LeftSlot].Teamwork);
 	const int PreviousTaker = Taker;
-	Taker = Pair.ChooseTaker(Query, Rng);
+	const int Crosser = SideSwitchTaker(Query, SlotSamples);
+	if (Crosser >= 0)
+	{
+		Pair.SetSwapped(!Pair.IsSwapped());
+		Taker = Crosser;
+	}
+	else
+	{
+		Taker = Pair.ChooseTaker(Query, Rng);
+	}
 	if (Taker != PreviousTaker)
 	{
 		// A new read can hand the ball to the partner (the mesh, a second look at the
@@ -178,6 +193,63 @@ void FAiTeamController::Read(const FAiWorldView& View)
 	{
 		Pair.OnOpponentShot(LastOpponentShot);
 	}
+}
+
+int FAiTeamController::SideSwitchTaker(const FTakerQuery& Query, const std::array<std::vector<FTrajectorySample>, 2>& SlotSamples) const
+{
+	// GDD 8 side switch. A human picks their own side and gives the commands, so only an
+	// all-AI pair crosses on its own; once crossed they stay so until the point ends.
+	if (HumanSlot >= 0 || Pair.IsSwapped() || Tactics.SideSwitchMinLobDepthM <= 0.0 || Pair.GetFormation() != EFormation::BothNet)
+	{
+		return -1;
+	}
+	for (int Slot = 0; Slot < 2; ++Slot)
+	{
+		if (Pair.GetCommand(Slot) != EPartnerCommand::None)
+		{
+			return -1;  // GDD 7: a command overrides the pair's own tactics
+		}
+	}
+	const std::vector<FTrajectorySample>& Samples = SlotSamples[RightSlot].empty() ? SlotSamples[LeftSlot] : SlotSamples[RightSlot];
+	const double PairDepth = (Query.PlayerLocal[RightSlot].Y + Query.PlayerLocal[LeftSlot].Y) * 0.5;
+	std::optional<FAiVec2> Over;
+	std::optional<FAiVec2> Landing;
+	for (const FTrajectorySample& S : Samples)
+	{
+		if (S.Half != HalfSign)
+		{
+			continue;
+		}
+		const FAiVec2 Local = TeamFrame::ToLocal(HalfSign, S.Position);
+		if (!Over && Local.Y >= PairDepth)
+		{
+			Over = Local;
+		}
+		if (S.GroundBounces >= 1)
+		{
+			Landing = Local;
+			break;
+		}
+	}
+	if (!Over || !Landing)
+	{
+		return -1;
+	}
+	const int Lobbed = Pair.LobbedSlot(LastOpponentShot, *Over, *Landing, Query.PlayerLocal);
+	if (Lobbed < 0)
+	{
+		return -1;
+	}
+	// The partner crosses behind only when they get there with more time than the lobbed
+	// player turning round would have; otherwise the lobbed player chases it as usual and the
+	// pair keeps its sides (a needless cross leaves a hole while the two are crossing).
+	const int Partner = 1 - Lobbed;
+	if (!Query.Plans[Partner] || !Query.Plans[Partner]->bReachable)
+	{
+		return -1;
+	}
+	const bool bLobbedReaches = Query.Plans[Lobbed] && Query.Plans[Lobbed]->bReachable;
+	return !bLobbedReaches || Query.Plans[Partner]->Slack > Query.Plans[Lobbed]->Slack ? Partner : -1;
 }
 
 FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& Target, bool bChasing, double Slack) const

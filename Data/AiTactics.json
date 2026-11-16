@@ -6,7 +6,7 @@
 		"PartnerSpacingMinM": 3.5,
 		"PartnerSpacingMaxM": 5.0,
 		"NetStaggerM": 0.75,
-		"SideSwitchMinLobDepthM": 0.0,
+		"SideSwitchMinLobDepthM": 7.0,
 		"BallShiftFactor": 0.35,
 		"MaxLateralShiftM": 1.5,
 		"TakeMiddleShiftM": 0.8,

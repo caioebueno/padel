@@ -1,6 +1,7 @@
 #include "AI/AiPairTactics.h"
 
 #include <cmath>
+#include <utility>
 
 namespace Padel::AI
 {
@@ -94,19 +95,21 @@ std::array<FAiVec2, 2> FAiPairTactics::HomePositions(const FAiVec2& BallLocal) c
 	const double StaggerWeight = Tactics.MiddleBandM > 0.0
 		? ClampD(std::abs(BallLocal.X) / Tactics.MiddleBandM, 0.0, 1.0)
 		: (BallLocal.X != 0.0 ? 1.0 : 0.0);
-	const int FarSlot = BallLocal.X >= 0.0 ? LeftSlot : RightSlot;
+	const int FarSide = BallLocal.X >= 0.0 ? LeftSlot : RightSlot;
 
 	std::array<FAiVec2, 2> Homes;
 	for (int Slot = 0; Slot < 2; ++Slot)
 	{
-		const double SideSign = Slot == RightSlot ? 1.0 : -1.0;
+		// After a side switch each player stands on the partner's side (GDD 8).
+		const int Side = SideOf(Slot);
+		const double SideSign = Side == RightSlot ? 1.0 : -1.0;
 		double X = Centre + SideSign * HalfSpacing;
 		double Depth = BaseDepth;
 		if (Formation == EFormation::BothNet)
 		{
 			// Movement doc 5.4: the ball-side player steps in to volley and the far one
 			// drops back, so the pair stays centred on NetDepthM.
-			Depth += (Slot == FarSlot ? 0.5 : -0.5) * Tactics.NetStaggerM * StaggerWeight;
+			Depth += (Side == FarSide ? 0.5 : -0.5) * Tactics.NetStaggerM * StaggerWeight;
 		}
 		// A command overrides the formation's depth, stagger included (GDD 7).
 		switch (Commands[Slot])
@@ -128,12 +131,45 @@ std::array<FAiVec2, 2> FAiPairTactics::HomePositions(const FAiVec2& BallLocal) c
 	return Homes;
 }
 
-int FAiPairTactics::ChooseTaker(const FTakerQuery& Query, FPadelRng& Rng) const
+int FAiPairTactics::ChooseTaker(const FTakerQuery& PlayerQuery, FPadelRng& Rng) const
+{
+	// The rules below are by side; after a side switch the players' sides are swapped.
+	FTakerQuery Query = PlayerQuery;
+	std::array<EPartnerCommand, 2> SideCommands = Commands;
+	if (bSwapped)
+	{
+		std::swap(Query.Plans[0], Query.Plans[1]);
+		std::swap(Query.PlayerLocal[0], Query.PlayerLocal[1]);
+		std::swap(Query.Profiles[0], Query.Profiles[1]);
+		std::swap(SideCommands[0], SideCommands[1]);
+	}
+	return SideOf(ChooseTakerBySide(Query, SideCommands, Rng));
+}
+
+int FAiPairTactics::LobbedSlot(EAiShot Shot, const FAiVec2& OverLocal, const FAiVec2& LandingLocal, const std::array<FAiVec2, 2>& PlayerLocal) const
+{
+	// GDD 8, movement doc 2.12: only a deep lob over a pair at the net makes them cross.
+	if (Tactics.SideSwitchMinLobDepthM <= 0.0 || Shot != EAiShot::Lob || Formation != EFormation::BothNet
+		|| LandingLocal.Y < Tactics.SideSwitchMinLobDepthM)
+	{
+		return -1;
+	}
+	// The player the ball passes over is the one nearer its line at the pair's depth.
+	const int Lobbed = std::abs(OverLocal.X - PlayerLocal[RightSlot].X) <= std::abs(OverLocal.X - PlayerLocal[LeftSlot].X) ? RightSlot : LeftSlot;
+	// It has to land on that player's side or in the middle; a lob that drifts over to
+	// the partner's own side is simply the partner's ball.
+	const double Centre = (PlayerLocal[RightSlot].X + PlayerLocal[LeftSlot].X) * 0.5;
+	const double LobbedSign = PlayerLocal[Lobbed].X >= PlayerLocal[1 - Lobbed].X ? 1.0 : -1.0;
+	const double Across = (LandingLocal.X - Centre) * LobbedSign;
+	return Across >= -Tactics.MiddleBandM ? Lobbed : -1;
+}
+
+int FAiPairTactics::ChooseTakerBySide(const FTakerQuery& Query, const std::array<EPartnerCommand, 2>& SideCommands, FPadelRng& Rng) const
 {
 	// A command from the human overrides the default split.
 	for (int Slot = 0; Slot < 2; ++Slot)
 	{
-		if (Commands[Slot] == EPartnerCommand::Yours && Query.Plans[Slot])
+		if (SideCommands[Slot] == EPartnerCommand::Yours && Query.Plans[Slot])
 		{
 			return Slot;
 		}
@@ -168,7 +204,7 @@ int FAiPairTactics::ChooseTaker(const FTakerQuery& Query, FPadelRng& Rng) const
 	int Default = LeftSlot;
 	for (int Slot = 0; Slot < 2; ++Slot)
 	{
-		if (Commands[Slot] == EPartnerCommand::TakeMiddle)
+		if (SideCommands[Slot] == EPartnerCommand::TakeMiddle)
 		{
 			return Slot;
 		}

@@ -16,6 +16,7 @@
 
 #include <array>
 #include <optional>
+#include <vector>
 
 namespace Padel::AI
 {
@@ -81,6 +82,8 @@ namespace Padel::AI
 
 	private:
 		void Read(const FAiWorldView& View);
+		// The partner who crosses behind to take a deep lob over the other (GDD 8), or -1.
+		int SideSwitchTaker(const FTakerQuery& Query, const std::array<std::vector<FTrajectorySample>, 2>& SlotSamples) const;
 		FAiIntent MoveTo(int Slot, const FAiVec& From, const FAiVec& Target, bool bChasing, double Slack) const;
 		double TeamReadDelay() const;
 

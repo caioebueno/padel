@@ -91,12 +91,11 @@ namespace
 
 	constexpr int PointsToPlay = 12;
 	constexpr std::uint64_t Seed = 20261116;
-	// Re-recorded for S4 (the forward swing: contact comes ForwardS after the release, and
-	// low drives slow onto a higher arc over the tape) on top of M2, which moves every contact
-	// on purpose. Recorded on Linux/GCC 13; CI checks it on the Mac. Before that: M2
-	// (0x059a2ec46edf1df1), #45 (0x93015cd4b465df38), #43 (0x6e694e677fffa7a2), and #35 with
-	// #44 (0x11dc4f0919a9c309). See the comment at the top.
-	constexpr std::uint64_t ExpectedChecksum = 0x18e0f604650fef19ULL;
+	// Re-recorded for A4 (a net pair lobbed deep switches sides: the better-placed partner
+	// crosses and chases) on top of S4. Recorded on Linux/GCC 13; CI checks it on the Mac.
+	// Before that: S4 (0x18e0f604650fef19), M2 (0x059a2ec46edf1df1), #45 (0x93015cd4b465df38),
+	// #43 (0x6e694e677fffa7a2), and #35 with #44 (0x11dc4f0919a9c309). See the comment at the top.
+	constexpr std::uint64_t ExpectedChecksum = 0x884cefa586f46942ULL;
 }
 
 TEST_CASE("QA.Determinism: a seeded AI match gives the same checksum on every platform (TP P-12)")

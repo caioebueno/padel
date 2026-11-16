@@ -64,9 +64,24 @@ namespace Padel::AI
 		// returned, so a pair never plays the ball twice.
 		int ChooseTaker(const FTakerQuery& Query, FPadelRng& Rng) const;
 
+		// GDD 8 side switch (movement doc 2.12): when a deep lob goes over one player at
+		// the net, the partner crosses behind to take it and the two swap sides until the
+		// point ends. Slots stay with the players; SideOf says which side each one plays.
+		bool IsSwapped() const { return bSwapped; }
+		void SetSwapped(bool bInSwapped) { bSwapped = bInSwapped; }
+		int SideOf(int Slot) const { return bSwapped ? 1 - Slot : Slot; }
+		// The slot of the player a lob goes over, when it should make the pair switch:
+		// an opponent's lob, the pair at the net, landing deeper than SideSwitchMinLobDepthM
+		// on that player's side or the middle. OverLocal is where the ball passes the
+		// pair's depth, LandingLocal its first bounce, PlayerLocal by slot. -1 otherwise.
+		int LobbedSlot(EAiShot Shot, const FAiVec2& OverLocal, const FAiVec2& LandingLocal, const std::array<FAiVec2, 2>& PlayerLocal) const;
+
 	private:
+		int ChooseTakerBySide(const FTakerQuery& Query, const std::array<EPartnerCommand, 2>& SideCommands, FPadelRng& Rng) const;
+
 		const FAiTactics& Tactics;
 		EFormation Formation = EFormation::BothBack;
 		std::array<EPartnerCommand, 2> Commands = { EPartnerCommand::None, EPartnerCommand::None };
+		bool bSwapped = false;
 	};
 }
