@@ -1,6 +1,8 @@
 #include "Gameplay/PadelPlayerPawn.h"
 
+#include "Animation/PadelPlayerAnimComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Gameplay/PadelInputConfig.h"
@@ -40,6 +42,15 @@ APadelPlayerPawn::APadelPlayerPawn()
 		Body->SetRelativeScale3D(FVector(CapsuleRadius / 50.0f, CapsuleRadius / 50.0f, CapsuleHalfHeight / 50.0f));
 	}
 
+	// Imported characters stand on their origin and face +Y (Tools/AssetPipeline/README.md).
+	Character = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Character"));
+	Character->SetupAttachment(Capsule);
+	Character->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Character->SetRelativeLocationAndRotation(FVector(0.0, 0.0, -CapsuleHalfHeight), FRotator(0.0, -90.0, 0.0));
+	Character->SetVisibility(false);
+
+	Animation = CreateDefaultSubobject<UPadelPlayerAnimComponent>(TEXT("Animation"));
+
 	Racket = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Racket"));
 	Racket->SetupAttachment(Capsule);
 	Racket->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -61,7 +72,33 @@ void APadelPlayerPawn::InitShots(int32 PlayerId, double TeamSign, const Padel::S
 	const Padel::Court::FVec3 Right = Padel::Shots::RightAxis(TeamSign);
 	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings->ForehandSign();
 	Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
+
+	InitAnimation(Library, TeamSign > 0.0 ? 0 : 1);
 	SyncFromSimulation();
+}
+
+void APadelPlayerPawn::InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex)
+{
+	Animation->Init(Library, TeamIndex, Character, Racket);
+	Body->SetVisibility(!Animation->HasSkeletalBody());
+}
+
+void APadelPlayerPawn::StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
+{
+	if (ShotController)
+	{
+		Animation->Step(*ShotController, Events, Dt, bRallyLive);
+	}
+}
+
+void APadelPlayerPawn::StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
+{
+	Animation->Step(Controller, Events, Dt, bRallyLive);
+}
+
+void APadelPlayerPawn::PresentAnimation()
+{
+	Animation->Present();
 }
 
 Padel::Shots::FPlayerInputFrame APadelPlayerPawn::SampleInput() const
@@ -98,6 +135,7 @@ void APadelPlayerPawn::SyncFromSimulation()
 	FVector Location = Padel::ToWorld(ShotController->GetMotion().GetPosition());
 	Location.Z += PadelPlayerPawnDetail::CapsuleHalfHeight;
 	SetActorLocation(Location);
+	Animation->Present();
 }
 
 void APadelPlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

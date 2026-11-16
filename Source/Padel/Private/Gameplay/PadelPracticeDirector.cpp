@@ -166,6 +166,7 @@ void APadelPracticeDirector::StepSimulation(double Dt)
 	}
 
 	const FSwingEvents Events = Player->Tick(PlayerPawn->SampleInput(), Dt, *Ball);
+	PlayerPawn->StepAnimation(Events, Dt, Ball->IsLive());
 	if (Events.Outcome != ESwingOutcome::None)
 	{
 		DebugInfo.LastOutcome = Events.Outcome;
