@@ -51,6 +51,8 @@ namespace Padel::Animation
 		bool bServing = false;
 		bool bHasIdeal = false;
 		double TimeToIdealS = 0.0;
+		// In the Forward phase, the time left to contact (GDD 5.1: release + ForwardS).
+		double TimeToContactS = 0.0;
 		bool bIdealBounced = true;
 		FVec3 IdealBallPosition;
 		// This tick's swing result; Intent is valid when Outcome is Hit.

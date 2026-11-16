@@ -101,7 +101,7 @@ namespace
 							In.Move = FVec2{ DotProduct(To, RightAxis(P.GetTeamSign())) / D * Gain, DotProduct(To, ForwardAxis(P.GetTeamSign())) / D * Gain };
 						}
 					}
-					if (!bPressed && P.TimeToIdealS() <= Plan.LeadS && P.GetPhase() == ESwingPhase::Idle)
+					if (!bPressed && P.TimeToIdealS() - P.ForwardSwingS() <= Plan.LeadS && P.GetPhase() == ESwingPhase::Idle)
 					{
 						bPressed = true;
 					}
@@ -113,7 +113,7 @@ namespace
 					In.bDrive = Plan.Button == EShotButton::Drive;
 					In.bLob = Plan.Button == EShotButton::Lob;
 					In.bOverhead = Plan.Button == EShotButton::Overhead;
-					if (P.GetPhase() == ESwingPhase::Windup && P.HasIdealMoment() && -P.TimeToIdealS() >= Plan.OffsetS - 1e-9)
+					if (P.GetPhase() == ESwingPhase::Windup && P.HasIdealMoment() && P.ForwardSwingS() - P.TimeToIdealS() >= Plan.OffsetS - 1e-9)
 					{
 						In.bDrive = In.bLob = In.bOverhead = false;
 						bReleased = true;

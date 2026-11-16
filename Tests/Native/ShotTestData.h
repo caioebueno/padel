@@ -65,6 +65,8 @@ namespace ShotTestData
 			P.ContactHeightMaxM = Num(R, "ContactHeightMaxM");
 			P.PreferredContactHeightM = Num(R, "PreferredContactHeightM");
 			P.ContactHeightPerBodyHeight = Num(R, "ContactHeightPerBodyHeight");
+			P.LowContactHeightM = Num(R, "LowContactHeightM");
+			P.LowContactNetClearanceM = Num(R, "LowContactNetClearanceM");
 			P.IdealContactSideM = Num(R, "IdealContactSideM");
 			P.IdealContactForwardM = Num(R, "IdealContactForwardM");
 			P.IdealContactSideBackM = Num(R, "IdealContactSideBackM");
@@ -100,7 +102,7 @@ namespace ShotTestData
 		PADEL_READ(MishitPopupChance); PADEL_READ(MishitPopupApexMinM); PADEL_READ(MishitPopupApexMaxM);
 		PADEL_READ(ServeTossHeightM); PADEL_READ(ReturnWeight); PADEL_READ(WrongSideMult);
 		PADEL_READ(PredictHorizonS); PADEL_READ(PredictStepS); PADEL_READ(HeightCostWeight);
-		PADEL_READ(OutOfBandCostWeight); PADEL_READ(TimeCostPerS);
+		PADEL_READ(OutOfBandCostWeight); PADEL_READ(TimeCostPerS); PADEL_READ(GravityMps2);
 #undef PADEL_READ
 		return Lib;
 	}

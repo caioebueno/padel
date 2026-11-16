@@ -315,9 +315,13 @@ void FAiMatchRunner::ReleasePending()
 		// agree, taking backswing off, and only at the very end swing at whatever it sees.
 		// A smash can't spare any backswing (GDD 4: it needs the full charge).
 		const double PlannedOffset = RealTimingOffset(Id, P.Shot);
-		const double FullLead = C.AiSwingLeadS(P.Shot.Charge, PlannedOffset);
+		const EShotType ShotType = Bridge::ToEngine(P.Shot.Shot);
+		const double FullLead = C.AiSwingLeadS(ShotType, P.Shot.Charge, PlannedOffset);
+		// GDD 5.1: the forward swing comes after the release, so a late request keeps
+		// LateRequestS of backswing on top of it.
+		const double ForwardS = Library.Get(ShotType).ForwardS;
 		const bool bNeedsFullCharge = P.Shot.Shot == EAiShot::Smash;
-		const bool bLastChance = Now >= P.ContactTime - (bNeedsFullCharge ? FullLead : std::min(FullLead, Tactics.LateRequestS));
+		const bool bLastChance = Now >= P.ContactTime - (bNeedsFullCharge ? FullLead : std::min(FullLead, Tactics.LateRequestS + ForwardS));
 		// The plan was read from a noisy prediction (GDD 8 Wall Play) and its moment never
 		// comes: the ball dies first. Play the controller's own moment instead.
 		const bool bStale = P.ContactTime >= DiesAt - Tactics.ContactMatchS;
@@ -330,9 +334,9 @@ void FAiMatchRunner::ReleasePending()
 		const double Offset = std::min(PlannedOffset, DiesAt - IdealAt - Tactics.DeadBallMarginS);
 		// A late request gets the backswing there is time for; a smash keeps its full
 		// charge, which the shot system's own lead (AiSwingLeadS) has room for.
-		const double TimeLeft = std::max(0.0, IdealAt + Offset - Now);
+		const double TimeLeft = std::max(0.0, IdealAt + Offset - ForwardS - Now);
 		const double Charge = bNeedsFullCharge ? P.Shot.Charge : std::min(P.Shot.Charge, TimeLeft / Library.Model.ChargeTimeS);
-		Controllers[Id]->RequestAiShot(Bridge::ToEngine(P.Shot.Shot), Bridge::ToEngine(P.Shot.Target), Charge, Offset);
+		Controllers[Id]->RequestAiShot(ShotType, Bridge::ToEngine(P.Shot.Target), Charge, Offset);
 		Pending[Id].reset();
 	}
 }

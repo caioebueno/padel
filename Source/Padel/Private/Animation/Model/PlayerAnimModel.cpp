@@ -66,6 +66,7 @@ namespace Padel::Animation
 		In.bServing = Controller.IsServing();
 		In.bHasIdeal = Controller.HasIdealMoment();
 		In.TimeToIdealS = Controller.TimeToIdealS();
+		In.TimeToContactS = Controller.TimeToContactS();
 		In.bIdealBounced = Controller.IsIdealBounced();
 		In.IdealBallPosition = Controller.GetIdealBallPosition();
 		In.Outcome = Events.Outcome;
@@ -240,10 +241,10 @@ namespace Padel::Animation
 		{
 			if (bPhaseChanged)
 			{
-				// Early release: the racket meets the ball at the ideal moment, which is
-				// TimeToIdealS away (rounded up to the tick the controller makes contact on).
+				// The forward swing: contact is TimeToContactS away (rounded up to the tick
+				// the controller makes contact on).
 				ForwardFromP = P;
-				ForwardLengthS = std::fmax(Dt, std::ceil(In.TimeToIdealS / Dt - 1e-9) * Dt);
+				ForwardLengthS = std::fmax(Dt, std::ceil(In.TimeToContactS / Dt - 1e-9) * Dt);
 			}
 			// Hold just short of the contact frame until the contact tick shows it.
 			P = std::fmin(ContactP - 1e-6, Lerp(ForwardFromP, ContactP, In.PhaseTimeS / ForwardLengthS));

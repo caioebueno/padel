@@ -70,6 +70,7 @@ struct PADEL_API FPadelShotModelRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Tuning") double HeightCostWeight = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double OutOfBandCostWeight = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double TimeCostPerS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double GravityMps2 = 0.0;
 
 	Padel::Shots::FShotModel ToCore() const;
 };
