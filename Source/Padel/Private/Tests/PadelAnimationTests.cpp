@@ -184,6 +184,47 @@ bool FPadelAnimNativePoseTest::RunTest(const FString& Parameters)
 		LowestHandBelowShoulder = FMath::Max(LowestHandBelowShoulder, ShoulderZ - HandNow.Z);
 		HighestFoot = FMath::Max(HighestFoot, Body->GetBoneTransform(Foot, FTransform::Identity).GetLocation().Z);
 	}
+	// A MetaHuman (when one is on disk): every part's bones stay on the body. A part whose
+	// LOD needs bones its leader (the body) no longer updates stretches toward the origin.
+	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
+	{
+		AActor* MetaHuman = Director->GetPawn(Id) ? Director->GetPawn(Id)->GetAnimation()->GetMetaHuman() : nullptr;
+		if (!MetaHuman)
+		{
+			continue;
+		}
+		TInlineComponentArray<USkeletalMeshComponent*> Parts(MetaHuman);
+		for (USkeletalMeshComponent* Part : Parts)
+		{
+			Part->TickAnimation(1.0f / 60.0f, false);
+			Part->RefreshBoneTransforms();
+		}
+		const FVector Root = MetaHuman->GetActorLocation();
+		for (USkeletalMeshComponent* Part : Parts)
+		{
+			if (!Part->GetSkeletalMeshAsset())
+			{
+				continue;
+			}
+			double Worst = 0.0;
+			FName WorstBone;
+			for (const FName& Bone : Part->GetAllSocketNames())
+			{
+				const FVector Local = Part->GetSocketLocation(Bone) - Root;
+				const double Off = FMath::Max(FMath::Abs(Local.X), FMath::Abs(Local.Y));
+				const double Below = -Local.Z;
+				const double Bad = FMath::Max(Off - 150.0, FMath::Max(Below - 20.0, Local.Z - 250.0));
+				if (Bad > Worst)
+				{
+					Worst = Bad;
+					WorstBone = Bone;
+				}
+			}
+			TestTrue(FString::Printf(TEXT("MetaHuman %s part %s stays on the body (worst %s, %.0f cm out)"), *MetaHuman->GetName(),
+				*Part->GetName(), *WorstBone.ToString(), Worst), Worst <= 0.0);
+		}
+	}
+
 	TestTrue(TEXT("The arm leaves the T-pose (cm)"), MaxOffset > 20.0);
 	// A clip retargeted with a wrong pose shows up as arms held out or a body floating.
 	TestTrue(FString::Printf(TEXT("Arms come down from the T-pose (hand %.0f cm below the shoulder)"), LowestHandBelowShoulder), LowestHandBelowShoulder > 25.0);

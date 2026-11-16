@@ -152,9 +152,11 @@ bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
 			MetaBody = Mesh;
 		}
 		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		// 60 fps on an M2 (0006): LOD 0 isn't visible from the broadcast camera.
-		Mesh->OverrideMinLOD(Data->MetaHumanMinLod);
 	}
+	// 60 fps on an M2 (0006): LOD 0 isn't visible from the broadcast camera. Only through the
+	// MetaHuman's LOD Sync, which maps each part's LODs to the body's: forcing a min LOD on each
+	// mesh on its own let the outfit pick a LOD whose bones the body (its leader pose) no longer
+	// updates, and the shirt stretched into a long drape.
 	if (ULODSyncComponent* LodSync = MetaHuman->FindComponentByClass<ULODSyncComponent>())
 	{
 		LodSync->MinLOD = Data->MetaHumanMinLod;
