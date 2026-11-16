@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <vector>
 
 using namespace ShotTestData;
 using doctest::Approx;
@@ -41,18 +43,21 @@ TEST_CASE("Shots.Motion: top speed is 4.5 m/s at Speed 1 and 6.5 m/s at 99")
 
 TEST_CASE("Shots.Motion: Acceleration sets the push from standing")
 {
-	const FMovementTuning T = LoadMovement();
+	FMovementTuning T = LoadMovement();
+	// Open field, so the run measures the curve and not the braking at the net (M2).
+	T.WallMarginM = -100.0;
+	T.NetMarginM = -100.0;
 	FPlayerRatings P;
 	P.Acceleration = 99;
-	FPlayerMotion Motion(&P, &T, 1.0, Vec(9.0, 4.5, 0.0));
+	FPlayerMotion Motion(&P, &T, 1.0, Vec(9.0, 0.0, 0.0));
 	CHECK(Motion.TimeToTopSpeed() == Approx(T.TimeToTopAt99S));
 	const double Top = Motion.TopSpeed(false);
 	const double A0 = MotionCurve::InitialAccel(Top, Motion.TimeToTopSpeed());
-	// The first tick pushes at the full initial acceleration (toward -Y, the player's right).
-	CHECK(RunFor(Motion, { 1.0, 0.0 }, false, Dt) == Approx(A0 * Dt));
-	CHECK(Motion.GetVelocity().Y < 0.0);
-	CHECK(RunFor(Motion, { 1.0, 0.0 }, false, 0.3) < Top);
-	CHECK(RunFor(Motion, { 1.0, 0.0 }, false, 1.5) == Approx(Top));
+	// The first tick pushes at the full initial acceleration (forward: toward -X for Team A).
+	CHECK(RunFor(Motion, { 0.0, 1.0 }, false, Dt) == Approx(A0 * Dt));
+	CHECK(Motion.GetVelocity().X < 0.0);
+	CHECK(RunFor(Motion, { 0.0, 1.0 }, false, 0.3) < Top);
+	CHECK(RunFor(Motion, { 0.0, 1.0 }, false, 1.5) == Approx(Top));
 }
 
 TEST_CASE("Shots.Motion: up on the stick moves toward the net for both teams")
@@ -162,7 +167,7 @@ namespace
 		int Steps = 0;
 		while (DistanceXY(M.GetPosition(), Start) < Distance && Steps < 2000)
 		{
-			M.Step({ 1.0, 0.0 }, false, Dt);
+			M.Step({ 0.0, 1.0 }, false, Dt);
 			++Steps;
 		}
 		return Steps * Dt;
@@ -177,13 +182,15 @@ namespace
 
 	// One move from standing to a stop Distance away, the stick held at CapMps / top speed
 	// and let go once the remaining distance is the braking distance.
-	FMoveResult SingleMove(const FPlayerRatings& R, const FMovementTuning& T, double Distance, double CapMps)
+	// PlannedM is the distance hint the AI gives Step (below 0: none, the stick's rule).
+	FMoveResult SingleMove(const FPlayerRatings& R, const FMovementTuning& T, double Distance, double CapMps, const FVec2& Dir = { 0.0, 1.0 },
+		double PlannedM = -1.0)
 	{
 		FPlayerMotion M(&R, &T, 1.0, Vec(9.5, 4.6, 0.0));
 		const FVec3 Start = M.GetPosition();
 		const double Top = M.TopSpeed(false);
 		const double Brake = MotionCurve::InitialAccel(Top, M.TimeToTopSpeed()) * T.BrakeMult;
-		const double Gain = std::min(1.0, CapMps / Top);
+
 		FMoveResult Out;
 		bool bBraking = false;
 		for (int Step = 0; Step < 1200; ++Step)
@@ -191,7 +198,10 @@ namespace
 			const double Speed = LengthXY(M.GetVelocity());
 			const double Left = Distance - DistanceXY(M.GetPosition(), Start);
 			bBraking = bBraking || Left <= Speed * Speed / (2.0 * Brake);
-			M.Step({ bBraking ? 0.0 : Gain, 0.0 }, false, Dt);
+			// Pace to CapMps in whatever gait the player is in (turned: full speed).
+			const bool bTurned = M.GetMode() == EMovementMode::Run || M.GetMode() == EMovementMode::Sprint;
+			const double Gain = std::min(1.0, CapMps / (Top * (bTurned ? 1.0 : M.SquareSpeedFrac(Dir))));
+			M.Step(bBraking ? FVec2{} : FVec2{ Dir.X * Gain, Dir.Y * Gain }, false, Dt, 1.0, PlannedM);
 			Out.PeakMps = std::max(Out.PeakMps, LengthXY(M.GetVelocity()));
 			Out.TimeS += Dt;
 			if (bBraking && LengthXY(M.GetVelocity()) < 1e-9)
@@ -211,15 +221,15 @@ TEST_CASE("Shots.Motion: acceleration falls as speed rises (M1)")
 	FPlayerMotion M(&R, &T, 1.0, Vec(9.5, 4.6, 0.0));
 	const double Top = M.TopSpeed(false);
 	const double A0 = MotionCurve::InitialAccel(Top, M.TimeToTopSpeed());
-	const double First = RunFor(M, { 1.0, 0.0 }, false, Dt) / Dt;
+	const double First = RunFor(M, { 0.0, 1.0 }, false, Dt) / Dt;
 	CHECK(First == Approx(A0));
 	// Run up to about 90% of top speed, then measure one tick.
 	while (LengthXY(M.GetVelocity()) < 0.9 * Top)
 	{
-		M.Step({ 1.0, 0.0 }, false, Dt);
+		M.Step({ 0.0, 1.0 }, false, Dt);
 	}
 	const double V = LengthXY(M.GetVelocity());
-	const double Late = (RunFor(M, { 1.0, 0.0 }, false, Dt) - V) / Dt;
+	const double Late = (RunFor(M, { 0.0, 1.0 }, false, Dt) - V) / Dt;
 	CHECK(Late == Approx(A0 * (1.0 - T.AccelFalloff * V / Top)).epsilon(0.01));
 	CHECK(Late < 0.8 * First);
 }
@@ -229,7 +239,7 @@ TEST_CASE("Shots.Motion: braking keeps its full strength at speed (M1)")
 	const FMovementTuning T = OpenField();
 	const FPlayerRatings R = Rated(77);
 	FPlayerMotion M(&R, &T, 1.0, Vec(9.5, 4.6, 0.0));
-	RunFor(M, { 1.0, 0.0 }, false, 2.0);
+	RunFor(M, { 0.0, 1.0 }, false, 2.0);
 	const double V = LengthXY(M.GetVelocity());
 	const double A0 = MotionCurve::InitialAccel(M.TopSpeed(false), M.TimeToTopSpeed());
 	CHECK((V - RunFor(M, { 0.0, 0.0 }, false, Dt)) / Dt == Approx(A0 * T.BrakeMult));
@@ -242,11 +252,11 @@ TEST_CASE("Shots.Motion: a player running one way can still turn hard (M1)")
 	const FMovementTuning T = OpenField();
 	const FPlayerRatings R = Rated(77);
 	FPlayerMotion M(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
-	RunFor(M, { 1.0, 0.0 }, false, 2.0);
-	const double Before = M.GetVelocity().Y;
-	RunFor(M, { -1.0, 0.0 }, false, 0.1);
+	RunFor(M, { 0.0, 1.0 }, false, 2.0);
+	const double Before = M.GetVelocity().X;
+	RunFor(M, { 0.0, -1.0 }, false, 0.1);
 	const double A0 = MotionCurve::InitialAccel(M.TopSpeed(false), M.TimeToTopSpeed());
-	CHECK((M.GetVelocity().Y - Before) / 0.1 > 0.95 * A0);
+	CHECK((M.GetVelocity().X - Before) / 0.1 > 0.95 * A0);
 }
 
 TEST_CASE("Shots.Motion: no rating starts faster than a human sprinter (M1)")
@@ -311,14 +321,22 @@ TEST_CASE("Shots.Motion: single moves from standing match the movement table (M1
 	{
 		double DistanceM, PeakLo, PeakHi, TimeHi;
 	};
-	const FRow Rows[] = { { 1.0, 1.5, 2.5, 0.7 }, { 2.0, 2.5, 3.5, 0.9 }, { 4.0, 4.0, 4.5, 1.3 }, { 8.0, 5.0, 5.5, 1.9 } };
-	for (const FRow& Row : Rows)
+	// M2: each row in the table's own direction: 1 m and 2 m sideways (a shuffle), 4 m
+	// sideways (long enough to turn into a crossover), 8 m forward.
+	struct FDirRow
+	{
+		double DistanceM, PeakLo, PeakHi, TimeHi;
+		FVec2 Dir;
+	};
+	const FDirRow Rows[] = { { 1.0, 1.5, 2.5, 0.7, { 1.0, 0.0 } }, { 2.0, 2.5, 3.5, 0.9, { 1.0, 0.0 } }, { 4.0, 4.0, 4.5, 1.3, { 1.0, 0.0 } },
+		{ 8.0, 5.0, 5.5, 1.9, { 0.0, 1.0 } } };
+	for (const FDirRow& Row : Rows)
 	{
 		CAPTURE(Row.DistanceM);
 		for (const int Rating : { 1, 77, 99 })
 		{
 			CAPTURE(Rating);
-			const FMoveResult Paced = SingleMove(Rated(Rating), T, Row.DistanceM, Row.PeakHi);
+			const FMoveResult Paced = SingleMove(Rated(Rating), T, Row.DistanceM, Row.PeakHi, Row.Dir, Row.DistanceM);
 			CHECK(Paced.DistanceM == Approx(Row.DistanceM).epsilon(0.03));
 			CHECK(Paced.PeakMps <= Row.PeakHi + 1e-9);
 			if (Rating >= 77)
@@ -329,12 +347,205 @@ TEST_CASE("Shots.Motion: single moves from standing match the movement table (M1
 		}
 		// Flat out, a rating-77 player gets there no slower than paced, and the falloff
 		// keeps a 4 m move below top speed (it reached it after 1.7 m before M1).
-		const FMoveResult Flat = SingleMove(Rated(77), T, Row.DistanceM, 99.0);
-		CHECK(Flat.TimeS <= SingleMove(Rated(77), T, Row.DistanceM, Row.PeakHi).TimeS + Dt);
+		const FMoveResult Flat = SingleMove(Rated(77), T, Row.DistanceM, 99.0, Row.Dir, Row.DistanceM);
+		CHECK(Flat.TimeS <= SingleMove(Rated(77), T, Row.DistanceM, Row.PeakHi, Row.Dir, Row.DistanceM).TimeS + Dt);
 		if (Row.DistanceM <= 4.0)
 		{
 			const FPlayerRatings R77 = Rated(77);
 			CHECK(Flat.PeakMps < 0.98 * FPlayerMotion(&R77, &T, 1.0, Vec(9.5, 4.6, 0.0)).TopSpeed(false));
 		}
 	}
+}
+
+// M2 (BIOMECHANICS_MOVEMENT 2.3, 2.4, 2.6, 5.2): speed by direction relative to the net,
+// the movement mode, the turn to run, and braking into the court margins.
+namespace
+{
+	// Holds Dir for Seconds and records each new mode, in order.
+	std::vector<EMovementMode> ModesWhileHolding(FPlayerMotion& M, const FVec2& Dir, double Seconds, double PlannedM = -1.0)
+	{
+		std::vector<EMovementMode> Seen;
+		for (int Step = 0; Step < static_cast<int>(Seconds / Dt); ++Step)
+		{
+			M.Step(Dir, false, Dt, 1.0, PlannedM);
+			if (Seen.empty() || Seen.back() != M.GetMode())
+			{
+				Seen.push_back(M.GetMode());
+			}
+		}
+		return Seen;
+	}
+
+	bool Contains(const std::vector<EMovementMode>& Modes, EMovementMode Mode)
+	{
+		return std::find(Modes.begin(), Modes.end(), Mode) != Modes.end();
+	}
+
+	// Index of the first Mode in Modes, or the size when it never shows.
+	size_t IndexOf(const std::vector<EMovementMode>& Modes, EMovementMode Mode)
+	{
+		return static_cast<size_t>(std::find(Modes.begin(), Modes.end(), Mode) - Modes.begin());
+	}
+}
+
+TEST_CASE("Shots.Motion: square to the net, sideways and backwards are slower (M2)")
+{
+	FMovementTuning T = OpenField();
+	// No turning, so the square-gait caps show on a long hold.
+	T.CrossoverMinDistM = 100.0;
+	T.TurnBackMinDistM = 100.0;
+	const FPlayerRatings R = Rated(77);
+	FPlayerMotion Side(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	FPlayerMotion Back(&R, &T, 1.0, Vec(5.0, 0.0, 0.0));
+	FPlayerMotion Fwd(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	const double Top = Side.TopSpeed(false);
+	CHECK(RunFor(Side, { 1.0, 0.0 }, false, 3.0) == Approx(Top * T.ShuffleSpeedFrac));
+	CHECK(RunFor(Back, { 0.0, -1.0 }, false, 3.0) == Approx(Top * T.BackpedalSpeedFrac));
+	CHECK(RunFor(Fwd, { 0.0, 1.0 }, false, 3.0) == Approx(Top));
+	CHECK(Side.GetMode() == EMovementMode::Shuffle);
+	CHECK(Back.GetMode() == EMovementMode::Backpedal);
+	CHECK(Fwd.GetMode() == EMovementMode::Run);
+	// GDD 6.3: sprint still adds its 15% to the shuffle.
+	FPlayerMotion Sprint(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	CHECK(RunFor(Sprint, { 1.0, 0.0 }, true, 3.0) == Approx(Sprint.TopSpeed(true) * T.ShuffleSpeedFrac));
+	// BIOMECHANICS_MOVEMENT 2.3, 2.4: a shuffle tops out at 55 to 70% of a sprint, a
+	// backpedal around 2.5 to 3 m/s.
+	CHECK(T.ShuffleSpeedFrac >= 0.55);
+	CHECK(T.ShuffleSpeedFrac <= 0.7);
+	CHECK(Top * T.BackpedalSpeedFrac >= 2.5);
+	CHECK(Top * T.BackpedalSpeedFrac <= 3.1);
+}
+
+TEST_CASE("Shots.Motion: a short shuffle stays a shuffle (M2)")
+{
+	const FMovementTuning T = OpenField();
+	const FPlayerRatings R = Rated(77);
+	FPlayerMotion M(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	const FVec3 Start = M.GetPosition();
+	// A 1 m move to the right, then let go.
+	while (DistanceXY(M.GetPosition(), Start) < 0.7)
+	{
+		M.Step({ 1.0, 0.0 }, false, Dt);
+	}
+	const std::vector<EMovementMode> Modes = ModesWhileHolding(M, {}, 1.0);
+	CHECK_FALSE(Contains(Modes, EMovementMode::Crossover));
+	CHECK_FALSE(Contains(Modes, EMovementMode::Run));
+	CHECK(Modes.back() == EMovementMode::Adjust);
+	FPlayerMotion N(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	const std::vector<EMovementMode> Short = ModesWhileHolding(N, { 1.0, 0.0 }, 0.4);
+	CHECK(Short.back() == EMovementMode::Shuffle);
+	CHECK_FALSE(Contains(Short, EMovementMode::Crossover));
+}
+
+TEST_CASE("Shots.Motion: a long sideways run goes shuffle, crossover, run (M2)")
+{
+	const FMovementTuning T = OpenField();
+	const FPlayerRatings R = Rated(77);
+	FPlayerMotion M(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	const std::vector<EMovementMode> Modes = ModesWhileHolding(M, { 1.0, 0.0 }, 2.5);
+	REQUIRE(Contains(Modes, EMovementMode::Shuffle));
+	REQUIRE(Contains(Modes, EMovementMode::Crossover));
+	REQUIRE(Contains(Modes, EMovementMode::Run));
+	CHECK(IndexOf(Modes, EMovementMode::Shuffle) < IndexOf(Modes, EMovementMode::Crossover));
+	CHECK(IndexOf(Modes, EMovementMode::Crossover) < IndexOf(Modes, EMovementMode::Run));
+	// Turned, the player runs at full speed sideways.
+	CHECK(LengthXY(M.GetVelocity()) == Approx(M.TopSpeed(false)));
+	// Letting go brakes, then settles.
+	const std::vector<EMovementMode> Stop = ModesWhileHolding(M, {}, 1.5);
+	CHECK(Stop.front() == EMovementMode::Decel);
+	CHECK(Stop.back() == EMovementMode::Adjust);
+}
+
+TEST_CASE("Shots.Motion: a lob chase turns and runs back (M2)")
+{
+	const FMovementTuning T = OpenField();
+	const FPlayerRatings R = Rated(77);
+	// The AI knows the move is 5 m: it turns at once.
+	FPlayerMotion Ai(&R, &T, 1.0, Vec(3.0, 0.0, 0.0));
+	const std::vector<EMovementMode> Planned = ModesWhileHolding(Ai, { 0.0, -1.0 }, 1.5, 5.0);
+	CHECK(Planned.front() == EMovementMode::TurnAndRun);
+	CHECK(Contains(Planned, EMovementMode::Run));
+	CHECK_FALSE(Contains(Planned, EMovementMode::Backpedal));
+	// The stick backpedals first, then turns once it has been held long enough.
+	FPlayerMotion Human(&R, &T, 1.0, Vec(3.0, 0.0, 0.0));
+	const std::vector<EMovementMode> Held = ModesWhileHolding(Human, { 0.0, -1.0 }, 2.0);
+	REQUIRE(Contains(Held, EMovementMode::Backpedal));
+	REQUIRE(Contains(Held, EMovementMode::TurnAndRun));
+	CHECK(IndexOf(Held, EMovementMode::Backpedal) < IndexOf(Held, EMovementMode::TurnAndRun));
+	CHECK(Held.back() == EMovementMode::Run);
+	// A short planned step back stays a backpedal.
+	FPlayerMotion Step(&R, &T, 1.0, Vec(3.0, 0.0, 0.0));
+	CHECK_FALSE(Contains(ModesWhileHolding(Step, { 0.0, -1.0 }, 0.5, 1.0), EMovementMode::TurnAndRun));
+}
+
+TEST_CASE("Shots.Motion: the turn to run costs time, faster with Agility (M2)")
+{
+	const FMovementTuning T = OpenField();
+	FMovementTuning NoTurn = T;
+	NoTurn.TurnToRunAt1S = 0.0;
+	NoTurn.TurnToRunAt99S = 0.0;
+	const FPlayerRatings R = Rated(77);
+	const auto TimeTo = [&R](const FMovementTuning& Tuning, double Distance)
+	{
+		FPlayerMotion M(&R, &Tuning, 1.0, Vec(9.0, -4.0, 0.0));
+		const FVec3 Start = M.GetPosition();
+		int Steps = 0;
+		while (DistanceXY(M.GetPosition(), Start) < Distance && Steps < 2000)
+		{
+			M.Step({ -1.0, 0.0 }, false, Dt, 1.0, Distance);
+			++Steps;
+		}
+		return Steps * Dt;
+	};
+	const FPlayerMotion Ref(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
+	const double Cost = TimeTo(T, 6.0) - TimeTo(NoTurn, 6.0);
+	// The push during the turn is weaker, not gone, so the cost is part of the turn time.
+	CHECK(Cost > 0.2 * Ref.TurnTimeS());
+	CHECK(Cost < Ref.TurnTimeS() + 2.0 * Dt);
+	// Still faster than shuffling the whole way.
+	FMovementTuning ShuffleOnly = T;
+	ShuffleOnly.CrossoverMinDistM = 100.0;
+	CHECK(TimeTo(T, 6.0) < TimeTo(ShuffleOnly, 6.0));
+	FPlayerRatings Agile = R;
+	Agile.Agility = 99;
+	FPlayerRatings Stiff = R;
+	Stiff.Agility = 1;
+	CHECK(FPlayerMotion(&Agile, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() < FPlayerMotion(&Stiff, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS());
+	CHECK(FPlayerMotion(&Stiff, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() == Approx(T.TurnToRunAt1S).epsilon(0.01));
+	CHECK(FPlayerMotion(&Agile, &T, 1.0, Vec(9.0, 0.0, 0.0)).TurnTimeS() == Approx(T.TurnToRunAt99S));
+}
+
+TEST_CASE("Shots.Motion: running into the glass or the net brakes instead of stopping dead (M2)")
+{
+	const FMovementTuning T = LoadMovement();
+	const FPlayerRatings R = Rated(77);
+	struct FCase
+	{
+		const char* Name;
+		FVec3 Start;
+		FVec2 Dir;
+	};
+	for (const FCase& C : { FCase{ "net", Vec(8.0, 0.0, 0.0), { 0.0, 1.0 } }, FCase{ "side glass", Vec(6.0, 4.0, 0.0), { 1.0, 0.0 } },
+			 FCase{ "back glass", Vec(4.0, 0.0, 0.0), { 0.0, -1.0 } } })
+	{
+		CAPTURE(std::string(C.Name));
+		FPlayerMotion M(&R, &T, 1.0, C.Start);
+		const double Brake = MotionCurve::InitialAccel(M.TopSpeed(false), M.TimeToTopSpeed()) * T.BrakeMult;
+		double PrevSpeed = 0.0;
+		double PeakDecel = 0.0;
+		for (int Step = 0; Step < static_cast<int>(4.0 / Dt); ++Step)
+		{
+			M.Step(C.Dir, true, Dt);
+			const double Speed = LengthXY(M.GetVelocity());
+			PeakDecel = std::max(PeakDecel, (PrevSpeed - Speed) / Dt);
+			PrevSpeed = Speed;
+		}
+		CHECK(M.GetEdgeStopCount() == 0);
+		CHECK(PeakDecel <= Brake * 1.05);
+		CHECK(LengthXY(M.GetVelocity()) < 1e-6);
+	}
+	// Still arrives at the limit.
+	FPlayerMotion Net(&R, &T, 1.0, Vec(8.0, 0.0, 0.0));
+	RunFor(Net, { 0.0, 1.0 }, true, 4.0);
+	CHECK(Net.GetPosition().X == Approx(T.NetMarginM).epsilon(0.01));
 }

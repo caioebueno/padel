@@ -158,14 +158,16 @@ namespace
 		Bandeja.LeadS = 0.2;
 		FAnimPlan Smash;
 		Smash.Button = EShotButton::Overhead;
-		Smash.LeadS = 0.75;
+		Smash.LeadS = 0.95; // full charge, with room for the ideal moment to move while chasing
 		FAnimPlan Vibora;
 		Vibora.Button = EShotButton::Overhead;
 		Vibora.bAttack = true;
+		// The deep feed's stand point is (8.5, 2.0), as in Shots.Controller: since M2 a 2 m
+		// shuffle from the middle is still moving the ideal moment at an early release.
 		return {
-			{ "drive", "deep_middle", Vec(8.5, 0.0, 0.0), Drive },
+			{ "drive", "deep_middle", Vec(8.5, 2.0, 0.0), Drive },
 			{ "volley", "volley_body", Vec(3.0, 0.0, 0.0), Drive },
-			{ "lob", "deep_middle", Vec(8.5, 0.0, 0.0), Lob },
+			{ "lob", "deep_middle", Vec(8.5, 2.0, 0.0), Lob },
 			{ "chiquita", "short_low", Vec(6.0, 0.0, 0.0), Chiquita },
 			{ "bandeja", "lob_deep", Vec(4.0, 0.0, 0.0), Bandeja },
 			{ "smash", "lob_short", Vec(3.5, 0.0, 0.0), Smash },
@@ -315,7 +317,9 @@ TEST_CASE("Anim.Contact: both serves line up with the toss")
 TEST_CASE("Anim.Contact: the windup is scrubbed by the charge, the early forward swing runs to contact")
 {
 	FAnimRig Rig;
-	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(8.5, 0.0, 0.0), 3);
+	// On the drive's stand point (M2): the early release comes while the player is planted,
+	// not while a slow shuffle still moves the ideal moment.
+	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(8.5, 2.0, 0.0), 3);
 	Rig.Feed("deep_middle");
 	FAnimPlan Plan;
 	Plan.LeadS = 0.4;
@@ -341,9 +345,10 @@ TEST_CASE("Anim.Contact: the windup is scrubbed by the charge, the early forward
 			LastP = T.Frame.SwingProgress;
 		}
 	}
-	// 0.15 s early is about 18 ticks of forward swing, and the last one is nearly at contact.
+	// 0.15 s early is about 18 ticks of forward swing, and the last one is nearly at contact
+	// (within about two ticks of progress: M2's slower sideways chase shifts the ideal moment).
 	CHECK(ForwardTicks >= 15);
-	CHECK(LastP > 1.9);
+	CHECK(LastP > 1.85);
 }
 
 TEST_CASE("Anim.Contact: a ball on the backhand side plays the backhand clip")

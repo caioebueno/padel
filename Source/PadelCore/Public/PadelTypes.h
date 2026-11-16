@@ -126,6 +126,28 @@ namespace Padel
 		return Shot == EShotType::ServeFlat || Shot == EShotType::ServeKick;
 	}
 
+	// How a player is moving (GDD 6.3, BIOMECHANICS_MOVEMENT 2.3, 2.4, 5.2), read by
+	// animation to pick the gait. Set by FPlayerMotion every step.
+	enum class EMovementMode : std::uint8_t
+	{
+		// Slower than the split-step limit: small steps on the spot.
+		Adjust,
+		// Sideways, square to the net.
+		Shuffle,
+		// The hip turn into a sideways run.
+		Crossover,
+		// Backwards, still facing the net.
+		Backpedal,
+		// The turn toward the back glass before running back.
+		TurnAndRun,
+		// Running, turned toward the direction of travel (or forward to the net).
+		Run,
+		// Run with sprint held.
+		Sprint,
+		// Braking.
+		Decel,
+	};
+
 	// The GDD 3.3 code, e.g. "DOUBLE_BOUNCE". The UI and stats read reasons by these names.
 	PADELCORE_API const char* PointReasonCode(EPointReason Reason);
 	PADELCORE_API const char* ServeFaultCode(EServeFault Fault);

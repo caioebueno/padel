@@ -129,7 +129,8 @@ namespace Padel::Shots
 		UnitRange(E, "AccelFalloff", AccelFalloff);
 		Fraction(E, "ShuffleSpeedFrac", ShuffleSpeedFrac);
 		Fraction(E, "BackpedalSpeedFrac", BackpedalSpeedFrac);
-		NonNegative(E, "TurnToRunS", TurnToRunS);
+		NonNegative(E, "TurnToRunAt1S", TurnToRunAt1S);
+		NonNegative(E, "TurnToRunAt99S", TurnToRunAt99S);
 		Positive(E, "CrossoverMinDistM", CrossoverMinDistM);
 		Positive(E, "TurnBackMinDistM", TurnBackMinDistM);
 		Positive(E, "FatigueHardAccelMps2", FatigueHardAccelMps2);

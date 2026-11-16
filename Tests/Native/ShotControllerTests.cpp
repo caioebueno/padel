@@ -217,7 +217,11 @@ TEST_CASE("Shots.Controller: every slice shot can be played on purpose")
 	Vibora.Button = EShotButton::Overhead;
 	Vibora.bAttack = true;
 	const std::vector<FCase> Cases = {
-		{ "drive", "deep_middle", Vec(8.5, 0.0, 0.0), Drive, EShotType::Drive },
+		// Starts on the forehand stand point. Since #45 this feed's drive is struck at about
+		// 0.4 m and clears the tape by millimetres, so it nets whenever the bot arrives a little
+		// off its spot (on main too, from 1.5 m across); M2's slower sideways shuffle leaves the
+		// 2 m chase from the middle short. This case is about playing the shot, not the chase.
+		{ "drive", "deep_middle", Vec(8.5, 2.0, 0.0), Drive, EShotType::Drive },
 		{ "volley", "volley_body", Vec(3.0, 0.0, 0.0), Volley, EShotType::Volley },
 		{ "lob", "deep_middle", Vec(8.5, 0.0, 0.0), Lob, EShotType::Lob },
 		// Half a metre deeper than before M1: with the softer start and braking the scripted
@@ -299,7 +303,9 @@ TEST_CASE("Shots.Controller: releasing late grades late, holding fires at the la
 TEST_CASE("Shots.Controller: an early release meets the ball at the ideal moment, graded early")
 {
 	FRig Rig;
-	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(8.5, 0.0, 0.0), 3);
+	// On the drive's stand point (M2): the early release comes while the player is planted,
+	// not while a slow shuffle still moves the ideal moment.
+	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(8.5, 2.0, 0.0), 3);
 	Rig.Feed("deep_middle");
 	FPlan Plan;
 	Plan.LeadS = 0.4;
@@ -333,7 +339,9 @@ TEST_CASE("Shots.Controller: no ball means a shadow swing, a ball out of reach i
 TEST_CASE("Shots.Controller: the AI request plays through the same model and target")
 {
 	FRig Rig;
-	FPlayerShotController P(2, -1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(-8.5, 0.0, 0.0), 13);
+	// Starts beside the ball's line: since M2 a 2 m sideways chase is a shuffle, and from the
+	// centre it arrives short, where this seed's low drive clips the tape.
+	FPlayerShotController P(2, -1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(-8.5, -2.0, 0.0), 13);
 	// Mirror a feed onto Team B's half.
 	const FBallMachineFeed F = Rig.FindFeed("deep_middle");
 	Rig.Ball.Feed(Vec(-F.OriginX, -F.OriginY, F.OriginZ), Vec(-F.TargetX, -F.TargetY, 0.0), F.SpeedKmh / 3.6, F.ApexM, 1);
