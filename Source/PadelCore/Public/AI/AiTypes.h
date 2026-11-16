@@ -96,6 +96,8 @@ namespace Padel::AI
 		// Length 0..1.
 		FAiVec2 Move;
 		bool bSprint = false;
+		// How far this move is going (A3: FPlayerMotion picks the gait the planner timed).
+		double PlannedDistanceM = -1.0;
 		std::optional<FAiShotDecision> Shot;
 		// Absolute match time of the ideal contact for Shot.
 		double ShotContactTime = 0.0;

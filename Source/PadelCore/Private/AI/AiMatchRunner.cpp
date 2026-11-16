@@ -222,6 +222,7 @@ FAiWorldView FAiMatchRunner::ViewFor(int TeamIdx) const
 		const Shots::FPlayerMotion& Own = Controllers[PlayerIdOf(TeamIdx, Slot)]->GetMotion();
 		View.OwnPositions[Slot] = Bridge::ToAi(Own.GetPosition());
 		View.OwnVelocities[Slot] = Bridge::ToAi(Own.GetVelocity());
+		View.OwnMotion[Slot] = AiMotionModel::ParamsOf(Own, Movement);
 		View.OpponentPositions[Slot] = Bridge::ToAi(Controllers[PlayerIdOf(1 - TeamIdx, Slot)]->GetMotion().GetPosition());
 	}
 	return View;

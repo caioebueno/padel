@@ -5,6 +5,7 @@
 #include "PadelCoreApi.h"
 
 #include "AI/AiBallPredictor.h"
+#include "AI/AiMotionModel.h"
 #include "AI/AiPlayerProfile.h"
 
 #include <optional>
@@ -37,6 +38,9 @@ namespace Padel::AI
 		double StartDelayS = 0.0;
 		// Movement.json AccelFalloff: the player's push weakens as speed rises (GDD 6.3).
 		double AccelFalloff = 0.0;
+		// A3: the player's real movement. When set, arrival is stepped with it
+		// (AiMotionModel) instead of the profile's straight-line estimate.
+		FAiMotionParams Motion;
 	};
 
 	namespace InterceptPlanner
