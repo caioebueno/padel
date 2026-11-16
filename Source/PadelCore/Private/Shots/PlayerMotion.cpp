@@ -1,6 +1,7 @@
 #include "Shots/PlayerMotion.h"
 
 #include "CourtSpec.h"
+#include "Shots/MotionCurve.h"
 
 namespace Padel::Shots
 {
@@ -59,15 +60,25 @@ namespace Padel::Shots
 			}
 		}
 
-		double Accel = Top / TimeToTopSpeed();
+		double Accel = MotionCurve::InitialAccel(Top, TimeToTopSpeed());
 		if (SplitBoostLeftS > 0.0)
 		{
 			// GDD 6.3: a split-step gives full Agility to the first step.
 			Accel *= Lerp(Tuning->SplitFirstStepAt1, Tuning->SplitFirstStepAt99, Ratings->Unit(ERating::Agility));
 		}
-		if (LengthXY(Desired) < LengthXY(Velocity))
+		const double DesiredSpeed = LengthXY(Desired);
+		if (DesiredSpeed < LengthXY(Velocity))
 		{
+			// Braking keeps its full strength at any speed (BIOMECHANICS_MOVEMENT 2.6, 3.1).
 			Accel *= Tuning->BrakeMult;
+		}
+		else if (DesiredSpeed > 0.0)
+		{
+			// GDD 6.3: the push is strongest from standing and weakens as the player gets up
+			// to speed in the direction they push (BIOMECHANICS_MOVEMENT 5.1). Only the speed
+			// along the new direction counts, so a player running one way can still turn.
+			const double Along = (Velocity.X * Desired.X + Velocity.Y * Desired.Y) / DesiredSpeed;
+			Accel *= 1.0 - Tuning->AccelFalloff * Clamp(Along / Top, 0.0, 1.0);
 		}
 
 		const FVec3 Delta = Sub(Desired, Velocity);

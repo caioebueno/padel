@@ -1,6 +1,7 @@
 #include "AI/AiInterceptPlanner.h"
 
 #include "AI/AiTeamFrame.h"
+#include "Shots/MotionCurve.h"
 
 #include <cmath>
 #include <limits>
@@ -29,27 +30,10 @@ namespace
 	}
 }
 
-double TimeToCover(double Distance, double TopSpeed, double AccelTime)
+double TimeToCover(double Distance, double TopSpeed, double AccelTime, double AccelFalloff)
 {
-	if (Distance <= 0.0)
-	{
-		return 0.0;
-	}
-	if (TopSpeed <= 0.0)
-	{
-		return std::numeric_limits<double>::infinity();
-	}
-	if (AccelTime <= 0.0)
-	{
-		return Distance / TopSpeed;
-	}
-	const double Accel = TopSpeed / AccelTime;
-	const double AccelDistance = 0.5 * TopSpeed * AccelTime;
-	if (Distance <= AccelDistance)
-	{
-		return std::sqrt(2.0 * Distance / Accel);
-	}
-	return AccelTime + (Distance - AccelDistance) / TopSpeed;
+	// The same curve FPlayerMotion steps, so a plan is one the player can run (M1).
+	return Shots::MotionCurve::TimeToCover(Distance, TopSpeed, AccelTime, AccelFalloff);
 }
 
 std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples, const FInterceptQuery& Query,
@@ -108,7 +92,7 @@ std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples
 				Distance += Away * Away / (2.0 * Accel);
 			}
 		}
-		Candidate.TimeNeeded = Query.StartDelayS + Turn + TimeToCover(Distance, TopSpeed, AccelTime);
+		Candidate.TimeNeeded = Query.StartDelayS + Turn + TimeToCover(Distance, TopSpeed, AccelTime, Query.AccelFalloff);
 		Candidate.Slack = S.T - Candidate.TimeNeeded;
 		Candidate.bReachable = Candidate.Slack >= 0.0;
 
