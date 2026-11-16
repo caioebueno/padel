@@ -425,7 +425,12 @@ def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
     for i, lod in enumerate(asset.lods, start=1):
         if importer(mesh, i, str(asset.lod_fbx_path(i))) < 0:
             fail(f"{asset.asset_name}: LOD{i} import")
-    lod_info = list(mesh.get_editor_property("lod_info"))
+    try:
+        lod_info = list(mesh.get_editor_property("lod_info"))
+    except Exception:  # UE 5.8 no longer exposes LODInfo to Python
+        log(f"{asset.asset_name}: LODs imported; this engine hides LOD screen sizes from Python, "
+            "so they keep Unreal's defaults")
+        return
     for i, lod in enumerate(asset.lods, start=1):
         if i < len(lod_info):
             screen = unreal.PerPlatformFloat()
