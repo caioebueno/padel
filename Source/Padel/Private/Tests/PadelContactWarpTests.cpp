@@ -398,6 +398,10 @@ bool FPadelOverheadArmTest::RunTest(const FString& Parameters)
 	{
 		Director->Tick(1.0f / 60.0f);
 	}
+	// The 2.4 m target sits at (0.15 right, 0.30 forward) rather than (0.25, 0.45) because of a
+	// reach limit, not a looser tolerance: at (0.25, 0.45, 2.4) the placeholder's arm is fully
+	// straight (180 degrees) even on its toes and still short, while the MetaHuman, with longer
+	// arms, reaches that original target. The 5 cm tolerance is the same for every target.
 	const FTarget Overheads[] = { { 0.25, 0.45, 2.1 }, { 0.25, 0.45, 2.25 }, { 0.15, 0.30, 2.4 }, { 0.10, 0.30, 2.3 }, { 0.40, 0.20, 2.2 } };
 	int32 Checked = 0;
 	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
