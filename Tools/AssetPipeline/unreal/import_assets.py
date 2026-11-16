@@ -416,7 +416,7 @@ def _delete_unused_imported_materials(folder: str) -> None:
 def _set_nanite(mesh: unreal.StaticMesh, enabled: bool) -> None:
     settings = mesh.get_editor_property("nanite_settings")
     settings.set_editor_property("enabled", enabled)
-    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    subsystem = _static_mesh_editor()
     if hasattr(subsystem, "set_nanite_settings"):
         subsystem.set_nanite_settings(mesh, settings, apply_changes=True)
     else:
@@ -431,6 +431,13 @@ def _set_bounds_extension(mesh: unreal.StaticMesh, metres) -> None:
     extent = unreal.Vector(*(float(m) * 100.0 for m in metres))
     mesh.set_editor_property("positive_bounds_extension", extent)
     mesh.set_editor_property("negative_bounds_extension", extent)
+
+
+def _static_mesh_editor():
+    """The StaticMeshEditorSubsystem, or in the commandlet (where UE 5.8 returns no editor
+    subsystem) the older EditorStaticMeshLibrary, which has the same import_lod and UV calls
+    but no set_lod_screen_sizes."""
+    return unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem) or unreal.EditorStaticMeshLibrary
 
 
 def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
@@ -454,7 +461,7 @@ def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
 def _import_static_lods(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
     """Hand-built LODs (the ball's spheres) instead of Unreal's automatic reduction, with
     the catalogue's screen sizes."""
-    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    subsystem = _static_mesh_editor()
     for i in range(1, len(asset.lods) + 1):
         if subsystem.import_lod(mesh, i, str(asset.lod_fbx_path(i))) < 0:
             fail(f"{asset.asset_name}: LOD{i} import")
@@ -474,7 +481,7 @@ def _import_static_lods(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None
 def _keep_uv1(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
     """The court surface carries its court-space UVs in channel 1. Lightmap UV
     generation would write over that channel, and Lumen needs no lightmaps."""
-    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    subsystem = _static_mesh_editor()
     if hasattr(subsystem, "set_generate_lightmap_uv"):
         subsystem.set_generate_lightmap_uv(mesh, False)
     channels = subsystem.get_num_uv_channels(mesh, 0) if hasattr(subsystem, "get_num_uv_channels") else 2
