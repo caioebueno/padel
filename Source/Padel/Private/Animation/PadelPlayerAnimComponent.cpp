@@ -1,5 +1,7 @@
 #include "Animation/PadelPlayerAnimComponent.h"
 
+#include "Animation/PadelContactWarp.h"
+
 #include "Animation/AnimSequenceBase.h"
 #include "Animation/PadelAnimData.h"
 #include "Animation/PadelMetaHumanAnimInstance.h"
@@ -228,6 +230,11 @@ bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
 	Body->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	Body->SetVisibility(false);
 	AttachRacket(MetaBody);
+	// The MetaHuman warps its own arm after the retarget; the hidden driver doesn't.
+	if (UPadelPlayerAnimInstance* DriverAnim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
+	{
+		DriverAnim->bWarpThisBody = false;
+	}
 	UE_LOG(LogPadel, Log, TEXT("Player %s: showing MetaHuman %s."), *PlayerKey.ToString(), *Row->MetaHumanClass);
 	return true;
 }
@@ -309,10 +316,28 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	Racket->SetRelativeTransform(Relative);
 	UE_LOG(LogPadel, Log, TEXT("Racket in %s's %s: grip %.1f cm from the bone (%s finger bones)."), *Mesh->GetName(),
 		*Data->RacketBone.ToString(), Relative.GetLocation().Size(), In.bHasKnuckle ? TEXT("with") : TEXT("no"));
+
+	// The contact warp aims this face centre, on this body's arm, at the ball (PadelContactWarp.h).
+	const FVector FaceInHand = PadelContactWarp::FaceInHand(Relative, Padel::ToWorld(Padel::FVec3{ 0.0, 0.0, RacketSettings.FaceCentreM }).Z);
+	if (To == Body)
+	{
+		if (UPadelPlayerAnimInstance* Anim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
+		{
+			Anim->RacketFaceInHand = FaceInHand;
+		}
+	}
+	else if (UPadelMetaHumanAnimInstance* MetaAnim = Cast<UPadelMetaHumanAnimInstance>(To->GetAnimInstance()))
+	{
+		MetaAnim->SetRacketFace(FaceInHand, false);
+	}
 }
 
 void UPadelPlayerAnimComponent::RemoveMetaHuman()
 {
+	if (UPadelPlayerAnimInstance* DriverAnim = Body ? Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()) : nullptr)
+	{
+		DriverAnim->bWarpThisBody = true;
+	}
 	if (MetaHuman)
 	{
 		MetaHuman->Destroy();

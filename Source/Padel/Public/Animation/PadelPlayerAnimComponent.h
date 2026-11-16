@@ -56,6 +56,9 @@ public:
 	/** True once a skeletal body and the AnimBP are in use. */
 	bool HasSkeletalBody() const { return bSkeletalBody; }
 
+	/** The placeholder skeleton: shown, or hidden and driving a MetaHuman. */
+	USkeletalMeshComponent* GetDriverBody() const { return Body; }
+
 	/** The MetaHuman shown for this player, or null when the placeholder (or the shapes) are shown. */
 	AActor* GetMetaHuman() const { return MetaHuman; }
 

@@ -12,9 +12,6 @@ namespace PadelPlayerPoseDetail
 {
 	// Bone names of the UE5 mannequin layout the placeholders are rigged on (Tools/AssetPipeline/README.md).
 	const FName LayerRoot(TEXT("spine_01"));
-	const FName UpperArmBone(TEXT("upperarm_r"));
-	const FName LowerArmBone(TEXT("lowerarm_r"));
-	const FName HandBone(TEXT("hand_r"));
 
 	enum EDir : int32 { Forward = 0, Back = 1, Left = 2, Right = 3 };
 
@@ -116,14 +113,7 @@ void FAnimNode_PadelPlayerPose::CacheBones_AnyThread(const FAnimationCacheBonesC
 		UpperBodyMask[Compact] = (RootMesh != INDEX_NONE && Mesh == RootMesh) ? 1.0f : 0.0f;
 	}
 
-	auto Find = [&Bones, &Ref](FName Name)
-	{
-		const int32 Mesh = Ref.FindBoneIndex(Name);
-		return Mesh == INDEX_NONE ? FCompactPoseBoneIndex(INDEX_NONE) : Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(Mesh));
-	};
-	UpperArm = Find(UpperArmBone);
-	LowerArm = Find(LowerArmBone);
-	Hand = Find(HandBone);
+	WarpBones.Cache(Bones, false);
 }
 
 void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
@@ -150,8 +140,10 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 
 	// No swing clip: the arm reaches for the placeholder racket arc instead (0005's racket
 	// target meets the ball on the contact tick); held a little in the ready stance.
-	const bool bReady = Anim->Locomotion == EPadelLocomotionState::Ready || Anim->Locomotion == EPadelLocomotionState::SplitStep;
-	ArmAlpha = Swing ? 0.0 : FMath::Clamp(FMath::Max(Anim->RawSwingWeight, bReady ? Set.ArmReadyAlpha : 0.0), 0.0, 1.0);
+	ArmAlpha = Anim->WarpArmAlpha();
+	BodyAlpha = Anim->WarpBodyAlpha();
+	bWarp = Anim->bWarpThisBody;
+	FaceInHand = Anim->RacketFaceInHand;
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
@@ -252,27 +244,14 @@ void FAnimNode_PadelPlayerPose::Evaluate_AnyThread(FPoseContext& Output)
 
 void FAnimNode_PadelPlayerPose::ApplyArmReach(FPoseContext& Output) const
 {
-	if (ArmAlpha <= 0.0 || UpperArm.GetInt() == INDEX_NONE || LowerArm.GetInt() == INDEX_NONE || Hand.GetInt() == INDEX_NONE)
+	if (!bWarp)
 	{
 		return;
 	}
-	FCSPose<FCompactPose> CS;
-	CS.InitPose(Output.Pose);
-	FTransform Upper = CS.GetComponentSpaceTransform(UpperArm);
-	FTransform Lower = CS.GetComponentSpaceTransform(LowerArm);
-	FTransform HandCS = CS.GetComponentSpaceTransform(Hand);
-
-	const FVector Effector = FMath::Lerp(HandCS.GetLocation(), RacketTargetComponent, static_cast<float>(ArmAlpha));
-	// Keep the elbow bending the way the current pose bends it.
-	const FVector Mid = (Upper.GetLocation() + HandCS.GetLocation()) * 0.5;
-	const FVector Bend = (Lower.GetLocation() - Mid).GetSafeNormal();
-	const FVector JointTarget = Lower.GetLocation() + Bend * 20.0;
-	AnimationCore::SolveTwoBoneIK(Upper, Lower, HandCS, JointTarget, Effector, false, 1.0, 1.0);
-
-	TArray<FBoneTransform> Solved;
-	Solved.Add(FBoneTransform(UpperArm, Upper));
-	Solved.Add(FBoneTransform(LowerArm, Lower));
-	Solved.Add(FBoneTransform(Hand, HandCS));
-	CS.LocalBlendCSBoneTransforms(Solved, 1.0f);
-	FCSPose<FCompactPose>::ConvertComponentPosesToLocalPoses(MoveTemp(CS), Output.Pose);
+	FPadelWarpInput In;
+	In.TargetCS = RacketTargetComponent;
+	In.FaceInHand = FaceInHand;
+	In.ArmAlpha = static_cast<float>(ArmAlpha);
+	In.BodyAlpha = static_cast<float>(BodyAlpha);
+	PadelContactWarp::Apply(Output.Pose, WarpBones, In);
 }
