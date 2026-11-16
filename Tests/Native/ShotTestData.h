@@ -88,7 +88,7 @@ namespace ShotTestData
 		PADEL_READ(ScatterRatingReduction); PADEL_READ(PowerMultStartCharge); PADEL_READ(PowerMultMax);
 		PADEL_READ(PressureScale); PADEL_READ(ConsistencyScatterAt1); PADEL_READ(ConsistencyScatterAt99);
 		PADEL_READ(WallScatterAt1); PADEL_READ(WallScatterAt99); PADEL_READ(StaminaFullAbove); PADEL_READ(StaminaFactorAtZero);
-		PADEL_READ(SmashMinCharge); PADEL_READ(SetMaxSpeedMps); PADEL_READ(SetMinAheadM);
+		PADEL_READ(SmashMinCharge); PADEL_READ(AiChargeLeadS); PADEL_READ(SetMaxSpeedMps); PADEL_READ(SetMinAheadM);
 		PADEL_READ(UnsetFullChargeErrorMult); PADEL_READ(BackhandOverheadErrorMult); PADEL_READ(MishitSpeedMinKmh);
 		PADEL_READ(MishitSpeedMaxKmh); PADEL_READ(MishitDepthMaxM); PADEL_READ(MishitLateralMaxM);
 		PADEL_READ(MishitPopupChance); PADEL_READ(MishitPopupApexMinM); PADEL_READ(MishitPopupApexMaxM);

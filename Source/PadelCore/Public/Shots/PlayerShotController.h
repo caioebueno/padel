@@ -56,6 +56,9 @@ namespace Padel::Shots
 		// The swing starts so that Charge is reached at ideal + TimingOffsetS, when it releases.
 		void RequestAiShot(EShotType ShotType, const FVec3& TargetM, double Charge, double TimingOffsetS);
 		void CancelAiShot() { bAiPending = false; }
+		// How long before the ideal moment the swing for this request starts. A request
+		// that arrives later than this releases with less charge than it asked for.
+		double AiSwingLeadS(double Charge, double TimingOffsetS) const;
 
 		// The match calls this when the other team hits, for the split-step (GDD 6.3).
 		bool NotifyOpponentContact();

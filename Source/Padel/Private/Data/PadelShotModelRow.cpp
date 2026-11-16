@@ -39,6 +39,7 @@ Padel::Shots::FShotModel FPadelShotModelRow::ToCore() const
 	Out.StaminaFullAbove = StaminaFullAbove;
 	Out.StaminaFactorAtZero = StaminaFactorAtZero;
 	Out.SmashMinCharge = SmashMinCharge;
+	Out.AiChargeLeadS = AiChargeLeadS;
 	Out.SetMaxSpeedMps = SetMaxSpeedMps;
 	Out.SetMinAheadM = SetMinAheadM;
 	Out.UnsetFullChargeErrorMult = UnsetFullChargeErrorMult;

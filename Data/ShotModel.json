@@ -37,6 +37,7 @@
 		"StaminaFullAbove": 0.5,
 		"StaminaFactorAtZero": 0.85,
 		"SmashMinCharge": 0.98,
+		"AiChargeLeadS": 0.15,
 		"SetMaxSpeedMps": 1.2,
 		"SetMinAheadM": -0.2,
 		"UnsetFullChargeErrorMult": 1.5,
