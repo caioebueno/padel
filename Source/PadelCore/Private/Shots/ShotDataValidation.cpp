@@ -72,6 +72,10 @@ namespace Padel::Shots
 		Positive(E, "WallScatterAt99", WallScatterAt99);
 		Positive(E, "StaminaFullAbove", StaminaFullAbove);
 		Positive(E, "SmashMinCharge", SmashMinCharge);
+		if (AiChargeLeadS < 0.0)
+		{
+			E.push_back("AiChargeLeadS must be >= 0");
+		}
 		Positive(E, "SetMaxSpeedMps", SetMaxSpeedMps);
 		Ordered(E, "MishitSpeed", MishitSpeedMinKmh, MishitSpeedMaxKmh);
 		Positive(E, "WrongSideMult", WrongSideMult);

@@ -66,6 +66,8 @@ namespace Padel::AI
 		const Shots::FSwingEvents& LastEvents(int PlayerId) const { return Events[PlayerId]; }
 		// True when that player's hit in the last tick was taken by the match.
 		bool HitAccepted(int PlayerId) const { return bAccepted[PlayerId]; }
+		// The AI has chosen this player's shot and waits for the swing controller to agree on the moment.
+		bool HasPendingShot(int PlayerId) const { return Pending[PlayerId].has_value(); }
 		const FAiTeamController& Team(ETeam Team) const { return *Teams[TeamIndex(Team)]; }
 		int SlotOf(int PlayerId) const;
 		bool IsAi(int PlayerId) const { return PlayerId != Setup.HumanPlayerId; }
@@ -114,6 +116,12 @@ namespace Padel::AI
 		};
 		std::array<std::optional<FPendingShot>, 4> Pending;
 		void ReleasePending();
+		double BallDiesAt() const;
+		// The AI picks a timing grade from its difficulty (GDD 8) as an offset in its own
+		// GDD 5.1 base windows; the shot system grades in that shot's windows, widened or
+		// narrowed by the player's rating. Map the offset band to band, so the grade the
+		// difficulty asked for is the grade the player gets.
+		double RealTimingOffset(int PlayerId, const FAiShotDecision& Shot) const;
 		void ClearShots(int PlayerId);
 		std::array<bool, 4> bAccepted = { false, false, false, false };
 		Shots::FPlayerInputFrame HumanInput;

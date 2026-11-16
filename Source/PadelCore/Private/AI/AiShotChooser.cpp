@@ -128,7 +128,7 @@ std::vector<FShotOption> Options(const FShotContext& C, const FAiTactics& T, con
 	case EOpponentShape::BothNet:
 		// GDD 8 first rule: lob deep, or chiquita if the ball is in front.
 		Lob = T.WeightLobVsNet * (1.0 + Tactical) + Safe * T.SafeLobBonus;
-		Chiquita = Depth < T.ChiquitaMaxDepthM ? T.WeightChiquitaVsNet * (bLow ? 0.5 + Tactical : 0.3) : T.WeightChiquitaBase * 0.5;
+		Chiquita = T.WeightChiquitaVsNet * (bLow ? 0.5 + Tactical : 0.3);
 		Drive = T.WeightDriveVsNet;
 		break;
 	case EOpponentShape::Split:
@@ -147,7 +147,12 @@ std::vector<FShotOption> Options(const FShotContext& C, const FAiTactics& T, con
 	}
 	Out.push_back({ EAiShot::Drive, Drive });
 	Out.push_back({ EAiShot::Lob, Lob });
-	Out.push_back({ EAiShot::Chiquita, Chiquita });
+	// A chiquita is a soft ball dropped at the net players' feet: from deep it can't
+	// carry over the net at its pace (GDD 4), so it is only played from in front.
+	if (Depth < T.ChiquitaMaxDepthM)
+	{
+		Out.push_back({ EAiShot::Chiquita, Chiquita });
+	}
 	return Out;
 }
 
@@ -176,7 +181,12 @@ FAiVec IntendedTarget(EAiShot Shot, const FShotContext& C, const FAiTactics& T, 
 	switch (Shot)
 	{
 	case EAiShot::Lob:
-		return OpponentPoint(C, bTactical ? AwaySide * T.LobSideM : 0.0, T.LobDepthM, T);
+	{
+		// GDD 12.4: lobs decide points. Not every lob is a good one: a short lob is
+		// the net pair's chance to smash, and a weaker player throws more of them.
+		const double Short = Rng.NextDouble() * T.LobShortSpreadM * D.AimScatterMult;
+		return OpponentPoint(C, bTactical ? AwaySide * T.LobSideM : 0.0, T.LobDepthM - Short, T);
+	}
 	case EAiShot::Chiquita:
 		return OpponentPoint(C, (Front.X + MeanX) * 0.5, T.ChiquitaDepthM, T);
 	case EAiShot::Volley:
@@ -194,6 +204,12 @@ FAiVec IntendedTarget(EAiShot Shot, const FShotContext& C, const FAiTactics& T, 
 		return OpponentPoint(C, -ContactSide * T.ViboraSideM, T.ViboraDepthM, T);
 	}
 	case EAiShot::Smash:
+		// A flat smash deep into a pair at the net only passes at their racket height:
+		// hit down at the front player's feet instead.
+		if (Shape != EOpponentShape::BothBack)
+		{
+			return OpponentPoint(C, Front.X, Front.Y + T.FeetDepthOffsetM, T);
+		}
 		return OpponentPoint(C, bTactical ? AwaySide * T.BandejaSideM : 0.0, T.SmashDepthM, T);
 	case EAiShot::Drive:
 	default:

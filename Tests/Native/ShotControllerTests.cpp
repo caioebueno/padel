@@ -386,3 +386,34 @@ TEST_CASE("Shots.Machine: drills cycle and feeds land on the player's half")
 	CHECK(Machine.IsServeDrill());
 	CHECK_FALSE(Machine.Tick(Dt, Rig.Ball));
 }
+
+TEST_CASE("Shots.Controller: an AI smash request reaches full charge (issue 20)")
+{
+	// The soak saw smash requests turn into bandejas: the predicted contact moment
+	// drifts a little earlier while the AI winds up, so a swing started exactly one
+	// charge time ahead released short of the full charge GDD 4 needs.
+	for (const double OffsetS : { -0.05, -0.02, 0.0, 0.03 })
+	{
+		CAPTURE(OffsetS);
+		FRig Rig;
+		FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(3.5, 0.0, 0.0), 21);
+		Rig.Feed("lob_short");
+		P.RequestAiShot(EShotType::Smash, Vec(-6.0, 1.0, 0.0), 1.0, OffsetS);
+		FPlan Plan;
+		Plan.LeadS = -100.0; // the bot only moves: the AI request swings
+		const FResult R = Rig.Play(P, Plan);
+		REQUIRE(R.bHit);
+		CHECK(R.Intent.Charge >= Rig.Lib.Model.SmashMinCharge);
+		CHECK(R.Intent.ShotType == EShotType::Smash);
+	}
+}
+
+TEST_CASE("Shots.Controller: AiSwingLeadS says when a request must arrive")
+{
+	FRig Rig;
+	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(3.5, 0.0, 0.0), 21);
+	const FShotModel& M = Rig.Lib.Model;
+	CHECK(P.AiSwingLeadS(0.5, 0.0) == Approx(0.5 * M.ChargeTimeS));
+	CHECK(P.AiSwingLeadS(0.5, -0.05) == Approx(0.5 * M.ChargeTimeS + 0.05));
+	CHECK(P.AiSwingLeadS(1.0, 0.0) == Approx(M.ChargeTimeS + M.AiChargeLeadS));
+}

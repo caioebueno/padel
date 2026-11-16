@@ -187,8 +187,11 @@ FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& 
 	{
 		return Intent;
 	}
-	// Slow into the spot so the player arrives still (GDD 6.3 split-step needs it).
-	const double Speed = bChasing ? 1.0 : ClampD(Distance / Tactics.SlowRadiusM, 0.0, 1.0);
+	// Slow into the spot so the player arrives still (GDD 6.3 split-step needs it, and
+	// GDD 5.2: a player running at contact plays worse and can't be set for a smash).
+	// Only a ball with no time to spare is chased flat out to the last step.
+	const bool bFlatOut = bChasing && Slack < Tactics.SetSlackS;
+	const double Speed = bFlatOut ? 1.0 : ClampD(Distance / Tactics.SlowRadiusM, 0.0, 1.0);
 	Intent.Move = TeamFrame::MoveVector(HalfSign, Delta * (Speed / Distance));
 	Intent.bSprint = bChasing ? (Slack < Tactics.SprintSlackS || Distance > Tactics.SprintDistanceM) : Distance > Tactics.SprintDistanceM;
 	return Intent;
