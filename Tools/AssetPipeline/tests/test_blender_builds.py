@@ -76,13 +76,11 @@ class BlenderBuildTest(unittest.TestCase):
     def test_court_matches_courtspec(self) -> None:
         _, solid = self.build("CourtIndoor", "build_court")
         self.assertNotIn("MI_Court_Glass", solid["materials"])
-        # Floor top at Z = 0, run-off around the court.
-        self.assertAlmostEqual(solid["bounds_max_m"][0], 12.0, delta=0.01)
-        self.assertLess(solid["bounds_min_m"][2], 0.0)
-        for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Mesh", "MI_Court_Frame"):
+        for slot in ("MI_Court_Mesh", "MI_Court_Frame"):
             self.assertIn(slot, solid["materials"])
-        # The net is its own asset (CourtNet).
-        self.assertNotIn("MI_Court_Net", solid["materials"])
+        # The net is its own asset (CourtNet) and the floor is SM_CourtSurface (test_court_surface.py).
+        for slot in ("MI_Court_Net", "MI_Court_Turf", "MI_Court_Line", "MI_Court_Runoff"):
+            self.assertNotIn(slot, solid["materials"])
 
     def test_net_matches_courtspec(self) -> None:
         asset = self.cat.get("CourtNet")

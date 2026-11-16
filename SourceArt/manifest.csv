@@ -12,3 +12,7 @@ SourceArt/Characters/SK_PlayerPlaceholderA_LOD2.fbx,procedural: Tools/AssetPipel
 SourceArt/Characters/SK_PlayerPlaceholderB.fbx,procedural: Tools/AssetPipeline/blender/build_character.py,original (this repo),"skeletal mesh, 3208 tris, LODs [1604, 640]; Unreal: /Game/Padel/Characters/SK_PlayerPlaceholderB"
 SourceArt/Characters/SK_PlayerPlaceholderB_LOD1.fbx,procedural: Tools/AssetPipeline/blender/build_character.py,original (this repo),LOD1 of SK_PlayerPlaceholderB
 SourceArt/Characters/SK_PlayerPlaceholderB_LOD2.fbx,procedural: Tools/AssetPipeline/blender/build_character.py,original (this repo),LOD2 of SK_PlayerPlaceholderB
+SourceArt/Textures/T_Turf_N.png,procedural: Tools/AssetPipeline/asset_lib/turf_textures.py,original (this repo),texture (config/court_surface.json)
+SourceArt/Textures/T_Turf_Masks.png,procedural: Tools/AssetPipeline/asset_lib/turf_textures.py,original (this repo),texture (config/court_surface.json)
+SourceArt/Textures/T_CourtSurface_Masks.png,procedural: Tools/AssetPipeline/asset_lib/turf_textures.py,original (this repo),texture (config/court_surface.json)
+SourceArt/Court/SM_CourtSurface.fbx,procedural: Tools/AssetPipeline/blender/build_court_surface.py,original (this repo),"static mesh, 7148 tris; Unreal: /Game/Padel/Court/SM_CourtSurface"

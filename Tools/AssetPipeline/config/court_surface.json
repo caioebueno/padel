@@ -1,0 +1,52 @@
+{
+  "_doc": "Tuning for the playing surface (GDD 2, GDD 10): blue artificial grass with sand infill, inlaid white lines and play wear. Read by asset_lib/turf_textures.py (textures) and blender/build_court_surface.py (mesh). Lengths in metres unless the key says mm. Court positions use the half-court frame: d = distance from the net toward that team's back glass, y across the court. Every zone is mirrored to both halves, and to both sides when mirror_y is true. Colours and material strengths are in palette.json (court.Turf).",
+  "seed": 20261116,
+  "fibre": {
+    "_doc": "One tile of T_Turf_N / T_Turf_Masks. Tufted monofilament: rows every gauge_mm, a tuft every stitch_mm along the row, blades fanning out from each tuft and leaning a little. The tile holds a whole number of rows and stitches so it repeats without a seam.",
+    "texture_px": 512,
+    "rows_per_tile": 25,
+    "stitches_per_row": 20,
+    "gauge_mm": 9.5,
+    "blades_per_tuft": [10, 14],
+    "blade_width_mm": 1.3,
+    "blade_reach_mm": [7.0, 12.0],
+    "pile_height_mm": 12.0,
+    "sand_level_mm": 8.0,
+    "sand_grain_mm": 0.6,
+    "normal_slope_scale": 0.6
+  },
+  "court_masks": {
+    "_doc": "T_CourtSurface_Masks covers the 20 x 10 playing area (UV1). R = wear (flattened fibres), G = loose sand (drift), B = turf roll tint. Linear values 0..1.",
+    "texture_px": [1024, 512],
+    "roll_width": 4.0,
+    "drift_wall_width": 0.15,
+    "drift_corner_radius": 0.6,
+    "drift_net_width": 0.12,
+    "drift_noise": 0.45,
+    "wear_noise": 0.35,
+    "wear_zones": [
+      {"_doc": "back defence, where players spend most of a rally", "d": 8.3, "y": 2.5, "rd": 1.3, "ry": 1.7, "strength": 0.55, "mirror_y": true},
+      {"_doc": "serve and return spot behind the service line", "d": 7.6, "y": 1.6, "rd": 0.7, "ry": 1.0, "strength": 0.45, "mirror_y": true},
+      {"_doc": "volley position at the net", "d": 2.8, "y": 2.4, "rd": 1.0, "ry": 1.5, "strength": 0.4, "mirror_y": true},
+      {"_doc": "the T where the centre line meets the service line", "d": 6.95, "y": 0.0, "rd": 0.6, "ry": 0.7, "strength": 0.35, "mirror_y": false},
+      {"_doc": "back corners, retrieving off the glass", "d": 9.4, "y": 4.3, "rd": 0.6, "ry": 0.6, "strength": 0.35, "mirror_y": true},
+      {"_doc": "transition lane between the back and the net", "d": 5.2, "y": 2.4, "rd": 1.6, "ry": 1.2, "strength": 0.22, "mirror_y": true}
+    ],
+    "scuffs": {
+      "_doc": "Short streaks from planted feet and slides, scattered inside the wear zones. Mostly across the court (players move sideways).",
+      "per_zone": 70,
+      "length": [0.12, 0.45],
+      "width": [0.04, 0.09],
+      "strength": [0.1, 0.3],
+      "sideways_bias": 0.7
+    }
+  },
+  "mesh": {
+    "_doc": "SM_CourtSurface geometry. The turf is a grid so Nanite and Lumen see a little real unevenness; the ball still bounces on the flat Z = 0 of CourtSpec.h.",
+    "cell": 0.25,
+    "undulation_mm": 1.5,
+    "undulation_wavelength": 3.5,
+    "line_lift_mm": 1.0,
+    "slab_thickness": 0.02
+  }
+}

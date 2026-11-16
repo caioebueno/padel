@@ -32,6 +32,7 @@ sys.path.insert(0, str(HERE))
 
 from asset_lib import SOURCE_ART_DIR, catalogue  # noqa: E402
 import glass_material  # noqa: E402
+import turf_material  # noqa: E402
 
 MATERIAL_DIR = "/Game/Padel/Materials"
 MEL = unreal.MaterialEditingLibrary
@@ -104,6 +105,14 @@ def import_textures() -> None:
         elif png.stem.endswith(("_N", "_Normal")):
             tex.set_editor_property("srgb", False)
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
+        elif png.stem.endswith("_Masks"):
+            # Packed linear data (turf_textures.py), not colour.
+            tex.set_editor_property("srgb", False)
+            tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_MASKS)
+        if png.stem.startswith("T_CourtSurface_"):
+            # Covers the court once: clamp, or the far edge bleeds into the near one.
+            tex.set_editor_property("address_x", unreal.TextureAddress.TA_CLAMP)
+            tex.set_editor_property("address_y", unreal.TextureAddress.TA_CLAMP)
         ASSETS.save_loaded_asset(tex)
         log(f"texture {MATERIAL_DIR}/{png.stem}")
 
@@ -229,24 +238,8 @@ def build_masters() -> None:
     MEL.connect_material_property(emissive, "", P.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mat)
 
-    # Turf: blue artificial grass with sand showing through (GDD 10), broken up by
-    # world-space noise so the surface doesn't look like flat paint from the high camera.
-    mat = _material("M_PadelTurf")
-    color, mul = _base_color(mat)
-    sand = _param(mat, unreal.MaterialExpressionVectorParameter, "SandColor", -700, 0, unreal.LinearColor(0.6, 0.5, 0.35, 1))
-    amount = _param(mat, unreal.MaterialExpressionScalarParameter, "SandAmount", -700, 100, 0.15)
-    noise = _node(mat, unreal.MaterialExpressionNoise, -700, 200)
-    set_first(noise, ["scale"], 0.08)
-    weight = _node(mat, unreal.MaterialExpressionMultiply, -450, 150)
-    MEL.connect_material_expressions(noise, "", weight, "A")
-    MEL.connect_material_expressions(amount, "", weight, "B")
-    lerp = _node(mat, unreal.MaterialExpressionLinearInterpolate, -250, -100)
-    MEL.connect_material_expressions(mul, "", lerp, "A")
-    MEL.connect_material_expressions(sand, "", lerp, "B")
-    MEL.connect_material_expressions(weight, "", lerp, "Alpha")
-    MEL.connect_material_property(lerp, "", P.MP_BASE_COLOR)
-    _scalars(mat, {"Roughness": 0.9, "Specular": 0.3}, standard, 400)
-    MEL.recompile_material(mat)
+    # Turf: the playing surface, its fibres, sand, wear and lines (unreal/turf_material.py).
+    turf_material.build(_material("M_PadelTurf"), MATERIAL_DIR)
 
     # Glass: translucent tempered glass with reflections, edge tint and dirt (unreal/glass_material.py).
     def glass_texture(name: str):
@@ -319,6 +312,12 @@ def build_masters() -> None:
 
 # --- Material instances ------------------------------------------------------------
 
+# palette.json keys of the turf entries -> M_PadelTurf parameters (turf_material.py).
+TURF_SCALARS = {"worn_roughness": "WornRoughness", "sand_roughness": "SandRoughness", "blade_tint": "BladeTint",
+                "roll_tint": "RollTint", "wear_strength": "WearStrength", "drift_strength": "DriftStrength",
+                "normal_strength": "NormalStrength", "fibre_tile_m": "FibreTile",
+                "detail_fade_start_m": "DetailFadeStart", "detail_fade_end_m": "DetailFadeEnd"}
+
 def build_instances(palette: dict) -> None:
     for group, entries in palette.items():
         if group.startswith("_"):
@@ -335,12 +334,15 @@ def build_instances(palette: dict) -> None:
             MEL.set_material_instance_parent(mi, master)
             MEL.set_material_instance_vector_parameter_value(mi, "BaseColor", linear(settings["color"]))
             scalars = {"roughness": "Roughness", "metallic": "Metallic", "specular": "Specular",
-                       "opacity": "Opacity", "emission": "EmissiveStrength", "sand_amount": "SandAmount"}
+                       "opacity": "Opacity", "emission": "EmissiveStrength", "sand_amount": "SandAmount",
+                       **TURF_SCALARS}
             for key, param in scalars.items():
                 if key in settings:
                     MEL.set_material_instance_scalar_parameter_value(mi, param, float(settings[key]))
             if "sand_color" in settings:
                 MEL.set_material_instance_vector_parameter_value(mi, "SandColor", linear(settings["sand_color"]))
+            if "worn_color" in settings:
+                MEL.set_material_instance_vector_parameter_value(mi, "WornColor", linear(settings["worn_color"]))
             if "edge_tint" in settings:
                 MEL.set_material_instance_vector_parameter_value(mi, "EdgeTint", linear(settings["edge_tint"]))
             if settings["master"] == "Glass":
@@ -428,6 +430,17 @@ def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
     mesh.set_editor_property("lod_info", lod_info)
 
 
+def _keep_uv1(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
+    """The court surface carries its court-space UVs in channel 1. Lightmap UV
+    generation would write over that channel, and Lumen needs no lightmaps."""
+    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    if hasattr(subsystem, "set_generate_lightmap_uv"):
+        subsystem.set_generate_lightmap_uv(mesh, False)
+    channels = subsystem.get_num_uv_channels(mesh, 0) if hasattr(subsystem, "get_num_uv_channels") else 2
+    if channels < 2:
+        fail(f"{asset.asset_name}: expected 2 UV channels (metres, court), got {channels}")
+
+
 def import_mesh(asset: catalogue.Asset) -> None:
     if not asset.fbx_path.is_file():
         log(f"{asset.asset_name}: no {asset.fbx_path.name} yet, skipped")
@@ -442,6 +455,8 @@ def import_mesh(asset: catalogue.Asset) -> None:
         return
     _assign_materials(mesh)
     if asset.kind == "static":
+        if asset.raw.get("keep_uv1"):
+            _keep_uv1(asset, mesh)
         _set_nanite(mesh, asset.nanite)
         _set_bounds_extension(mesh, asset.raw.get("bounds_extension_m"))
     elif asset.lods:
