@@ -33,6 +33,13 @@ namespace Padel::Shots
 		// Moves longer than these turn and run instead of shuffling or backpedalling.
 		double CrossoverMinDistM = 0.0;
 		double TurnBackMinDistM = 0.0;
+		// The forward, sideways and backward gaits meet at 45 degrees to the net. Once in
+		// one, the stick has to cross that line by this many degrees to change it, so a
+		// direction wobbling around 45 keeps one gait.
+		double GaitHysteresisDeg = 0.0;
+		// Reaching the glass or net margin slower than this isn't a dead stop: the braking
+		// curve planned the arrival, and only a rounding hair is clamped.
+		double EdgeStopToleranceMps = 0.0;
 
 		// GDD 6.3 Sprint and stamina (stamina is 0-1)
 		double SprintSpeedBonus = 0.0;

@@ -120,7 +120,7 @@ namespace ShotTestData
 		PADEL_READ(SplitBoostS); PADEL_READ(HomeDriftAt1); PADEL_READ(HomeDriftAt99); PADEL_READ(HomeArriveM);
 		PADEL_READ(WallMarginM); PADEL_READ(NetMarginM);
 		PADEL_READ(AccelFalloff); PADEL_READ(ShuffleSpeedFrac); PADEL_READ(BackpedalSpeedFrac); PADEL_READ(TurnToRunAt1S); PADEL_READ(TurnToRunAt99S);
-		PADEL_READ(CrossoverMinDistM); PADEL_READ(TurnBackMinDistM); PADEL_READ(FatigueHardAccelMps2);
+		PADEL_READ(CrossoverMinDistM); PADEL_READ(TurnBackMinDistM); PADEL_READ(GaitHysteresisDeg); PADEL_READ(EdgeStopToleranceMps); PADEL_READ(FatigueHardAccelMps2);
 		PADEL_READ(FatigueDrainPerHardAccelAt1); PADEL_READ(FatigueDrainPerHardAccelAt99); PADEL_READ(FatigueRallyStartS);
 		PADEL_READ(FatigueDrainPerRallySAt1); PADEL_READ(FatigueDrainPerRallySAt99); PADEL_READ(FatigueBetweenPointRestS);
 		PADEL_READ(FatigueTopSpeedLossAtZero);

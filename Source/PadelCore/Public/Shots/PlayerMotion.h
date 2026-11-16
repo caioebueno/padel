@@ -75,6 +75,9 @@ namespace Padel::Shots
 		enum class ERally : std::uint8_t { Unknown, Live, Dead };
 
 		static EHeld Classify(const FVec2& UnitDir);
+		// Classify with Movement.json's GaitHysteresisDeg around the 45-degree lines,
+		// starting from the direction held last tick.
+		EHeld ClassifyHeld(const FVec2& UnitDir) const;
 		void UpdateGait(EHeld Held, const FVec2& UnitDir, double Top, double Dt, double PlannedDistanceM);
 		void LimitAtMargins(FVec3& Desired, double Brake, double Dt) const;
 		void OwnHalfLimits(double& Lo, double& Hi, double& Side) const;

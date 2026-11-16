@@ -1,6 +1,7 @@
 #include "Shots/PlayerMotion.h"
 
 #include "CourtSpec.h"
+#include "PadelMath.h"
 #include "Shots/MotionCurve.h"
 
 #include <algorithm>
@@ -62,6 +63,41 @@ namespace Padel::Shots
 			return EHeld::Back;
 		}
 		return UnitDir.X >= 0.0 ? EHeld::Right : EHeld::Left;
+	}
+
+	FPlayerMotion::EHeld FPlayerMotion::ClassifyHeld(const FVec2& UnitDir) const
+	{
+		// GDD 6.3: a stick wobbling around 45 degrees keeps its gait instead of flickering
+		// between a run and a shuffle (or backpedal). The current class holds until the
+		// direction is GaitHysteresisDeg past the line.
+		const EHeld Plain = Classify(UnitDir);
+		if (HeldDir == EHeld::None || Plain == HeldDir || Tuning->GaitHysteresisDeg <= 0.0)
+		{
+			return Plain;
+		}
+		const double Band = Tuning->GaitHysteresisDeg * Math::Pi / 180.0;
+		// Forward or back holds out to 45 + band from the net axis; sideways holds in to
+		// 45 - band.
+		const double Wide = Math::Cos(0.25 * Math::Pi + Band);
+		const double Narrow = Math::Cos(0.25 * Math::Pi - Band);
+		switch (HeldDir)
+		{
+		case EHeld::Forward:
+			return UnitDir.Y >= Wide ? EHeld::Forward : Plain;
+		case EHeld::Back:
+			return UnitDir.Y <= -Wide ? EHeld::Back : Plain;
+		case EHeld::Right:
+		case EHeld::Left:
+			// Only against forward or back; right and left meet where the stick is on the
+			// net axis, far from 45 degrees.
+			if ((Plain == EHeld::Forward || Plain == EHeld::Back) && UnitDir.Y < Narrow && UnitDir.Y > -Narrow)
+			{
+				return UnitDir.X >= 0.0 ? EHeld::Right : EHeld::Left;
+			}
+			return Plain;
+		default:
+			return Plain;
+		}
 	}
 
 	void FPlayerMotion::UpdateGait(EHeld Held, const FVec2& UnitDir, double Top, double Dt, double PlannedDistanceM)
@@ -146,7 +182,7 @@ namespace Padel::Shots
 		if (bHasInput)
 		{
 			TeamDir = { Dir.X / DirLength, Dir.Y / DirLength };
-			UpdateGait(Classify(TeamDir), TeamDir, Top, Dt, PlannedDistanceM);
+			UpdateGait(ClassifyHeld(TeamDir), TeamDir, Top, Dt, PlannedDistanceM);
 			Frac = Gait == EGait::Turned ? 1.0 : SquareSpeedFrac(TeamDir);
 			Desired = Scale(TeamToWorld(Dir, TeamSign), Top * SpeedMult * Frac);
 		}
@@ -208,6 +244,9 @@ namespace Padel::Shots
 		const FVec3 Delta = Sub(Desired, Velocity);
 		const double DeltaLength = LengthXY(Delta);
 		const double MaxChange = Accel * Dt;
+		// Braking that this tick can't finish is a deceleration; a small trim of speed (the
+		// stick wobbling between gaits' top speeds) is reached at once and isn't one.
+		const bool bDecelerating = bBraking && Speed - DesiredSpeed > MaxChange;
 		Velocity = DeltaLength <= MaxChange ? Desired : Add(Velocity, Scale(Delta, MaxChange / DeltaLength));
 		Velocity.Z = 0.0;
 		Position = Add(Position, Scale(Velocity, Dt));
@@ -216,7 +255,9 @@ namespace Padel::Shots
 		UpdateFatigue(EdgeStopCount != EdgeStopsBefore, Dt);
 
 		const double NewSpeed = LengthXY(Velocity);
-		if (bBraking && NewSpeed > Tuning->SplitMaxSpeedMps)
+		// With no stick the home drift's direction stands in for the held one.
+		const EHeld ModeDir = HeldDir != EHeld::None ? HeldDir : Classify(TeamDir);
+		if (bDecelerating && NewSpeed > Tuning->SplitMaxSpeedMps)
 		{
 			Mode = EMovementMode::Decel;
 		}
@@ -228,13 +269,13 @@ namespace Padel::Shots
 		{
 			Mode = EMovementMode::Adjust;
 		}
-		else if (Gait == EGait::Turned || Classify(TeamDir) == EHeld::Forward)
+		else if (Gait == EGait::Turned || ModeDir == EHeld::Forward)
 		{
 			Mode = bSprinting ? EMovementMode::Sprint : EMovementMode::Run;
 		}
 		else
 		{
-			Mode = Classify(TeamDir) == EHeld::Back ? EMovementMode::Backpedal : EMovementMode::Shuffle;
+			Mode = ModeDir == EHeld::Back ? EMovementMode::Backpedal : EMovementMode::Shuffle;
 		}
 
 		TimeSinceSlowS = NewSpeed <= Tuning->SplitMaxSpeedMps ? 0.0 : TimeSinceSlowS + Dt;
@@ -389,6 +430,10 @@ namespace Padel::Shots
 			Position.Y = Clamp(Position.Y, -Side, Side);
 			Velocity.Y = 0.0;
 		}
-		EdgeStopCount += Velocity.X != Before.X || Velocity.Y != Before.Y ? 1 : 0;
+		// GDD 6.3 (BIOMECHANICS_MOVEMENT 2.6): a dead stop is speed the clamp throws away.
+		// Arriving at the margin slower than EdgeStopToleranceMps is the braking curve's
+		// planned arrival plus a rounding hair, not a stop.
+		const double Lost = std::max(std::abs(Before.X - Velocity.X), std::abs(Before.Y - Velocity.Y));
+		EdgeStopCount += Lost > Tuning->EdgeStopToleranceMps ? 1 : 0;
 	}
 }

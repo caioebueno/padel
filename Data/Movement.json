@@ -30,6 +30,8 @@
 		"TurnToRunAt99S": 0.09,
 		"CrossoverMinDistM": 2.5,
 		"TurnBackMinDistM": 1.5,
+		"GaitHysteresisDeg": 10.0,
+		"EdgeStopToleranceMps": 0.1,
 		"FatigueHardAccelMps2": 3.0,
 		"FatigueDrainPerHardAccelAt1": 0.04,
 		"FatigueDrainPerHardAccelAt99": 0.02,

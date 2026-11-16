@@ -32,6 +32,8 @@ Padel::Shots::FMovementTuning FPadelMovementRow::ToCore() const
 	Out.TurnToRunAt99S = TurnToRunAt99S;
 	Out.CrossoverMinDistM = CrossoverMinDistM;
 	Out.TurnBackMinDistM = TurnBackMinDistM;
+	Out.GaitHysteresisDeg = GaitHysteresisDeg;
+	Out.EdgeStopToleranceMps = EdgeStopToleranceMps;
 	Out.FatigueHardAccelMps2 = FatigueHardAccelMps2;
 	Out.FatigueDrainPerHardAccelAt1 = FatigueDrainPerHardAccelAt1;
 	Out.FatigueDrainPerHardAccelAt99 = FatigueDrainPerHardAccelAt99;

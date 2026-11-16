@@ -133,6 +133,12 @@ namespace Padel::Shots
 		NonNegative(E, "TurnToRunAt99S", TurnToRunAt99S);
 		Positive(E, "CrossoverMinDistM", CrossoverMinDistM);
 		Positive(E, "TurnBackMinDistM", TurnBackMinDistM);
+		NonNegative(E, "GaitHysteresisDeg", GaitHysteresisDeg);
+		if (GaitHysteresisDeg >= 45.0)
+		{
+			E.push_back("GaitHysteresisDeg must be under 45");
+		}
+		NonNegative(E, "EdgeStopToleranceMps", EdgeStopToleranceMps);
 		Positive(E, "FatigueHardAccelMps2", FatigueHardAccelMps2);
 		NonNegative(E, "FatigueDrainPerHardAccelAt1", FatigueDrainPerHardAccelAt1);
 		NonNegative(E, "FatigueDrainPerHardAccelAt99", FatigueDrainPerHardAccelAt99);
