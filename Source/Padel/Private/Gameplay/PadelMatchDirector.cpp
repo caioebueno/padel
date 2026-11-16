@@ -2,6 +2,7 @@
 
 #include "AI/PadelAiData.h"
 #include "AI/PadelPartnerCommands.h"
+#include "Animation/PadelPlayerAnimComponent.h"
 #include "BallState.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -212,9 +213,11 @@ bool APadelMatchDirector::StartMatch(const Padel::Ui::FMatchSetup& Setup)
 
 	Match = MakeUnique<FMatchSimulation>(Ui::ToMatchConfig(Setup), Physics, MatchSeed);
 	Runner = MakeUnique<AI::FAiMatchRunner>(*Match, ShotData.Library, ShotData.Movement, Tactics, RunnerSetup);
+	PointsPlayed = 0;
 	if (UPadelMatchEvents* Events = GetWorld() ? GetWorld()->GetSubsystem<UPadelMatchEvents>() : nullptr)
 	{
 		Events->Attach(*Match);
+		PointEndedHandle = Events->OnPointEnded.AddUObject(this, &APadelMatchDirector::HandlePointEnded);
 	}
 	else
 	{
@@ -240,8 +243,10 @@ void APadelMatchDirector::CloseMatch()
 	// The subsystem and the runner both hold the match: let go of it before it goes.
 	if (UPadelMatchEvents* Events = GetWorld() ? GetWorld()->GetSubsystem<UPadelMatchEvents>() : nullptr)
 	{
+		Events->OnPointEnded.Remove(PointEndedHandle);
 		Events->Detach();
 	}
+	PointEndedHandle.Reset();
 	Runner.Reset();
 	Match.Reset();
 	DestroyPawns();
@@ -268,6 +273,10 @@ void APadelMatchDirector::SpawnPawns()
 	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
 	{
 		Pawns[Id] = World->SpawnActor<APadelPlayerPawn>(APadelPlayerPawn::StaticClass(), FTransform::Identity, Params);
+		if (Pawns[Id])
+		{
+			Pawns[Id]->InitAnimation(&ShotData.Library, Padel::TeamIndex(Padel::TeamOfPlayer(Id)));
+		}
 	}
 
 	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
@@ -350,6 +359,17 @@ void APadelMatchDirector::StepOnce()
 		Runner->SetHumanInput(Human->SampleInput());
 	}
 	Runner->Tick();
+
+	// The animation follows each swing on the same fixed step, reading the runner's
+	// controllers fresh (they are rebuilt at a change of ends).
+	const bool bRallyLive = Match->Phase() == Padel::EMatchPhase::Live;
+	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
+	{
+		if (APadelPlayerPawn* Pawn = GetPawn(Id))
+		{
+			Pawn->StepAnimation(Runner->Player(Id), Runner->LastEvents(Id), Padel::SimTickSeconds, bRallyLive);
+		}
+	}
 }
 
 void APadelMatchDirector::SyncView()
@@ -360,6 +380,7 @@ void APadelMatchDirector::SyncView()
 		{
 			// The runner rebuilds its controllers at a change of ends: read them fresh each time.
 			Pawn->ShowController(Runner->Player(Id), Players[Id]);
+			Pawn->PresentAnimation();
 		}
 	}
 	// The ball the players see: the server's toss while the match holds the ball, the
@@ -388,6 +409,19 @@ void APadelMatchDirector::HandleGoldenReceiverPicked(int32 PlayerId)
 	{
 		Runner->ChooseGoldenPointReceiver(PlayerId);
 	}
+}
+
+void APadelMatchDirector::HandlePointEnded(Padel::ETeam WinningTeam, Padel::EPointReason Reason, int32 LastHitterId)
+{
+	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
+	{
+		APadelPlayerPawn* Pawn = GetPawn(Id);
+		if (Pawn && Pawn->GetAnimation())
+		{
+			Pawn->GetAnimation()->NotifyPointEnded(Padel::TeamOfPlayer(Id) == WinningTeam, PointsPlayed);
+		}
+	}
+	++PointsPlayed;
 }
 
 void APadelMatchDirector::GiveCommand(EPadelInputAction Action)

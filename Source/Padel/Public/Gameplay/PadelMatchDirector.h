@@ -85,6 +85,7 @@ private:
 	void HandleMatchRequested(const Padel::Ui::FMatchSetup& Setup);
 	void HandleMatchClosed();
 	void HandleGoldenReceiverPicked(int32 PlayerId);
+	void HandlePointEnded(Padel::ETeam WinningTeam, Padel::EPointReason Reason, int32 LastHitterId);
 	void GiveCommand(EPadelInputAction Action);
 	void CmdNet() { GiveCommand(EPadelInputAction::CmdNet); }
 	void CmdBack() { GiveCommand(EPadelInputAction::CmdBack); }
@@ -115,6 +116,9 @@ private:
 	TUniquePtr<Padel::AI::FAiMatchRunner> Runner;
 	int32 HumanPlayerId = -1;
 	int32 MatchesStarted = 0;
+	// Points played this match, for the animation's celebration variety.
+	uint32 PointsPlayed = 0;
+	FDelegateHandle PointEndedHandle;
 	double Accumulator = 0.0;
 	bool bPartnerCommandsBound = false;
 };
