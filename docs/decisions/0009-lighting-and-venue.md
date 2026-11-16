@@ -1,4 +1,4 @@
-# 0006: Lighting, venue and the shared look-dev level
+# 0009: Lighting, venue and the shared look-dev level
 
 **Date:** 2026-11-16 · **Status:** proposed (court-art lighting and venue)
 

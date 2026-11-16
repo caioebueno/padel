@@ -4,6 +4,7 @@
 #include "Subsystems/WorldSubsystem.h"
 
 #include "Presentation/Model/PadelNetReaction.h"
+#include "CourtSpec.h"
 #include "PadelTypes.h"
 
 #include "PadelNetReactionSubsystem.generated.h"

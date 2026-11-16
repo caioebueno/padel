@@ -35,12 +35,15 @@ namespace Padel::AI
 		bool bMustBounce = false;
 		// Seconds before the player starts moving (what is left of the read delay).
 		double StartDelayS = 0.0;
+		// Movement.json AccelFalloff: the player's push weakens as speed rises (GDD 6.3).
+		double AccelFalloff = 0.0;
 	};
 
 	namespace InterceptPlanner
 	{
-		// Constant acceleration up to top speed, then cruise.
-		PADELCORE_API double TimeToCover(double Distance, double TopSpeed, double AccelTime);
+		// The players' straight-line curve from standing (Shots::MotionCurve): constant
+		// acceleration up to top speed with no falloff, softer as speed rises with one.
+		PADELCORE_API double TimeToCover(double Distance, double TopSpeed, double AccelTime, double AccelFalloff = 0.0);
 
 		// The best reachable sample, or the one the player misses by the least when
 		// none is reachable (they still chase it). Empty when no sample is playable.

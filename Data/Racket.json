@@ -1,0 +1,17 @@
+{
+	"Racket": {
+		"_comment": "The player's racket and where it sits in the hand (GDD 10). Cosmetic only: shots are the shot model's. Metres and degrees. Read by UPadelPlayerAnimComponent; the maths is in Source/Padel/Public/Animation/Model/RacketGrip.h and the mesh is built by Tools/AssetPipeline (config/racket.json). The grip is solved from the hand's joint positions in the reference pose, so it fits the placeholder skeleton and the MetaHumans alike. See docs/decisions/0008-racket.md.",
+		"Mesh": "/Game/Padel/Equipment/SM_Racket.SM_Racket",
+		"FaceCentreM": 0.27,
+		"Grip": {
+			"ForearmBone": "lowerarm_r",
+			"KnuckleBone": "middle_01_r",
+			"PalmShare": 0.55,
+			"PalmLengthM": 0.05,
+			"GripOutM": 0.03,
+			"GripAlongM": 0.03,
+			"HeadTiltDeg": 35.0,
+			"FaceRollDeg": 40.0
+		}
+	}
+}

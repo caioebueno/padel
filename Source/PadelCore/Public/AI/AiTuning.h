@@ -6,6 +6,9 @@
 
 #pragma once
 
+// Determinism pragmas (no FMA contraction) for the inline maths below; see PadelCoreApi.h.
+#include "PadelCoreApi.h"
+
 #include "AI/AiTypes.h"
 
 #include <array>

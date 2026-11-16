@@ -5,9 +5,11 @@
 #include "doctest.h"
 #include "AnimTestData.h"
 #include "Animation/Model/PlayerAnimModel.h"
+#include "Shots/MotionCurve.h"
 #include "Shots/PlayerShotController.h"
 #include "Shots/PracticeBall.h"
 
+#include <algorithm>
 #include <cmath>
 #include <functional>
 
@@ -90,7 +92,12 @@ namespace
 						const double D = LengthXY(To);
 						if (D > 0.05)
 						{
-							const double Gain = D > 0.5 ? 1.0 : D / 0.5;
+							// Arrive rather than overrun: no faster than the player can still stop
+							// in (braking has been no harder than starting since M1).
+							const FPlayerMotion& M = P.GetMotion();
+							const double Top = M.TopSpeed(false);
+							const double Brake = MotionCurve::InitialAccel(Top, M.TimeToTopSpeed()) * Move.BrakeMult;
+							const double Gain = std::min({ 1.0, D / 0.5, std::sqrt(2.0 * Brake * D) / Top });
 							In.Move = FVec2{ DotProduct(To, RightAxis(P.GetTeamSign())) / D * Gain, DotProduct(To, ForwardAxis(P.GetTeamSign())) / D * Gain };
 						}
 					}
@@ -267,7 +274,7 @@ TEST_CASE("Anim.Contact: every slice shot shows its contact frame on the hit tic
 	{
 		for (const double Offset : { -0.16, 0.0, 0.13 })
 		{
-			CAPTURE(Case.Name);
+			CAPTURE(std::string(Case.Name));
 			CAPTURE(Offset);
 			FAnimRig Rig;
 			FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Case.Start, 7);
@@ -379,7 +386,7 @@ TEST_CASE("Anim.Feet: a swing owns the legs only while the player is planted, so
 {
 	for (const FShotCase& Case : SliceCases())
 	{
-		CAPTURE(Case.Name);
+		CAPTURE(std::string(Case.Name));
 		FAnimRig Rig;
 		FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Case.Start, 7);
 		Rig.Feed(Case.Feed);

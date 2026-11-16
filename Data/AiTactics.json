@@ -25,7 +25,7 @@
 		"SpeedAt1Mps": 4.5,
 		"SpeedAt99Mps": 6.5,
 		"AccelTimeAt1S": 0.9,
-		"AccelTimeAt99S": 0.45,
+		"AccelTimeAt99S": 0.73,
 		"PlanningSpeedFactor": 0.9,
 		"ReachSideAt1M": 0.9,
 		"ReachSideAt99M": 1.2,

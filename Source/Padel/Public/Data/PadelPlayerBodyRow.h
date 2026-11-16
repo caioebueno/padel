@@ -18,4 +18,7 @@ struct PADEL_API FPadelPlayerBodyRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString MetaHumanClass;
 	/** The skeletal mesh component in that actor that the others follow (MetaHuman's "Body"). */
 	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString BodyComponent;
+	/** Palette group of the player's kit (Tools/AssetPipeline/config/palette.json, "team_a" or
+	 *  "team_b"); metahuman_setup.py paints the MetaHuman's shirt and shorts with it. */
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString Kit;
 };

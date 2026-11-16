@@ -168,8 +168,14 @@ void APadelPlayerPawn::ShowController(const Padel::Shots::FPlayerShotController&
 		FacingTeamSign = Controller.GetTeamSign();
 		SetActorRotation(FRotator(0.0, FacingTeamSign > 0.0 ? 180.0 : 0.0, 0.0));
 		const Padel::Court::FVec3 Right = Padel::Shots::RightAxis(FacingTeamSign);
-		const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings.ForehandSign();
-		Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
+		// Only the placeholder racket hangs off the capsule. Once the animation component has
+		// put it in a hand, its relative transform is the grip (0008): moving it here threw
+		// the racket 55 cm off the hand on the first frame.
+		if (Racket->GetAttachParent() == Capsule)
+		{
+			const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings.ForehandSign();
+			Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
+		}
 	}
 	FVector Location = Padel::ToWorld(Controller.GetMotion().GetPosition());
 	Location.Z += PadelPlayerPawnDetail::CapsuleHalfHeight;

@@ -229,28 +229,71 @@
       "_note": "The speed trail's colour and brightness (relative to the exposure, like the felt's lift). Its opacity and length come from Data/Ball.json at run time."
     }
   },
-  "racket_a": {
+  "racket": {
     "Face": {
-      "master": "Opaque",
-      "color": "#efefe9",
-      "roughness": 0.35,
-      "specular": 0.6
+      "master": "RacketFace",
+      "_note": "The hitting faces: bare 2x2 twill carbon (T_CarbonWeave_Mask) under the original graphic in T_Racket_Masks (paint panel, accent keystone and lines, white ink), all under a raised sand finish (T_RacketGrit_N) that is rougher than the lacquer. color is the carbon; the others are the graphic's inks.",
+      "color": "#17191d",
+      "roughness": 0.32,
+      "paint_color": "#1fa79a",
+      "paint_roughness": 0.4,
+      "accent_color": "#ff5537",
+      "ink_color": "#eeeeea",
+      "hole_color": "#8f8c84",
+      "weave_contrast": 0.35,
+      "grit_roughness": 0.58,
+      "grit_amount": 0.55,
+      "grit_normal_strength": 0.8,
+      "specular": 0.5,
+      "detail_fade_start_m": 1.5,
+      "detail_fade_end_m": 8.0
     },
     "Frame": {
       "master": "Opaque",
-      "color": "#16181d",
-      "roughness": 0.25,
-      "metallic": 0.1
+      "_note": "Gloss-lacquered carbon tube round the edge and the throat.",
+      "color": "#141518",
+      "roughness": 0.24,
+      "specular": 0.55
+    },
+    "Core": {
+      "master": "Opaque",
+      "_note": "The EVA foam core, seen in the walls of the holes.",
+      "color": "#d9d6cb",
+      "roughness": 0.88,
+      "specular": 0.3
+    },
+    "Bumper": {
+      "master": "Opaque",
+      "_note": "Smoked rubber protector over the top of the frame.",
+      "color": "#2a2c30",
+      "roughness": 0.62,
+      "specular": 0.4
+    },
+    "Metal": {
+      "master": "Opaque",
+      "_note": "Bead-blasted titanium-grey alloy: the weight cartridge and the shoulder ports.",
+      "color": "#9aa0a6",
+      "roughness": 0.34,
+      "metallic": 1.0
     },
     "Accent": {
       "master": "Opaque",
-      "color": "#ff6a13",
-      "roughness": 0.3
+      "_note": "The design's coral: the finishing tape, the port rings and the butt cap's ring.",
+      "color": "#ff5537",
+      "roughness": 0.45
     },
     "Grip": {
       "master": "Opaque",
-      "color": "#2a2d33",
-      "roughness": 0.95
+      "_note": "White perforated overgrip, slightly tacky.",
+      "color": "#ecebe5",
+      "roughness": 0.82,
+      "specular": 0.35
+    },
+    "Cap": {
+      "master": "Opaque",
+      "_note": "Moulded butt cap and the cartridge's screws.",
+      "color": "#1a1b1e",
+      "roughness": 0.42
     }
   },
   "team_a": {

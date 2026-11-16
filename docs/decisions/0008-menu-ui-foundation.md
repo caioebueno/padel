@@ -1,0 +1,15 @@
+# 0008: Menu UI foundation
+
+**Date:** 2026-11-16 · **Status:** proposed (Agent 7, menu lead)
+
+Implements the shared base of the menu spec (`docs/ui/MENU_SPEC.md`, PR 23): tokens, fonts, components, focus and the screen router. The screens themselves (spec 7) build on it in follow-up PRs.
+
+- **Plain UMG, as 0003 says.** Nothing in the spec needs CommonUI (spec 11.1, 13 Q9).
+- **Virtual focus.** The menu root (`UPadelMenuRoot`) keeps Slate keyboard focus and turns keys, pad buttons and the left stick into `EUiInput`. Each screen moves a "virtual" focus through an explicit `FFocusMap` (spec 5.3). We don't use Slate navigation rules: geometric navigation jumps in surprising ways, and the maps can be validated without an engine. Held directions repeat on the spec's timing (400 ms, then 110 ms); the OS key repeat is ignored. Hover sets focus (5.6).
+- **One router, one registry.** `UPadelMenuRoot` follows the engine-free `FScreenFlow` (Back table, focus memory, Controls and Settings returning to their opener, which transition to play). `PadelScreenRegistry.cpp` maps each `EPadelScreen` to its widget class, one line per screen; screens not built yet show `UPadelPlaceholderScreen`, so the whole flow is walkable from the start.
+- **`APadelHUD` is the menu's host.** It implements `IPadelMenuHost` (start, resume, restart and quit, plus the setup, score and stats the screens read) and follows the root's screen changes to pause the world and switch input modes. Screens never touch the world or the match directly.
+- **Theme as a plain struct.** `Data/UiTheme.json` loads into the engine-free `Padel::Ui::FUiTheme` (spec 11.2 suggested a USTRUCT row). A plain struct lets the native suite check the defaults against the JSON and the grid maths; the engine reads it once through `PadelUi::Theme()`.
+- **Fonts load at runtime.** The Barlow TTFs (OFL) in `SourceArt/Fonts/` load through `FStandaloneCompositeFont`, so there are no binary font assets; packaged builds stage the folder (DefaultGame.ini). If a file is missing the engine font stands in. The TTFs go through Git LFS; `Tools/AssetPipeline/fonts/fetch_barlow.py` downloads them (hash-pinned) and bakes the tabular copies where they're missing. Slate can't turn on OpenType `tnum`, so the tabular faces are copies with the digits remapped (`Tools/AssetPipeline/fonts/bake_tabular_figures.py`).
+- **Soft shadows and the focus glow are a halo texture,** clear inside and soft outside, made once at runtime. A real blur would need a material. Tile images can't be desaturated (spec 6.3, locked) without a material either: a locked tile shows flat glass and its icon, which the spec allows while there's no art.
+- **Motion is C++.** `FPadelTween` with the spec's easings, driven from `NativeTick`. Reduce motion removes scales and slides (fades stay).
+- **Not in this change:** the screens (spec 7), the slider and player card (they ship with their screens), `UPadelSettings` persistence, the menu backdrop camera (Presentation), menu sounds (the root broadcasts `OnCue`; W10 binds them), and moving the in-match HUD off `PadelUiStyle.h`.

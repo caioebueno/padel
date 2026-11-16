@@ -452,7 +452,7 @@ void APadelVenueLighting::RebuildFixtures(const FLightingPreset& Preset)
 		Light->SetSoftSourceRadius(static_cast<float>(F.SourceRadiusM * Padel::Court::UnrealUnitsPerMetre));
 		Light->SetUseTemperature(true);
 		Light->SetTemperature(static_cast<float>(F.TemperatureK));
-		// Only the central court fixtures cast shadows (decision 0006: the Metal budget);
+		// Only the central court fixtures cast shadows (decision 0009: the Metal budget);
 		// house lights never do.
 		Light->SetCastShadows(F.bCastShadows);
 		Light->bCastVolumetricShadow = false;

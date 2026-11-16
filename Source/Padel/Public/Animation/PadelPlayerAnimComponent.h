@@ -3,8 +3,10 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Animation/Model/PlayerAnimModel.h"
+#include "Animation/Model/RacketGrip.h"
 // Complete type: the generated vtable-helper constructor destroys the TUniquePtr below.
 #include "Animation/PadelAnimData.h"
+#include "Animation/PadelPlayerPoseNode.h"
 #include "PadelPlayerAnimComponent.generated.h"
 
 class UAnimSequenceBase;
@@ -23,6 +25,10 @@ class USkeletalMeshComponent;
  * - When the player also has a MetaHuman in Data/PlayerBodies.json and it is on disk,
  *   the placeholder skeleton keeps running ABP_PadelPlayer hidden and the MetaHuman is
  *   shown in its place, retargeted from it every frame (docs/decisions/0006-metahuman-players.md).
+ *
+ * The racket is SM_Racket from Data/Racket.json once the asset pipeline has imported it
+ * (docs/decisions/0008-racket.md). On a skeletal body it sits in the palm, placed from
+ * the hand's joints in the reference pose (Animation/Model/RacketGrip.h).
  */
 UCLASS(ClassGroup = (Padel), meta = (BlueprintSpawnableComponent))
 class PADEL_API UPadelPlayerAnimComponent : public UActorComponent
@@ -50,6 +56,12 @@ public:
 	/** True once a skeletal body and the AnimBP are in use. */
 	bool HasSkeletalBody() const { return bSkeletalBody; }
 
+	/** The placeholder skeleton: shown, or hidden and driving a MetaHuman. */
+	USkeletalMeshComponent* GetDriverBody() const { return Body; }
+
+	/** Racket in the left hand (set from the player's Handedness on the first step). */
+	bool IsLeftHanded() const { return bLeftHanded; }
+
 	/** The MetaHuman shown for this player, or null when the placeholder (or the shapes) are shown. */
 	AActor* GetMetaHuman() const { return MetaHuman; }
 
@@ -60,9 +72,26 @@ public:
 private:
 	UAnimSequenceBase* Resolve(const std::string& AssetPath);
 
+	/** The C++ pose's clips from Animation.json (null where not imported). */
+	FPadelLocomotionSet LoadLocomotionSet() const;
+
 	/** Spawns PlayerKey's MetaHuman over the hidden placeholder skeleton; false (and logged) when it can't. */
 	bool ShowMetaHuman(FName PlayerKey);
 	void RemoveMetaHuman();
+
+	/** Puts SM_Racket on the racket component when it's imported; keeps the placeholder otherwise. */
+	void LoadRacket();
+
+	/** Attaches the racket to To's racket bone, in the palm (RacketGrip.h). */
+	void AttachRacket(USkeletalMeshComponent* To);
+
+	/** Moves the racket, its grip and the contact warp to the left (or back to the right) arm. */
+	void SetLeftHanded(bool bLeft);
+
+	/** A right-side bone name ("hand_r") on the racket side: "hand_l" for a left-hander. */
+	FName OnRacketSide(FName RightSideBone) const;
+
+	bool bLeftHanded = false;
 
 	UPROPERTY()
 	TObjectPtr<USkeletalMeshComponent> Body;
@@ -81,5 +110,7 @@ private:
 	TUniquePtr<FPadelAnimData> Data;
 	TUniquePtr<Padel::Animation::FPlayerAnimModel> Model;
 	bool bSkeletalBody = false;
+	Padel::Animation::FRacketSettings RacketSettings;
+	bool bImportedRacket = false;
 	bool bStepped = false;
 };

@@ -93,4 +93,36 @@ namespace Padel::Ui
 		}
 		return "";
 	}
+
+	EGlyphShape PadKeyShape(std::string_view KeyName)
+	{
+		if (KeyName.find("Gamepad_DPad_") == 0)
+		{
+			return EGlyphShape::DPad;
+		}
+		if (KeyName.find("Gamepad_FaceButton_") == 0 || KeyName == "Gamepad_Left2D" || KeyName == "Gamepad_Right2D"
+			|| KeyName == "Gamepad_LeftThumbstick" || KeyName == "Gamepad_RightThumbstick")
+		{
+			return EGlyphShape::Circle;
+		}
+		return EGlyphShape::Cap;
+	}
+
+	std::string PadKeyGlyphText(std::string_view KeyName, EPadFamily Family)
+	{
+		// The sticks' full names ("Left stick") don't fit a 40 px circle.
+		if (KeyName == "Gamepad_Left2D" || KeyName == "Gamepad_LeftThumbstick")
+		{
+			return "LS";
+		}
+		if (KeyName == "Gamepad_Right2D" || KeyName == "Gamepad_RightThumbstick")
+		{
+			return "RS";
+		}
+		if (PadKeyShape(KeyName) == EGlyphShape::DPad)
+		{
+			return "";
+		}
+		return GamepadKeyLabel(KeyName, Family);
+	}
 }

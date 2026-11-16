@@ -39,6 +39,10 @@ namespace Padel::AI
 		// -1 when both are AI.
 		int HumanSlot = -1;
 		uint64_t Seed = 0;
+		// Movement.json AccelFalloff and BrakeMult, so the planner and the arrival run on
+		// the players' real curve. BrakeMult 0 = no braking limit on the arrival.
+		double AccelFalloff = 0.0;
+		double BrakeMult = 0.0;
 	};
 
 	class PADELCORE_API FAiTeamController
@@ -82,6 +86,8 @@ namespace Padel::AI
 
 		int HalfSign = 1;
 		int HumanSlot = -1;
+		double AccelFalloff = 0.0;
+		double BrakeMult = 0.0;
 		std::array<FAiPlayerProfile, 2> Profiles;
 		const FAiTactics& Tactics;
 		const FAiDifficulty& Difficulty;

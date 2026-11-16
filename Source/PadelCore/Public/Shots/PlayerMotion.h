@@ -1,5 +1,6 @@
-// Player movement on the ground (GDD 6.1, 6.3): acceleration from Acceleration, top
-// speed from Speed, sprint and stamina, the automatic split-step and the home drift.
+// Player movement on the ground (GDD 6.1, 6.3): acceleration from Acceleration, falling as
+// speed rises (Shots/MotionCurve.h), top speed from Speed, sprint and stamina, the
+// automatic split-step and the home drift.
 // Fixed-step and engine-free, so the AI drives it with the same move vector a stick gives.
 
 #pragma once
@@ -30,6 +31,8 @@ namespace Padel::Shots
 		void Teleport(const FVec3& InPosition);
 
 		double TopSpeed(bool bSprinting) const;
+		// Top speed over the initial acceleration (MotionCurve); the real time to top speed
+		// is longer when Movement.json's AccelFalloff is above 0.
 		double TimeToTopSpeed() const;
 
 		const FVec3& GetPosition() const { return Position; }

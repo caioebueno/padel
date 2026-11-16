@@ -14,14 +14,14 @@ That command does three things:
 
 | Asset | Unreal path | Source |
 |---|---|---|
-| `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0006](../../docs/decisions/0006-court-surface.md)) |
+| `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0008](../../docs/decisions/0008-court-surface.md)) |
 | `CourtFrame` | `/Game/Padel/Court/SM_CourtFrame` | Blender script (`build_court_frame.py`): posts, corner L-posts, mesh panel frames, base plates, gussets, anchors and bolts. Nanite |
 | `CourtMesh` | `/Game/Padel/Court/SM_CourtMesh` | Blender script (`build_court_frame.py`): one quad per mesh opening; the `WireMesh` material draws the wires. Masked, not Nanite |
-| `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0006](../../docs/decisions/0006-net-and-hit-reaction.md)) |
+| `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0010](../../docs/decisions/0010-net-and-hit-reaction.md)) |
 | `CourtGlass` | `/Game/Padel/Court/SM_CourtGlass` | Blender script `build_court_glass.py` with `config/glass.json`: 18 tempered panels with arrised edges and their bolt fixings, plus the glass dirt textures. Not Nanite, because Nanite can't render translucent materials. See [0006](../../docs/decisions/0006-court-glass.md) |
 | `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script (`build_equipment.py`) with `config/ball.json`: 65 mm, Cloth-shaded felt, seam groove, original printed mark, fuzz shell at LOD0, hand-built LOD1 and LOD2. See [0007](../../docs/decisions/0007-ball.md) |
 | `BallTrail` | `/Game/Padel/Equipment/SM_BallTrail` | Blender script: a tapered tube 1 m long along -X, stretched by `APadelBall` at high speed. Translucent |
-| `RacketPlaceholder` | `/Game/Padel/Equipment/SM_RacketPlaceholder` | Blender script, 455 × 260 × 38 mm, perforated face, invented design |
+| `Racket` | `/Game/Padel/Equipment/SM_Racket` | Blender script `build_racket.py` with `config/racket.json`: the invented OSTREL KEYSTONE, a 455 × 260 × 38 mm diamond power racket with an open heart, 43 drilled holes, a sand-finish carbon face, weight cartridge and ports, bumper and overgrip; hand-built LOD1 and LOD2. See [0008](../../docs/decisions/0008-racket.md) |
 | `PlayerPlaceholderA`, `PlayerPlaceholderB` | `/Game/Padel/Characters/SK_*` | Blender script, rigged on Unreal mannequin bones, in the team A and team B kits |
 | `VenueHall`, `VenueStands`, `VenueBoards`, `VenueGround` | `/Game/Padel/Venue/SM_*` | Blender script (`build_venue.py`): the indoor hall, stands, perimeter boards and outdoor ground |
 | `VenueLightTruss`, `VenueMasts` | `/Game/Padel/Venue/SM_*` | Blender script, from the fixture rows in `Data/Lighting.json` (the rig and masts that carry the floodlights) |
@@ -44,6 +44,27 @@ That command does three things:
 - **Textures.** `T_Ball_Masks` holds the seam as a distance field (R), the dye mottle (G) and the printed mark (B), uncompressed so the seam edge has no steps. `T_Ball_N` is the seam groove. `T_Felt_N` and `T_Felt_Mask` are one tiling patch of felt fibres.
 - **Materials** (`unreal/ball_material.py`). `M_PadelBallFelt` is Cloth-shaded felt with the seam cut from the distance field, never thinner than `min_seam_pixels` on screen so spin stays readable from the broadcast camera. `M_PadelBallFuzz` draws the shell's loose fibres. `M_PadelBallTrail` is the translucent speed trail; `APadelBall` sets its opacity through custom primitive data.
 - **Preview.** `pipeline.py preview-ball out.png` renders three balls on the turf in Cycles with the same textures.
+
+## Racket
+
+`build_racket.py` builds `SM_Racket` from `config/racket.json`. `asset_lib/racket_layout.py` lays out the outline, the heart windows, the holes and the face graphic. `asset_lib/racket_textures.py` draws the textures. Both are tested without Blender in `tests/test_racket.py`.
+
+- **Mesh.** The frame is a 2D curve, filled, extruded to 38 mm and given a 6 mm round edge. The outline is inset and the windows are grown by that radius, so the bevel lands on the drawn shape. The holes are boolean-drilled through it. Added on top:
+  - the bumper over the tip;
+  - the weight cartridge in the throat;
+  - two recessed weight ports at the shoulders;
+  - the oval handle with a helix overgrip, its tape and the butt cap.
+
+  LOD1 and LOD2 are rebuilt with fewer outline points and segments, not decimated. LOD2 keeps the holes as texture only. The grip centre sits on the origin.
+- **Textures.** `T_Racket_Masks` (RGBA, uncompressed) is drawn in the face's UVs (0.305 m square, mirrored on the +Y face so the lettering reads from both sides):
+  - R: the paint panel;
+  - G: the accent lines and the keystone;
+  - B: the lettering;
+  - A: the holes, for LOD2.
+
+  `T_CarbonWeave_Mask` is one tile of 2 × 2 twill. `T_RacketGrit_N` is the sand finish.
+- **Material** (`unreal/racket_material.py`). `M_PadelRacketFace` lays the paint, the accent and the ink over a dark carbon base. Below the paint it shows the weave, and over all of it the grit normal and roughness. The grit and weave fade out between 1.5 m and 8 m, where they would only shimmer. The other slots are plain `M_PadelOpaque` instances.
+- **Preview.** `pipeline.py preview-racket out.png [--shot hero|closeup|lods]` renders it in Cycles with the same textures.
 
 ## Setup
 
@@ -70,6 +91,8 @@ pipeline.py preview out.png [--preset IndoorClub] [--camera Broadcast]
                                      # Cycles render lit like the game: a Data/Lighting.json preset
                                      # (candela, lux, kelvin, EV100) from a Data/LookDev.json camera
 pipeline.py preview-ball out.png     # Cycles close-up of the ball: felt, seam, printed mark
+pipeline.py preview-racket out.png [--shot hero|closeup|lods]
+                                     # Cycles studio render of the racket: both faces, the sand finish, the LODs
 ```
 
 `build` never calls an AI service unless you pass `--generate`. An AI asset that hasn't been generated yet is skipped with a note. Once it has been downloaded, `build` cleans it up again from the saved file at no cost.
@@ -96,7 +119,7 @@ Material slots in procedural assets are named after the material instance they g
 
 - **Axes.** Blender scripts use Unreal's axes in metres: X along the court (Team A on +X), Y across it, Z up. Only `bl_common.export_fbx` converts to centimetres.
 - **Characters** face Blender −Y, which arrives facing +Y in Unreal like the engine mannequins. They're in a T-pose, and the armature object is named `Armature` so Unreal adds no extra root bone.
-- **The racket's** grip centre is at the origin, with the head up (+Z) and the faces looking along ±Y, so a hand socket holds it without offsets.
+- **The racket's** grip centre is at the origin, with the head up (+Z) and the faces looking along ±Y. The game places it in the palm from the hand's joints (`Data/Racket.json`, `Source/Padel/Public/Animation/Model/RacketGrip.h`).
 - **Originality.** Prompts, negative prompts and IDs go through `config/blocklist.txt` before anything is sent. Add to it whenever a new real name comes up.
 
 ## Tests

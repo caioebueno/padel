@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Animation/PadelContactWarp.h"
 #include "Animation/Model/PlayerAnimTuning.h"
 #include "Data/PadelPlayerBodyRow.h"
 
@@ -23,6 +24,14 @@ struct PADEL_API FPadelAnimData
 	FString MetaHumanRetargeter;
 	int32 MetaHumanMinLod = 0;
 	int32 MetaHumanIkLodThreshold = -1;
+	/** The C++ pose's clips (Animation.json IdleAsset, WalkAssets, JogAssets) and its two values. */
+	FString IdleAsset;
+	TArray<FString> WalkAssets;
+	TArray<FString> JogAssets;
+	double WalkClipSpeedMps = 0.0;
+	double ArmReadyAlpha = 0.0;
+	/** Contact warp tuning (Animation.json Warp*), already in Unreal units. */
+	FPadelWarpTuning Warp;
 	bool bOk = false;
 	TArray<FString> Errors;
 

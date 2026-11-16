@@ -36,3 +36,6 @@ __pycache__/
 # them. Data/PlayerBodies.json names them; a clone without them shows the placeholders.
 /Content/MetaHumans/
 /Content/Padel/Characters/MetaHumans/
+# Epic's UE5 mannequin, copied from the engine's Third Person template by
+# Tools/AssetPipeline/unreal/animation_setup.py as the source of the locomotion clips.
+/Content/Characters/
