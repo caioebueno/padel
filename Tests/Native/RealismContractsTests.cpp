@@ -23,10 +23,14 @@ TEST_CASE("Contracts.Realism: Movement.json's new fields are neutral (GDD 6.1, 6
 	CHECK(M.CrossoverMinDistM == Approx(2.5));
 	CHECK(M.TurnBackMinDistM == Approx(1.5));
 	CHECK(M.FatigueHardAccelMps2 == Approx(3.0));
-	CHECK(M.FatigueDrainPerHardAccel == Approx(0.0));
 	CHECK(M.FatigueRallyStartS == Approx(15.0));
-	CHECK(M.FatigueDrainPerRallyS == Approx(0.0));
-	CHECK(M.FatigueTopSpeedLossAtZero == Approx(0.0));
+	// M3 turned these on (PlayerMotionTests and the three-set soak pin their behaviour).
+	CHECK(M.FatigueDrainPerHardAccelAt1 == Approx(0.04));
+	CHECK(M.FatigueDrainPerHardAccelAt99 == Approx(0.02));
+	CHECK(M.FatigueDrainPerRallySAt1 == Approx(0.06));
+	CHECK(M.FatigueDrainPerRallySAt99 == Approx(0.03));
+	CHECK(M.FatigueBetweenPointRestS == Approx(20.0));
+	CHECK(M.FatigueTopSpeedLossAtZero == Approx(0.06));
 }
 
 TEST_CASE("Contracts.Realism: a speed fraction left out of Movement.json is caught")

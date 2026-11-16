@@ -33,9 +33,12 @@ Padel::Shots::FMovementTuning FPadelMovementRow::ToCore() const
 	Out.CrossoverMinDistM = CrossoverMinDistM;
 	Out.TurnBackMinDistM = TurnBackMinDistM;
 	Out.FatigueHardAccelMps2 = FatigueHardAccelMps2;
-	Out.FatigueDrainPerHardAccel = FatigueDrainPerHardAccel;
+	Out.FatigueDrainPerHardAccelAt1 = FatigueDrainPerHardAccelAt1;
+	Out.FatigueDrainPerHardAccelAt99 = FatigueDrainPerHardAccelAt99;
 	Out.FatigueRallyStartS = FatigueRallyStartS;
-	Out.FatigueDrainPerRallyS = FatigueDrainPerRallyS;
+	Out.FatigueDrainPerRallySAt1 = FatigueDrainPerRallySAt1;
+	Out.FatigueDrainPerRallySAt99 = FatigueDrainPerRallySAt99;
+	Out.FatigueBetweenPointRestS = FatigueBetweenPointRestS;
 	Out.FatigueTopSpeedLossAtZero = FatigueTopSpeedLossAtZero;
 	return Out;
 }

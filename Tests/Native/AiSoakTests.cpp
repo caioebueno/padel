@@ -45,6 +45,16 @@ namespace
 		std::map<std::string, int> Winners;
 		// How the players moved (realism plan A1).
 		FAiMovementMetrics Movement;
+		// Realism plan M3: stamina at each point's first serve, all four players, by set
+		// (the third bucket takes any later set).
+		std::array<double, 3> StaminaSum{};
+		std::array<int, 3> StaminaCount{};
+		double StaminaMin = 1.0;
+		long long HardEfforts = 0;
+		// Stamina at each point's end, all four players, by rally length: under 10 s, 10 to
+		// 20 s, 20 to 30 s, longer (where BIOMECHANICS_MOVEMENT 2.13 says fatigue bites).
+		std::array<double, 4> EndStaminaSum{};
+		std::array<int, 4> EndStaminaCount{};
 
 		void Add(const FSoakStats& O)
 		{
@@ -63,6 +73,23 @@ namespace
 			for (const auto& [K, V] : O.Unreached) Unreached[K] += V;
 			for (const auto& [K, V] : O.Winners) Winners[K] += V;
 			Movement.Merge(O.Movement);
+			for (int Set = 0; Set < 3; ++Set)
+			{
+				StaminaSum[Set] += O.StaminaSum[Set];
+				StaminaCount[Set] += O.StaminaCount[Set];
+			}
+			StaminaMin = std::min(StaminaMin, O.StaminaMin);
+			HardEfforts += O.HardEfforts;
+			for (int Band = 0; Band < 4; ++Band)
+			{
+				EndStaminaSum[Band] += O.EndStaminaSum[Band];
+				EndStaminaCount[Band] += O.EndStaminaCount[Band];
+			}
+		}
+		// Average stamina at point start in set Set (0-based), or -1 with no points there.
+		double StaminaAtPointStart(int Set) const
+		{
+			return StaminaCount[Set] > 0 ? StaminaSum[Set] / StaminaCount[Set] : -1.0;
 		}
 		double ShotsPerPoint() const { return Points > 0 ? static_cast<double>(Shots) / Points : 0.0; }
 		double GlassShare() const { return Points > 0 ? static_cast<double>(PointsWithGlassShot) / Points : 0.0; }
@@ -73,6 +100,8 @@ namespace
 		// GDD 12 asks for whole matches; one set keeps CI quick and still covers games,
 		// golden points, tiebreaks and the change of ends.
 		int SetsToWin = 1;
+		// GDD 3.1's super tiebreak in place of the deciding set; off plays a full third set.
+		bool bSuperTiebreakFinal = false;
 		// A point hangs when nobody has hit the ball for this long while it is in play
 		// or waiting for the serve (a live rally has a shot every couple of seconds).
 		double MaxSecondsWithoutHit = 20.0;
@@ -99,14 +128,46 @@ namespace
 		bool bMatchOver = false;
 		Padel::Shots::FShotIntent LastShot;
 		const FAiMatchRunner* Runner = nullptr;
+		const FMatchSimulation* Match = nullptr;
 		std::array<bool, 2> bWhiffed = { false, false };
 		int ServerId = -1;
+		bool bPointSampled = false;
+		double ServedAt = 0.0;
 
-		void OnServeStarted(int Server) override { ServerId = Server; }
+		void OnServeStarted(int Server) override
+		{
+			ServerId = Server;
+			if (Runner && Match && !bPointSampled)
+			{
+				// Once per point: a second serve is the same point.
+				bPointSampled = true;
+				ServedAt = Match->Time();
+				const Padel::FScoreSnapshot Score = Match->Score().Snapshot();
+				const int Set = std::min(2, Score.SetsWon[0] + Score.SetsWon[1]);
+				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+				{
+					const double Stamina = Runner->Player(Id).GetMotion().GetStamina();
+					Stats->StaminaSum[Set] += Stamina;
+					++Stats->StaminaCount[Set];
+					Stats->StaminaMin = std::min(Stats->StaminaMin, Stamina);
+				}
+			}
+		}
 		void OnServeFault(Padel::EServeFault Reason) override { ++Stats->Faults[std::to_string(static_cast<int>(Reason))]; }
 		void OnPointEnded(Padel::ETeam Winner, Padel::EPointReason Reason, int) override
 		{
 			++Stats->Points;
+			if (Runner && Match && bPointSampled)
+			{
+				const double Rally = Match->Time() - ServedAt;
+				const int Band = Rally < 10.0 ? 0 : Rally < 20.0 ? 1 : Rally < 30.0 ? 2 : 3;
+				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+				{
+					Stats->EndStaminaSum[Band] += Runner->Player(Id).GetMotion().GetStamina();
+					++Stats->EndStaminaCount[Band];
+				}
+			}
+			bPointSampled = false;
 			Stats->Movement.EndPoint(ServerId);
 			if (Reason == Padel::EPointReason::DoubleBounce && Runner)
 			{
@@ -212,15 +273,18 @@ namespace
 			Stats.Matches = 1;
 			Padel::FMatchConfig Config = Padel::FMatchConfig::OneSet();
 			Config.SetsToWin = Options.SetsToWin;
+			Config.bSuperTiebreakFinal = Options.bSuperTiebreakFinal;
 			FMatchSimulation Match(Config, Padel::Test::Physics(), Seed);
 			FSoakListener Listener;
 			Listener.Stats = &Stats;
 			Match.AddListener(&Listener);
 			FAiMatchRunner Runner(Match, Data().Library, Data().Movement, TestData::Tactics(), MakeSetup(A, B, Seed));
 			Listener.Runner = &Runner;
+			Listener.Match = &Match;
 			Runner.Start();
 			Stats.Movement.BeginMatch();
 			std::array<int, Padel::NumPlayers> EdgeStops{};
+			std::array<int, Padel::NumPlayers> HardEfforts{};
 			for (int Id = 0; Id < Padel::NumPlayers; ++Id)
 			{
 				EdgeStops[Id] = Runner.Player(Id).GetMotion().GetEdgeStopCount();
@@ -249,6 +313,14 @@ namespace
 					LastHit = Match.Time();  // between points the clock is the runner's
 				}
 				SampleMovement(Match, Runner, EdgeStops, Stats.Movement);
+				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+				{
+					// The runner rebuilds the players at a change of ends, which starts their
+					// count again from 0.
+					const int Count = Runner.Player(Id).GetMotion().GetHardEffortCount();
+					Stats.HardEfforts += Count >= HardEfforts[Id] ? Count - HardEfforts[Id] : Count;
+					HardEfforts[Id] = Count;
+				}
 				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
 				{
 					const Padel::Shots::FSwingEvents& E = Runner.LastEvents(Id);
@@ -308,7 +380,7 @@ namespace
 		return Env != nullptr ? std::max(1, std::atoi(Env)) : Default;
 	}
 
-	FSoakStats Soak(const char* Level, int Matches, uint64_t FirstSeed)
+	FSoakStats Soak(const char* Level, int Matches, uint64_t FirstSeed, const FSoakOptions& Options = {})
 	{
 		FSoakStats Total;
 		const FAiDifficulty& D = TestData::Difficulty(Level);
@@ -316,7 +388,7 @@ namespace
 		{
 			FSoakMatch Game;
 			const uint64_t Seed = FirstSeed + static_cast<uint64_t>(Index);
-			const FSoakStats One = Game.Play(D, D, Seed);
+			const FSoakStats One = Game.Play(D, D, Seed, Options);
 			if (std::getenv("PADEL_SOAK_PER_MATCH"))
 			{
 				std::printf("[soak]   %s seed %llu: %d points, %.2f shots/point, %d whiffs\n", Level, static_cast<unsigned long long>(Seed),
@@ -377,6 +449,28 @@ namespace
 		for (const auto& [Grade, Count] : S.Grades) std::printf(" %s=%d", Grade.c_str(), Count);
 		std::printf("\n");
 		ReportMovement(S.Movement.Summarize());
+		// Realism plan M3 (BIOMECHANICS_MOVEMENT 2.13): fatigue shows late in long rallies,
+		// not as a slide over the match.
+		const double Minutes = S.Movement.Summarize().BallInPlaySeconds / 60.0;
+		std::printf("[soak]   fatigue: %.1f hard efforts per player-minute; stamina at point start:",
+			Minutes > 0.0 ? static_cast<double>(S.HardEfforts) / (Minutes * Padel::NumPlayers) : 0.0);
+		for (int Set = 0; Set < 3; ++Set)
+		{
+			if (S.StaminaCount[Set] > 0)
+			{
+				std::printf(" set %d %.3f (%d points)", Set + 1, S.StaminaAtPointStart(Set), S.StaminaCount[Set] / Padel::NumPlayers);
+			}
+		}
+		std::printf(", lowest %.3f\n[soak]   stamina at point end, by rally length:", S.StaminaMin);
+		const char* Bands[] = { "under 10 s", "10 to 20 s", "20 to 30 s", "over 30 s" };
+		for (int Band = 0; Band < 4; ++Band)
+		{
+			if (S.EndStaminaCount[Band] > 0)
+			{
+				std::printf(" %s %.3f (%d points)", Bands[Band], S.EndStaminaSum[Band] / S.EndStaminaCount[Band], S.EndStaminaCount[Band] / Padel::NumPlayers);
+			}
+		}
+		std::printf("\n");
 	}
 }
 
@@ -416,6 +510,28 @@ TEST_CASE("Ai.Soak: every difficulty plays without getting stuck")
 		Report(Level, S);
 		CHECK(S.StuckPoints == 0);
 		CHECK(S.InvariantFailures == 0);
+	}
+}
+
+TEST_CASE("Ai.Soak: fatigue stays small over three-set matches (realism plan M3)")
+{
+	// BIOMECHANICS_MOVEMENT 2.13: across a three-set match heart-rate load rises but jump
+	// and grip don't drop, so stamina at the start of a point may sag only a few percent
+	// from the first set to the third. Full third sets, Medium, seeds 3000 on.
+	// PADEL_SOAK_LONG_MATCHES sets how many (each is about three one-set soak matches).
+	const char* Env = std::getenv("PADEL_SOAK_LONG_MATCHES");
+	const int Matches = Env != nullptr ? std::max(1, std::atoi(Env)) : 6;
+	FSoakOptions Options;
+	Options.SetsToWin = 2;
+	const FSoakStats S = Soak("Medium", Matches, 3000, Options);
+	Report("Medium, best of three", S);
+	CHECK(S.StuckPoints == 0);
+	REQUIRE(S.StaminaCount[0] > 0);
+	REQUIRE(S.StaminaCount[1] > 0);
+	CHECK(S.StaminaAtPointStart(0) - S.StaminaAtPointStart(1) <= 0.05);
+	if (S.StaminaCount[2] > 0)
+	{
+		CHECK(S.StaminaAtPointStart(0) - S.StaminaAtPointStart(2) <= 0.05);
 	}
 }
 

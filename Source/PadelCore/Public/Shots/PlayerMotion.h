@@ -6,6 +6,7 @@
 #pragma once
 
 #include "PadelTypes.h"
+#include "Shots/HardEffortCounter.h"
 #include "Shots/MovementTuning.h"
 #include "Shots/PlayerRatings.h"
 #include "Shots/ShotMath.h"
@@ -28,6 +29,11 @@ namespace Padel::Shots
 		bool NotifyOpponentContact();
 		// The split-step removes the running penalty for the next shot only (GDD 5.2).
 		bool ConsumeSplitStep();
+		// GDD 6.3 fatigue: whether a rally is on, once a tick before Step (the shot
+		// controller passes the ball's live flag). A rally drains stamina once it runs past
+		// FatigueRallyStartS; when it ends the player gets the between-point rest. Until
+		// the first call nothing is known: no rally drain and no rest, as before M3.
+		void SetRallyLive(bool bLive);
 
 		void SetHome(const FVec3& InHome) { Home = InHome; bHasHome = true; }
 		void ClearHome() { bHasHome = false; }
@@ -47,6 +53,11 @@ namespace Padel::Shots
 		const FVec3& GetPosition() const { return Position; }
 		const FVec3& GetVelocity() const { return Velocity; }
 		double GetStamina() const { return Stamina; }
+		// GDD 6.3: the share of top speed and acceleration left at the current stamina.
+		double FatigueFactor() const;
+		// Hard efforts counted so far (Shots/HardEffortCounter.h), for tests and the soak.
+		int GetHardEffortCount() const { return HardEffortCount; }
+		double GetRallyTimeS() const { return RallyS; }
 		void SetStamina(double InStamina) { Stamina = Clamp(InStamina, 0.0, 1.0); }
 		double GetTeamSign() const { return TeamSign; }
 		bool IsSprinting() const { return bSprinting; }
@@ -61,12 +72,14 @@ namespace Padel::Shots
 		// Stick directions the gait logic tells apart (team-relative).
 		enum class EHeld : std::uint8_t { None, Forward, Right, Left, Back };
 		enum class EGait : std::uint8_t { Square, Turning, Turned };
+		enum class ERally : std::uint8_t { Unknown, Live, Dead };
 
 		static EHeld Classify(const FVec2& UnitDir);
 		void UpdateGait(EHeld Held, const FVec2& UnitDir, double Top, double Dt, double PlannedDistanceM);
 		void LimitAtMargins(FVec3& Desired, double Brake, double Dt) const;
 		void OwnHalfLimits(double& Lo, double& Hi, double& Side) const;
 		void ClampToOwnHalf();
+		void UpdateFatigue(bool bEdgeStop, double Dt);
 
 		const FPlayerRatings* Ratings = nullptr;
 		const FMovementTuning* Tuning = nullptr;
@@ -89,5 +102,9 @@ namespace Padel::Shots
 		EHeld TurnDir = EHeld::None;
 		double HeldS = 0.0;
 		double TurnLeftS = 0.0;
+		FHardEffortCounter HardEfforts;
+		int HardEffortCount = 0;
+		ERally Rally = ERally::Unknown;
+		double RallyS = 0.0;
 	};
 }

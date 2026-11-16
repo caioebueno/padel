@@ -330,6 +330,8 @@ namespace Padel::Shots
 		}
 
 		const double MoveMult = Phase == ESwingPhase::Idle ? 1.0 : FamilyShot(bIdealBounced).SwingMoveMult;
+		// GDD 6.3: a live ball is a rally, for fatigue.
+		Motion.SetRallyLive(Ball.Current().bLive);
 		Motion.Step(Input.Move, Input.bSprint, Dt, MoveMult);
 		Previous = Input;
 		return Events;

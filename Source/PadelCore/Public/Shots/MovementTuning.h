@@ -42,13 +42,21 @@ namespace Padel::Shots
 		double RegenAt99 = 0.0;
 		double SprintMinStamina = 0.0;
 
-		// GDD 6.3 Fatigue from hard efforts and long rallies (BIOMECHANICS_MOVEMENT 5.5).
-		// An acceleration above FatigueHardAccelMps2 is one hard effort.
+		// GDD 6.3 Fatigue from hard efforts and long rallies (BIOMECHANICS_MOVEMENT 2.13, 5.5).
+		// An acceleration above FatigueHardAccelMps2, held as Shots/HardEffortCounter.h
+		// counts it, is one hard effort and drains stamina by the amount at GDD 6.1
+		// Stamina 1 and 99.
 		double FatigueHardAccelMps2 = 0.0;
-		double FatigueDrainPerHardAccel = 0.0;
-		// Past FatigueRallyStartS of rally, stamina drains FatigueDrainPerRallyS per second.
+		double FatigueDrainPerHardAccelAt1 = 0.0;
+		double FatigueDrainPerHardAccelAt99 = 0.0;
+		// Past FatigueRallyStartS of rally, stamina drains this much per second, by Stamina.
 		double FatigueRallyStartS = 0.0;
-		double FatigueDrainPerRallyS = 0.0;
+		double FatigueDrainPerRallySAt1 = 0.0;
+		double FatigueDrainPerRallySAt99 = 0.0;
+		// The rest a gap between points stands for: when a point ends the player recovers
+		// as if they had rested this long at the regen rate. The match's own gap is a
+		// couple of seconds; between real points it is 15 to 20 s.
+		double FatigueBetweenPointRestS = 0.0;
 		// Fraction of top speed and acceleration lost at 0 stamina, linear in stamina.
 		double FatigueTopSpeedLossAtZero = 0.0;
 

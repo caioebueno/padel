@@ -31,9 +31,12 @@
 		"CrossoverMinDistM": 2.5,
 		"TurnBackMinDistM": 1.5,
 		"FatigueHardAccelMps2": 3.0,
-		"FatigueDrainPerHardAccel": 0.0,
+		"FatigueDrainPerHardAccelAt1": 0.04,
+		"FatigueDrainPerHardAccelAt99": 0.02,
 		"FatigueRallyStartS": 15.0,
-		"FatigueDrainPerRallyS": 0.0,
-		"FatigueTopSpeedLossAtZero": 0.0
+		"FatigueDrainPerRallySAt1": 0.06,
+		"FatigueDrainPerRallySAt99": 0.03,
+		"FatigueBetweenPointRestS": 20.0,
+		"FatigueTopSpeedLossAtZero": 0.06
 	}
 ]

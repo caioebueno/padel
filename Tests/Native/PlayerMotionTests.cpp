@@ -407,7 +407,10 @@ TEST_CASE("Shots.Motion: square to the net, sideways and backwards are slower (M
 	CHECK(Fwd.GetMode() == EMovementMode::Run);
 	// GDD 6.3: sprint still adds its 15% to the shuffle.
 	FPlayerMotion Sprint(&R, &T, 1.0, Vec(9.0, 0.0, 0.0));
-	CHECK(RunFor(Sprint, { 1.0, 0.0 }, true, 3.0) == Approx(Sprint.TopSpeed(true) * T.ShuffleSpeedFrac));
+	// (Read the top speed after the run: three seconds of sprint take some stamina, and
+	// with it a little top speed.)
+	const double SprintShuffle = RunFor(Sprint, { 1.0, 0.0 }, true, 3.0);
+	CHECK(SprintShuffle == Approx(Sprint.TopSpeed(true) * T.ShuffleSpeedFrac));
 	// BIOMECHANICS_MOVEMENT 2.3, 2.4: a shuffle tops out at 55 to 70% of a sprint, a
 	// backpedal around 2.5 to 3 m/s.
 	CHECK(T.ShuffleSpeedFrac >= 0.55);

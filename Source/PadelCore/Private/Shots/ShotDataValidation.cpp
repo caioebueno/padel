@@ -131,9 +131,12 @@ namespace Padel::Shots
 		Positive(E, "CrossoverMinDistM", CrossoverMinDistM);
 		Positive(E, "TurnBackMinDistM", TurnBackMinDistM);
 		Positive(E, "FatigueHardAccelMps2", FatigueHardAccelMps2);
-		NonNegative(E, "FatigueDrainPerHardAccel", FatigueDrainPerHardAccel);
+		NonNegative(E, "FatigueDrainPerHardAccelAt1", FatigueDrainPerHardAccelAt1);
+		NonNegative(E, "FatigueDrainPerHardAccelAt99", FatigueDrainPerHardAccelAt99);
 		NonNegative(E, "FatigueRallyStartS", FatigueRallyStartS);
-		NonNegative(E, "FatigueDrainPerRallyS", FatigueDrainPerRallyS);
+		NonNegative(E, "FatigueDrainPerRallySAt1", FatigueDrainPerRallySAt1);
+		NonNegative(E, "FatigueDrainPerRallySAt99", FatigueDrainPerRallySAt99);
+		NonNegative(E, "FatigueBetweenPointRestS", FatigueBetweenPointRestS);
 		UnitRange(E, "FatigueTopSpeedLossAtZero", FatigueTopSpeedLossAtZero);
 		return E;
 	}

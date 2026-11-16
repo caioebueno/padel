@@ -44,9 +44,12 @@ struct PADEL_API FPadelMovementRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Tuning") double CrossoverMinDistM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double TurnBackMinDistM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueHardAccelMps2 = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueDrainPerHardAccel = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueDrainPerHardAccelAt1 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueDrainPerHardAccelAt99 = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueRallyStartS = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueDrainPerRallyS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueDrainPerRallySAt1 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueDrainPerRallySAt99 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueBetweenPointRestS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double FatigueTopSpeedLossAtZero = 0.0;
 
 	Padel::Shots::FMovementTuning ToCore() const;

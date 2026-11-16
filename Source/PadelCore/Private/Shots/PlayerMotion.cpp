@@ -18,8 +18,15 @@ namespace Padel::Shots
 	double FPlayerMotion::TopSpeed(bool bWithSprint) const
 	{
 		const double Base = Lerp(Tuning->TopSpeedAt1Mps, Tuning->TopSpeedAt99Mps, InverseLerp(1.0 / 99.0, 1.0, Ratings->Unit(ERating::Speed)));
-		// GDD 6.3: sprint adds 15% top speed.
-		return bWithSprint ? Base * (1.0 + Tuning->SprintSpeedBonus) : Base;
+		// GDD 6.3: sprint adds 15% top speed; fatigue takes a little away.
+		return (bWithSprint ? Base * (1.0 + Tuning->SprintSpeedBonus) : Base) * FatigueFactor();
+	}
+
+	double FPlayerMotion::FatigueFactor() const
+	{
+		// GDD 6.3: at low stamina some top speed and acceleration go. The initial push is
+		// top speed over the time to top speed, so scaling the top speed scales both.
+		return 1.0 - Tuning->FatigueTopSpeedLossAtZero * (1.0 - Stamina);
 	}
 
 	double FPlayerMotion::TimeToTopSpeed() const
@@ -163,7 +170,10 @@ namespace Padel::Shots
 		}
 
 		const double BaseAccel = MotionCurve::InitialAccel(TopSpeed(false), TimeToTopSpeed());
-		LimitAtMargins(Desired, BaseAccel * Tuning->BrakeMult, Dt);
+		// Plan the braking with the push the player has at the end of their stamina: a hard
+		// effort or a long rally can take a little away mid-stop, and the plan must still
+		// hold (GDD 6.3 fatigue).
+		LimitAtMargins(Desired, BaseAccel * Tuning->BrakeMult * (1.0 - Tuning->FatigueTopSpeedLossAtZero) / FatigueFactor(), Dt);
 
 		double Accel = BaseAccel;
 		if (SplitBoostLeftS > 0.0)
@@ -201,7 +211,9 @@ namespace Padel::Shots
 		Velocity = DeltaLength <= MaxChange ? Desired : Add(Velocity, Scale(Delta, MaxChange / DeltaLength));
 		Velocity.Z = 0.0;
 		Position = Add(Position, Scale(Velocity, Dt));
+		const int EdgeStopsBefore = EdgeStopCount;
 		ClampToOwnHalf();
+		UpdateFatigue(EdgeStopCount != EdgeStopsBefore, Dt);
 
 		const double NewSpeed = LengthXY(Velocity);
 		if (bBraking && NewSpeed > Tuning->SplitMaxSpeedMps)
@@ -295,6 +307,58 @@ namespace Padel::Shots
 		Position = Vec(InPosition.X, InPosition.Y, 0.0);
 		Velocity = FVec3{};
 		ClampToOwnHalf();
+		HardEfforts.Reset();
+	}
+
+	void FPlayerMotion::SetRallyLive(bool bLive)
+	{
+		if (bLive)
+		{
+			if (Rally != ERally::Live)
+			{
+				RallyS = 0.0;
+				HardEfforts.Reset();
+			}
+			Rally = ERally::Live;
+			return;
+		}
+		if (Rally != ERally::Dead)
+		{
+			// GDD 6.3: fatigue recovers between points (BIOMECHANICS_MOVEMENT 5.5: the 15 to
+			// 20 s between real points). The match's gap is shorter, so the rest it stands
+			// for is credited when the point ends, at the player's usual regen rate.
+			const double Regen = Lerp(Tuning->RegenAt1, Tuning->RegenAt99, Ratings->Unit(ERating::Stamina));
+			Stamina = Clamp(Stamina + Regen * Tuning->FatigueBetweenPointRestS, 0.0, 1.0);
+		}
+		Rally = ERally::Dead;
+	}
+
+	void FPlayerMotion::UpdateFatigue(bool bEdgeStop, double Dt)
+	{
+		// GDD 6.3 fatigue (BIOMECHANICS_MOVEMENT 2.13, 5.5): hard efforts and long rallies
+		// drain stamina on top of sprinting, more slowly at a higher Stamina rating. Between
+		// points the players are placed for the serve, which isn't effort.
+		if (Rally == ERally::Dead)
+		{
+			return;
+		}
+		const double StaminaUnit = Ratings->Unit(ERating::Stamina);
+		if (HardEfforts.Tick(Velocity, bEdgeStop, Tuning->FatigueHardAccelMps2))
+		{
+			++HardEffortCount;
+			Stamina -= Lerp(Tuning->FatigueDrainPerHardAccelAt1, Tuning->FatigueDrainPerHardAccelAt99, StaminaUnit);
+		}
+		if (Rally == ERally::Live)
+		{
+			const double Before = RallyS;
+			RallyS += Dt;
+			const double Past = RallyS - std::max(Before, Tuning->FatigueRallyStartS);
+			if (Past > 0.0)
+			{
+				Stamina -= Lerp(Tuning->FatigueDrainPerRallySAt1, Tuning->FatigueDrainPerRallySAt99, StaminaUnit) * Past;
+			}
+		}
+		Stamina = Clamp(Stamina, 0.0, 1.0);
 	}
 
 	void FPlayerMotion::OwnHalfLimits(double& Lo, double& Hi, double& Side) const
