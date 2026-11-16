@@ -65,6 +65,9 @@ public:
 	UPROPERTY(Transient)
 	FPadelLocomotionSet LocomotionSet;
 
+	/** N1 ready-stance depth: the crouched clips' weight against the upright ones (FPlayerAnimFrame::CrouchAlpha). */
+	float CrouchAlpha = 1.0f;
+
 	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
 	float RawSwingWeight = 0.0f;
 

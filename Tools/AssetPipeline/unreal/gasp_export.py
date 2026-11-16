@@ -27,6 +27,11 @@ CLIPS = [
     "Run/M_Relaxed_Run_Loop_B",
     "Run/M_Relaxed_Run_Loop_LL",
     "Run/M_Relaxed_Run_Loop_RR_offset",
+    "Idle/M_Neutral_Crouch_Idle_Loop",
+    "Walk/M_Relaxed_Walk_Loop_F",
+    "Walk/M_Relaxed_Walk_Loop_B",
+    "Walk/M_Relaxed_Walk_Loop_LL",
+    "Walk/M_Relaxed_Walk_Loop_RR_offset",
 ]
 
 

@@ -172,13 +172,24 @@ namespace Padel::Shots
 		AiOffsetS = TimingOffsetS;
 	}
 
-	double FPlayerShotController::AiSwingLeadS(double InCharge, double TimingOffsetS) const
+	double FPlayerShotController::AiSwingLeadS(EShotType ShotType, double InCharge, double TimingOffsetS) const
 	{
 		const FShotModel& M = Library->Model;
 		// A smash needs the full charge (GDD 4), and the predicted moment can drift
 		// earlier during the windup, so a full-charge swing starts with some lead.
 		const double LeadS = InCharge >= M.SmashMinCharge ? M.AiChargeLeadS : 0.0;
-		return Clamp(InCharge, 0.0, 1.0) * M.ChargeTimeS + LeadS - TimingOffsetS;
+		// GDD 5.1: the release comes the forward swing before contact.
+		return Clamp(InCharge, 0.0, 1.0) * M.ChargeTimeS + LeadS + Library->Get(ShotType).ForwardS - TimingOffsetS;
+	}
+
+	double FPlayerShotController::ForwardSwingS() const
+	{
+		return ContactShot(bIdealBounced).ForwardS;
+	}
+
+	double FPlayerShotController::TimeToContactS() const
+	{
+		return Phase == ESwingPhase::Forward ? ContactTimeS - NowS : TimeToIdealS();
 	}
 
 	bool FPlayerShotController::NotifyOpponentContact()
@@ -241,7 +252,7 @@ namespace Padel::Shots
 		if (Phase == ESwingPhase::Idle && bAiPending && bHasIdeal)
 		{
 			// Start early enough that the backswing reaches the requested charge at release.
-			const double StartAt = IdealTimeS - AiSwingLeadS(AiCharge, AiOffsetS);
+			const double StartAt = IdealTimeS - AiSwingLeadS(AiShotType, AiCharge, AiOffsetS);
 			if (NowS >= StartAt)
 			{
 				const FAiButton B = ButtonFor(AiShotType);
@@ -276,10 +287,12 @@ namespace Padel::Shots
 		case ESwingPhase::Windup:
 		{
 			Charge = Clamp((NowS - PressTimeS) / M.ChargeTimeS, 0.0, bAiSwinging ? AiCharge : 1.0);
+			// GDD 5.1: the release starts the forward swing, and contact comes ForwardS later.
+			const double ForwardS = ForwardSwingS();
 			bool bReleased = false;
 			if (bAiSwinging)
 			{
-				bReleased = bHasIdeal && NowS >= IdealTimeS + AiOffsetS;
+				bReleased = bHasIdeal && NowS + ForwardS >= IdealTimeS + AiOffsetS - 1e-9;
 			}
 			else
 			{
@@ -290,8 +303,8 @@ namespace Padel::Shots
 				bReleased = !bHeld;
 			}
 			// GDD 5.1: held through the whole window fires at the late edge. Use the
-			// narrowest window this contact could be graded with, and fire on the last
-			// tick inside it.
+			// narrowest window this contact could be graded with, and start the forward
+			// swing on the last tick that still makes contact inside it.
 			const FShotParams& Family = FamilyShot(bIdealBounced);
 			double Rating = std::fmin(Ratings->Unit(Family.ForehandRating), Ratings->Unit(Family.BackhandRating));
 			if (bIdealOffGlass)
@@ -299,7 +312,7 @@ namespace Padel::Shots
 				Rating = std::fmin(Rating, Ratings->Unit(ERating::WallPlay));
 			}
 			const double LateEdge = FTimingGrader::LateEdgeS(Family, Rating * (bWrongSide ? M.WrongSideMult : 1.0), M);
-			const bool bAutoFire = bHasIdeal && NowS + Dt > IdealTimeS + LateEdge;
+			const bool bAutoFire = bHasIdeal && NowS + ForwardS + Dt > IdealTimeS + LateEdge;
 			if (bReleased || bAutoFire)
 			{
 				ReleaseAim = Input.Move;
@@ -346,7 +359,9 @@ namespace Padel::Shots
 			EndSwing(Family.FollowThroughS, Family.RecoveryS);
 			return;
 		}
-		ReleaseOffsetS = NowS - IdealTimeS;
+		// GDD 5.1: graded where the racket would meet the ball, ForwardS after the release.
+		const double ForwardS = ForwardSwingS();
+		ReleaseOffsetS = NowS + ForwardS - IdealTimeS;
 		const double ShadowLimitS = Library->Model.ShadowSwingWindows * Family.EarlyLateWindowMs / 1000.0;
 		if (ReleaseOffsetS < -ShadowLimitS)
 		{
@@ -354,10 +369,11 @@ namespace Padel::Shots
 			EndSwing(Family.FollowThroughS, Family.RecoveryS);
 			return;
 		}
-		if (ReleaseOffsetS < 0.0)
+		// Early: the racket still meets the ball at the contact point, graded early.
+		// Otherwise contact ends the forward swing.
+		ContactTimeS = ReleaseOffsetS < 0.0 ? IdealTimeS : NowS + ForwardS;
+		if (ContactTimeS > NowS + 1e-9)
 		{
-			// Early: the racket still meets the ball at the contact point, graded early.
-			ContactTimeS = IdealTimeS;
 			SetPhase(ESwingPhase::Forward);
 			return;
 		}

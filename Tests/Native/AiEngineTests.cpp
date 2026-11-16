@@ -12,6 +12,8 @@
 #include "Support/AiTestData.h"
 #include "TestSupport.h"
 
+#include <algorithm>
+
 using namespace Padel;
 using namespace Padel::AI;
 
@@ -75,8 +77,14 @@ TEST_CASE("Ai.Engine: the AI's tuning agrees with the shot and movement data")
 	CHECK(T.AccelTimeAt99S == doctest::Approx(Move.TimeToTopAt99S));
 	CHECK(T.ReachSideAt1M == doctest::Approx(Lib.Model.ReachMinM));
 	CHECK(T.ReachSideAt99M == doctest::Approx(Lib.Model.ReachMaxM));
-	// The shot request must arrive before the longest backswing has to start.
-	CHECK(T.SwingLeadS >= Lib.Model.ChargeTimeS);
+	// The shot request must arrive before the longest backswing has to start: a full
+	// charge plus the longest forward swing (GDD 5.1).
+	double MaxForwardS = 0.0;
+	for (int Index = 0; Index < Shots::ShotTypeCount; ++Index)
+	{
+		MaxForwardS = std::max(MaxForwardS, Lib.Get(static_cast<EShotType>(Index)).ForwardS);
+	}
+	CHECK(T.SwingLeadS >= Lib.Model.ChargeTimeS + MaxForwardS);
 }
 
 TEST_CASE("Ai.Engine: the AI's move is the stick the player motion takes")

@@ -13,6 +13,7 @@
 #include "TestSupport.h"
 
 #include <array>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <map>
@@ -35,6 +36,11 @@ namespace
 		int Shots = 0;
 		int Whiffs = 0;
 		int PointsWithGlassShot = 0;
+		// Points lost with both players of the losing pair on one side of the centre line
+		// (a hole the opponents can aim at; realism plan A4 must not raise it).
+		int HolePoints = 0;
+		// GDD 8 side switches on a deep lob (A4).
+		int SideSwitches = 0;
 		std::map<std::string, int> Reasons;
 		std::map<std::string, int> Faults;
 		std::map<std::string, int> ShotCounts;
@@ -66,6 +72,8 @@ namespace
 			Shots += O.Shots;
 			Whiffs += O.Whiffs;
 			PointsWithGlassShot += O.PointsWithGlassShot;
+			HolePoints += O.HolePoints;
+			SideSwitches += O.SideSwitches;
 			for (const auto& [K, V] : O.Reasons) Reasons[K] += V;
 			for (const auto& [K, V] : O.Faults) Faults[K] += V;
 			for (const auto& [K, V] : O.ShotCounts) ShotCounts[K] += V;
@@ -169,6 +177,25 @@ namespace
 			}
 			bPointSampled = false;
 			Stats->Movement.EndPoint(ServerId);
+			if (Runner)
+			{
+				// Across the court is Y; a pair is split to one side when both stand on the
+				// same side of Y = 0, clear of the middle.
+				constexpr double HoleClearM = 0.5;
+				std::array<double, 2> Y{};
+				int N = 0;
+				for (int Id = 0; Id < Padel::NumPlayers; ++Id)
+				{
+					if (Padel::TeamOfPlayer(Id) == Padel::OtherTeam(Winner))
+					{
+						Y[N++] = Runner->Player(Id).GetMotion().GetPosition().Y;
+					}
+				}
+				if (Y[0] * Y[1] > 0.0 && std::abs(Y[0]) > HoleClearM && std::abs(Y[1]) > HoleClearM)
+				{
+					++Stats->HolePoints;
+				}
+			}
 			if (Reason == Padel::EPointReason::DoubleBounce && Runner)
 			{
 				const Padel::ETeam Loser = Padel::OtherTeam(Winner);
@@ -291,6 +318,7 @@ namespace
 			}
 
 			double LastHit = Match.Time();
+			std::array<bool, 2> bWasSwapped = { false, false };
 			while (!Listener.bMatchOver)
 			{
 				if (Match.Time() - LastHit > Options.MaxSecondsWithoutHit || Match.Time() > Options.MaxMatchSeconds)
@@ -308,6 +336,12 @@ namespace
 					return Stats;
 				}
 				Runner.Tick();
+				for (int TeamIdx = 0; TeamIdx < 2; ++TeamIdx)
+				{
+					const bool bSwapped = Runner.Team(static_cast<Padel::ETeam>(TeamIdx)).GetPair().IsSwapped();
+					Stats.SideSwitches += bSwapped && !bWasSwapped[TeamIdx] ? 1 : 0;
+					bWasSwapped[TeamIdx] = bSwapped;
+				}
 				if (Match.Phase() != EMatchPhase::Live && Match.Phase() != EMatchPhase::AwaitingServe)
 				{
 					LastHit = Match.Time();  // between points the clock is the runner's
@@ -435,6 +469,8 @@ namespace
 					"%d stuck, %d invariant failures, %d whiffs\n",
 			Label, S.Matches, S.Unfinished, S.Points, S.ShotsPerPoint(), 100.0 * S.GlassShare(), S.StuckPoints, S.InvariantFailures,
 			S.Whiffs);
+		std::printf("[soak]   side switches %d, points lost with the pair on one side %d (%.1f%%)\n", S.SideSwitches, S.HolePoints,
+			S.Points > 0 ? 100.0 * S.HolePoints / S.Points : 0.0);
 		std::printf("[soak]   endings:");
 		for (const auto& [Reason, Count] : S.Reasons) std::printf(" %s=%d", Reason.c_str(), Count);
 		std::printf("\n[soak]   serve faults:");

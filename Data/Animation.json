@@ -14,6 +14,9 @@
 		"ClipCrossfadeS": 0.08,
 		"CelebrationS": 1.8,
 		"CelebrationBlendS": 0.25,
+		"FacingTurnRateDegPerS": 540.0,
+		"ReadyCrouchAlphaNet": 0.35,
+		"ReadyCrouchAlphaBack": 0.5,
 		"ReadyRacketRightM": 0.35,
 		"ReadyRacketForwardM": 0.35,
 		"ReadyRacketUpM": 1.05,
@@ -55,6 +58,13 @@
 			"/Game/Padel/Animations/Locomotion/A_Jog_Bwd",
 			"/Game/Padel/Animations/Locomotion/A_Jog_Left",
 			"/Game/Padel/Animations/Locomotion/A_Jog_Right"
+		],
+		"ReadyAsset": "/Game/Padel/Animations/Locomotion/A_Ready",
+		"WalkUprightAssets": [
+			"/Game/Padel/Animations/Locomotion/A_WalkUpright_Fwd",
+			"/Game/Padel/Animations/Locomotion/A_WalkUpright_Bwd",
+			"/Game/Padel/Animations/Locomotion/A_WalkUpright_Left",
+			"/Game/Padel/Animations/Locomotion/A_WalkUpright_Right"
 		],
 		"WalkClipSpeedMps": 1.65,
 		"ArmReadyAlpha": 0.6,

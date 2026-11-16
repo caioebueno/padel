@@ -1,5 +1,6 @@
 #include "Shots/ShotResolver.h"
 #include "PadelMath.h"
+#include "CourtSpec.h"
 
 #include "Shots/AimMapper.h"
 #include "Shots/TimingGrader.h"
@@ -98,7 +99,65 @@ namespace Padel::Shots
 		const double Angle = Rng.NextDouble() * Tau;
 		const double R = std::sqrt(Rng.NextDouble()) * Radius;
 		Intent.Target = Add(Add(Aimed, Scale(RightAxis(C.TeamSign), Pull)), Vec(Padel::Math::Cos(Angle) * R, Padel::Math::Sin(Angle) * R, 0.0));
+
+		// A low ball can't be driven flat over the tape: the player opens the face, and the
+		// ball goes slower on a higher arc to the same spot.
+		if (!Shot.UsesApex() && C.ContactPosition.Z < Shot.LowContactHeightM && Shot.LowContactNetClearanceM > 0.0)
+		{
+			Intent.SpeedMps = NetClearingSpeed(C.ContactPosition, Intent.Target, Intent.SpeedMps, Shot.LowContactNetClearanceM, Model.GravityMps2);
+		}
 		return Intent;
+	}
+
+	double FShotResolver::NetCrossingHeight(const FVec3& Origin, const FVec3& Target, double SpeedMps, double Gravity)
+	{
+		// The flatter of the two gravity-only arcs at this speed, as FPracticeBall launches
+		// it; spin and drag in the match only make a drive cross higher.
+		const double D = LengthXY(Sub(Target, Origin));
+		if (D < 1e-6 || SpeedMps <= 0.0 || (Origin.X > 0.0) == (Target.X > 0.0))
+		{
+			return Origin.Z;
+		}
+		const double A = Gravity * D * D / (2.0 * SpeedMps * SpeedMps);
+		const double Disc = D * D - 4.0 * A * (Target.Z - Origin.Z + A);
+		if (Disc < 0.0)
+		{
+			return -1.0; // can't reach the target at this speed
+		}
+		const double TanTheta = (D - std::sqrt(Disc)) / (2.0 * A);
+		const double Xn = D * Origin.X / (Origin.X - Target.X);
+		return Origin.Z + Xn * TanTheta - Gravity * Xn * Xn * (1.0 + TanTheta * TanTheta) / (2.0 * SpeedMps * SpeedMps);
+	}
+
+	double FShotResolver::NetClearingSpeed(const FVec3& Origin, const FVec3& Target, double SpeedMps, double ClearanceM, double Gravity)
+	{
+		if (Gravity <= 0.0 || (Origin.X > 0.0) == (Target.X > 0.0))
+		{
+			return SpeedMps;
+		}
+		const double T = Origin.X / (Origin.X - Target.X);
+		const double Need = Padel::Court::NetHeightAt(Origin.Y + T * (Target.Y - Origin.Y)) + ClearanceM;
+		if (NetCrossingHeight(Origin, Target, SpeedMps, Gravity) >= Need)
+		{
+			return SpeedMps;
+		}
+		// The slowest ball that still reaches the target leaves at about 45 degrees and
+		// crosses highest; between it and the asked speed, the arcs flatten as the speed
+		// grows, so the fastest one that clears is a bisection away.
+		const double D = LengthXY(Sub(Target, Origin));
+		const double Drop = Target.Z - Origin.Z;
+		double Lo = std::sqrt(Gravity * (Drop + std::sqrt(D * D + Drop * Drop))) * (1.0 + 1e-9);
+		double Hi = SpeedMps;
+		if (Lo >= Hi || NetCrossingHeight(Origin, Target, Lo, Gravity) < Need)
+		{
+			return Lo < Hi ? Lo : SpeedMps;
+		}
+		for (int Step = 0; Step < 40; ++Step)
+		{
+			const double Mid = 0.5 * (Lo + Hi);
+			(NetCrossingHeight(Origin, Target, Mid, Gravity) >= Need ? Lo : Hi) = Mid;
+		}
+		return Lo;
 	}
 
 	double FShotResolver::MainRating(const FShotContext& C, const FShotParams& Shot, const FShotModel& Model)

@@ -150,6 +150,11 @@ FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
 	{
 		Set.Jog.Add(Load(Path));
 	}
+	Set.Ready = Load(Data->ReadyAsset);
+	for (const FString& Path : Data->WalkUprightAssets)
+	{
+		Set.WalkUpright.Add(Load(Path));
+	}
 	Set.WalkClipSpeedMps = Data->WalkClipSpeedMps;
 	Set.JogClipSpeedMps = Data->Settings.RunClipSpeedMps;
 	Set.WalkMinMps = Data->Settings.WalkMinMps;
@@ -432,6 +437,17 @@ void UPadelPlayerAnimComponent::Present()
 	const Padel::Animation::FPlayerAnimFrame& Frame = Model->GetFrame();
 	if (bSkeletalBody)
 	{
+		// N1: the body turns from square-to-the-net to its facing (the pawn itself always
+		// faces the net). The MetaHuman and the racket ride the body.
+		if (!bBodyBaseYawSet)
+		{
+			BodyBaseYaw = Body->GetRelativeRotation().Yaw;
+			bBodyBaseYawSet = true;
+		}
+		const double Turn = FRotator::NormalizeAxis(Frame.FacingYawDeg - Frame.NetYawDeg);
+		FRotator Rotation = Body->GetRelativeRotation();
+		Rotation.Yaw = BodyBaseYaw + Turn;
+		Body->SetRelativeRotation(Rotation);
 		if (UPadelPlayerAnimInstance* Anim = Cast<UPadelPlayerAnimInstance>(Body->GetAnimInstance()))
 		{
 			TArray<FVector> Trajectory;

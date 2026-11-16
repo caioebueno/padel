@@ -90,6 +90,14 @@ namespace Padel::Animation
 		double CelebrationS = 0.0;
 		double CelebrationBlendS = 0.0;
 		FPlayerFrameVec ReadyRacket;
+		// N1 (movement doc 3.3, 5.3): how fast the body turns to its facing, degrees a second.
+		// Square to the net by default; toward travel in Crossover, TurnAndRun and Run.
+		double FacingTurnRateDegPerS = 0.0;
+		// N1 (movement doc 2.1): the ready stance mixes the crouched stand-in clips with the
+		// upright ones by this much: taller at the net (racket up), lower at the back glass
+		// (digging balls off the glass).
+		double ReadyCrouchAlphaNet = 0.0;
+		double ReadyCrouchAlphaBack = 0.0;
 		// Motion Matching trajectory sample times (negative = past), seconds.
 		std::vector<double> TrajectoryTimesS;
 		std::vector<std::string> CelebrateAssets;

@@ -14,6 +14,7 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	// Speeds leave the simulation in m/s; the graph works in Unreal units.
 	Speed = static_cast<float>(Padel::MetresToWorld(FVector(Frame.SpeedMps, 0.0, 0.0)).X);
 	Direction = static_cast<float>(Frame.DirectionDeg);
+	CrouchAlpha = static_cast<float>(Frame.CrouchAlpha);
 	StridePlayRate = static_cast<float>(Frame.StridePlayRate);
 	Trajectory = InTrajectoryWorld;
 

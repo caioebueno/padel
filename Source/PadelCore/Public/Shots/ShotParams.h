@@ -51,6 +51,10 @@ namespace Padel::Shots
 		// GDD 5.2: preferred and max height scale by 1 + this * (HeightM / 1.82 - 1);
 		// 0 = the same for every body (BIOMECHANICS_SHOTS 5).
 		double ContactHeightPerBodyHeight = 0.0;
+		// Below LowContactHeightM a flat shot opens the face: it is slowed until its arc
+		// passes LowContactNetClearanceM over the tape (0 = keep the flat line).
+		double LowContactHeightM = 0.0;
+		double LowContactNetClearanceM = 0.0;
 		// GDD 5.2: the ideal contact point for this shot, beside (toward the hitting side)
 		// and in front of the player, on the forehand and on the backhand. ShotModel's
 		// IdealContactSideM / ForwardM stay the generic point for code that has no shot yet.

@@ -51,6 +51,8 @@ namespace Padel::Animation
 		bool bServing = false;
 		bool bHasIdeal = false;
 		double TimeToIdealS = 0.0;
+		// In the Forward phase, the time left to contact (GDD 5.1: release + ForwardS).
+		double TimeToContactS = 0.0;
 		bool bIdealBounced = true;
 		FVec3 IdealBallPosition;
 		// This tick's swing result; Intent is valid when Outcome is Hit.
@@ -63,6 +65,8 @@ namespace Padel::Animation
 		bool bSplitHopping = false;
 		double TeamSign = 1.0;
 		double ForehandSign = 1.0;
+		// M2: how the player is moving (gait), from FPlayerMotion.
+		EMovementMode Mode = EMovementMode::Adjust;
 		// The ball is in play (the owner knows: practice ball live, or a rally on).
 		bool bRallyLive = false;
 
@@ -75,11 +79,19 @@ namespace Padel::Animation
 	{
 		ELocomotionState Locomotion = ELocomotionState::Idle;
 		double SpeedMps = 0.0;
-		// Movement direction relative to facing the net: 0 forward, +90 to the right.
+		// Movement direction relative to where the body faces: 0 forward, +90 to the right.
 		double DirectionDeg = 0.0;
+		// M2's movement mode this tick (N1).
+		EMovementMode Mode = EMovementMode::Adjust;
+		// World yaw of the net direction for this player's team, degrees, Unreal convention.
+		double NetYawDeg = 0.0;
+		// N1 ready-stance depth: how much the crouched clips weigh against the upright ones
+		// (Animation.json ReadyCrouchAlphaNet at the net to ReadyCrouchAlphaBack at the back).
+		double CrouchAlpha = 0.0;
 		// Play rate for the run or sprint cycle so the feet match the ground speed.
 		double StridePlayRate = 1.0;
-		// World yaw the body faces (toward the net), degrees, Unreal convention.
+		// World yaw the body faces, degrees, Unreal convention (N1): square to the net, or
+		// turned toward travel in Crossover, TurnAndRun and Run, at FacingTurnRateDegPerS.
 		double FacingYawDeg = 0.0;
 
 		// Swing layer. Clip is the one to show; PrevClip fades out under it.
