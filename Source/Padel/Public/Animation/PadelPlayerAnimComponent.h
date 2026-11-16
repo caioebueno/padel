@@ -93,6 +93,10 @@ private:
 
 	bool bLeftHanded = false;
 
+	/** The body's relative yaw square to the net, read on the first Present (N1 facing turns from it). */
+	double BodyBaseYaw = 0.0;
+	bool bBodyBaseYawSet = false;
+
 	UPROPERTY()
 	TObjectPtr<USkeletalMeshComponent> Body;
 

@@ -49,6 +49,8 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.IdleAsset = Row->IdleAsset;
 		Out.WalkAssets = Row->WalkAssets;
 		Out.JogAssets = Row->JogAssets;
+		Out.ReadyAsset = Row->ReadyAsset;
+		Out.WalkUprightAssets = Row->WalkUprightAssets;
 		Out.WalkClipSpeedMps = Row->WalkClipSpeedMps;
 		Out.ArmReadyAlpha = Row->ArmReadyAlpha;
 		{
@@ -95,9 +97,9 @@ FPadelAnimData FPadelAnimData::Load()
 		{
 			Out.Errors.Add(TEXT("Animation.json: WalkClipSpeedMps must be above 0 and below RunClipSpeedMps"));
 		}
-		if (Row->WalkAssets.Num() != 4 || Row->JogAssets.Num() != 4)
+		if (Row->WalkAssets.Num() != 4 || Row->JogAssets.Num() != 4 || (Row->WalkUprightAssets.Num() != 0 && Row->WalkUprightAssets.Num() != 4))
 		{
-			Out.Errors.Add(TEXT("Animation.json: WalkAssets and JogAssets list forward, back, left, right"));
+			Out.Errors.Add(TEXT("Animation.json: WalkAssets, JogAssets and WalkUprightAssets list forward, back, left, right"));
 		}
 		if (Row->ArmReadyAlpha < 0.0 || Row->ArmReadyAlpha > 1.0)
 		{

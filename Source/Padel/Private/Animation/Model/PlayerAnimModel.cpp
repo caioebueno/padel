@@ -1,5 +1,7 @@
 #include "Animation/Model/PlayerAnimModel.h"
 
+#include "CourtSpec.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -40,6 +42,34 @@ namespace Padel::Animation
 		{
 			return Value < Target ? std::fmin(Target, Value + MaxDelta) : std::fmax(Target, Value - MaxDelta);
 		}
+
+		// (-180, 180].
+		double WrapDeg(double A)
+		{
+			A = std::fmod(A, 360.0);
+			if (A > 180.0)
+			{
+				A -= 360.0;
+			}
+			else if (A <= -180.0)
+			{
+				A += 360.0;
+			}
+			return A;
+		}
+
+		// Turns Angle toward Target the short way, at most MaxDelta degrees.
+		double TurnToward(double Angle, double Target, double MaxDelta)
+		{
+			const double D = WrapDeg(Target - Angle);
+			return WrapDeg(Angle + (D > 0.0 ? std::fmin(D, MaxDelta) : std::fmax(D, -MaxDelta)));
+		}
+
+		// Movement doc 3.3, 5.3: the gaits that turn the body toward where it's going.
+		bool FacesTravel(EMovementMode Mode)
+		{
+			return Mode == EMovementMode::Crossover || Mode == EMovementMode::TurnAndRun || Mode == EMovementMode::Run;
+		}
 	}
 
 	const char* LocomotionStateName(ELocomotionState State)
@@ -78,6 +108,7 @@ namespace Padel::Animation
 		In.bSplitHopping = Motion.IsSplitHopping();
 		In.TeamSign = Controller.GetTeamSign();
 		In.ForehandSign = Controller.GetRatings().ForehandSign();
+		In.Mode = Motion.GetMode();
 		In.bRallyLive = bInRallyLive;
 		return In;
 	}
@@ -109,8 +140,31 @@ namespace Padel::Animation
 		const FVec3 Right = RightAxis(In.TeamSign);
 		const double Speed = LengthXY(In.Velocity);
 		Frame.SpeedMps = Speed;
-		Frame.FacingYawDeg = std::atan2(Forward.Y, Forward.X) * PlayerAnimModelDetail::RadToDeg;
-		Frame.DirectionDeg = Speed > 1e-6 ? std::atan2(DotProduct(In.Velocity, Right), DotProduct(In.Velocity, Forward)) * PlayerAnimModelDetail::RadToDeg : 0.0;
+		Frame.Mode = In.Mode;
+		using PlayerAnimModelDetail::RadToDeg;
+		Frame.NetYawDeg = std::atan2(Forward.Y, Forward.X) * RadToDeg;
+
+		// Facing (N1): square to the net, or toward travel in the turning gaits (up to 180
+		// degrees running back to the glass). A swing squares up again; forehand or backhand
+		// still comes from the ball's side (SideOf, on the court's axes).
+		double Want = Frame.NetYawDeg;
+		if (PlayerAnimModelDetail::FacesTravel(In.Mode) && Speed >= S.WalkMinMps && In.Phase == ESwingPhase::Idle)
+		{
+			Want = std::atan2(In.Velocity.Y, In.Velocity.X) * RadToDeg;
+		}
+		Frame.FacingYawDeg = bFirstStep ? Want : PlayerAnimModelDetail::TurnToward(Frame.FacingYawDeg, Want, S.FacingTurnRateDegPerS * Dt);
+
+		// Direction of travel relative to where the body faces, for the cycle blend.
+		const double FacingRad = Frame.FacingYawDeg / RadToDeg;
+		const FVec3 BodyForward = Vec(std::cos(FacingRad), std::sin(FacingRad), 0.0);
+		// The body's right is its forward turned the same way the court's right is from the net.
+		const double Handed = DotProduct(Vec(-Forward.Y, Forward.X, 0.0), Right) >= 0.0 ? 1.0 : -1.0;
+		const FVec3 BodyRight = Vec(-BodyForward.Y * Handed, BodyForward.X * Handed, 0.0);
+		Frame.DirectionDeg = Speed > 1e-6 ? std::atan2(DotProduct(In.Velocity, BodyRight), DotProduct(In.Velocity, BodyForward)) * RadToDeg : 0.0;
+
+		// Ready-stance depth (N1, movement doc 2.1): deeper at the net, shallower at the back.
+		const double FromNet = Clamp(std::fabs(In.Position.X) / Court::HalfLength, 0.0, 1.0);
+		Frame.CrouchAlpha = Lerp(S.ReadyCrouchAlphaNet, S.ReadyCrouchAlphaBack, FromNet);
 
 		const bool bSwinging = In.Phase != ESwingPhase::Idle;
 		if (In.bSplitHopping)
@@ -379,7 +433,10 @@ namespace Padel::Animation
 				}
 				else if (!bHasContactKey)
 				{
-					ContactKey = { RightSign * ShotLib->Model.IdealContactSideM, ShotLib->Model.IdealContactForwardM, ShotLib->Get(PlayedShot).PreferredContactHeightM };
+					// The played shot's own contact point on this side (Shots.json, S1).
+					const FShotParams& Shot = ShotLib->Get(PlayedShot);
+					const bool bForehand = Frame.Side == ESwingSide::Fore;
+					ContactKey = { RightSign * Shot.ContactSideFor(bForehand), Shot.ContactForwardFor(bForehand), Shot.PreferredContactHeightM };
 				}
 			}
 			const FPlayerFrameVec Back = Mirror(Frame.Clip->Backswing, RightSign);

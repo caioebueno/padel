@@ -126,6 +126,8 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	Set = Anim->LocomotionSet;
 	SpeedMps = Anim->Speed / 100.0;
 	DirectionDeg = Anim->Direction;
+	bReadyStance = Anim->Locomotion == EPadelLocomotionState::Ready || Anim->Locomotion == EPadelLocomotionState::SplitStep;
+	CrouchAlpha = Anim->CrouchAlpha;
 	JogStridePlayRate = Anim->StridePlayRate;
 	Swing = Anim->SwingSequence;
 	SwingTime = Anim->SwingTime;
@@ -176,6 +178,17 @@ bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output) const
 	{
 		return false;
 	}
+	// N1 ready-stance depth: the upright idle between points; in a rally, the crouched ready
+	// idle mixed in by CrouchAlpha (deeper at the net). The C0 crouch alone was a squat.
+	const float Crouch = static_cast<float>(FMath::Clamp(CrouchAlpha, 0.0, 1.0));
+	if (bReadyStance && Set.Ready && Crouch > 0.0f)
+	{
+		FPoseContext Ready(Output);
+		if (Sample(Set.Ready, FMath::Fmod(IdleTime, FMath::Max(Set.Ready->GetPlayLength(), 0.1)), true, Ready))
+		{
+			BlendInto(Output, Ready, Crouch);
+		}
+	}
 	// Idle up to half the walk threshold, fully moving at the threshold.
 	const float MoveAlpha = static_cast<float>(FMath::Clamp((SpeedMps - 0.5 * Set.WalkMinMps) / FMath::Max(0.5 * Set.WalkMinMps, 0.01), 0.0, 1.0));
 	if (MoveAlpha <= 0.0f)
@@ -186,6 +199,16 @@ bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output) const
 	if (!SampleCycle(Set.Walk, CyclePhase, DirectionDeg, Moving))
 	{
 		return true;
+	}
+	// The crouched walk (low shuffle) mixed with the upright one by the same depth; both sets
+	// move at WalkClipSpeedMps, so they share the phase without the feet sliding.
+	if (Set.WalkUpright.Num() == 4 && Crouch < 1.0f)
+	{
+		FPoseContext Upright(Output);
+		if (SampleCycle(Set.WalkUpright, CyclePhase, DirectionDeg, Upright))
+		{
+			BlendInto(Moving, Upright, 1.0f - Crouch);
+		}
 	}
 	const float JogAlpha = static_cast<float>(FMath::Clamp((SpeedMps - Set.WalkClipSpeedMps) / FMath::Max(Set.JogClipSpeedMps - Set.WalkClipSpeedMps, 0.01), 0.0, 1.0));
 	if (JogAlpha > 0.0f)
