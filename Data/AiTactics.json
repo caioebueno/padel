@@ -35,7 +35,7 @@
 		"JumpExtraAt99M": 0.45,
 		"AnticipationDelayScaleAt1": 1.25,
 		"AnticipationDelayScaleAt99": 0.8,
-		"FirstStepExtraS": 0.0,
+		"FirstStepExtraS": 0.15,
 		"PredictDtS": 0.008333333333333333,
 		"PredictHorizonS": 4.0,
 		"SampleEverySteps": 2,

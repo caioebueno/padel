@@ -463,8 +463,11 @@ void FAiMatchRunner::AfterHit(int HitterId)
 		ClearShots(Id);
 		if (TeamOfPlayer(Id) != TeamOfPlayer(HitterId))
 		{
-			// GDD 6.3: the split-step at the opponent's contact.
-			Controllers[Id]->NotifyOpponentContact();
+			// GDD 6.3: the split-step at the opponent's contact; its landing delays the first step.
+			if (Controllers[Id]->NotifyOpponentContact())
+			{
+				Teams[TeamIndex(TeamOfPlayer(Id))]->OnSplitStep(SlotOf(Id));
+			}
 		}
 	}
 }

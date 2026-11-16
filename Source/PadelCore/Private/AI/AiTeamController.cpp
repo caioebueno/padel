@@ -38,6 +38,9 @@ void FAiTeamController::OnPointStarted(bool bServing)
 	// GDD 8: a side switch lasts until the point ends; each point starts on their own sides.
 	Pair.SetSwapped(false);
 	ReadAt = -1.0;
+	FirstStepAt = { -1.0, -1.0 };
+	bSplitLanding = { false, false };
+	bCaptureHoldBall = false;
 	bIncoming = false;
 	bShotSent = false;
 	Taker = -1;
@@ -57,6 +60,9 @@ void FAiTeamController::OnPointEnded()
 	Pair.ClearCommands();
 	Pair.SetSwapped(false);
 	ReadAt = -1.0;
+	FirstStepAt = { -1.0, -1.0 };
+	bSplitLanding = { false, false };
+	bCaptureHoldBall = false;
 	bIncoming = false;
 	Taker = -1;
 	Plans = {};
@@ -88,12 +94,28 @@ void FAiTeamController::OnBallHit(double Time, int HitterHalfSign, EAiShot Shot,
 		Pair.ConsumeYours();
 		bIncoming = false;
 		ReadAt = -1.0;
+		FirstStepAt = { -1.0, -1.0 };
+	bSplitLanding = { false, false };
+		bCaptureHoldBall = false;
 		return;
 	}
 	LastOpponentShot = Shot;
 	bIncoming = true;
 	// GDD 8: the AI reacts after a read delay that the difficulty and Anticipation set.
 	ReadAt = Time + TeamReadDelay();
+	// Nobody moves on the new ball before the read; a split-step adds its landing (OnSplitStep).
+	FirstStepAt = { ReadAt, ReadAt };
+	bSplitLanding = { false, false };
+	bCaptureHoldBall = true;
+}
+
+void FAiTeamController::OnSplitStep(int Slot)
+{
+	if (Slot >= 0 && Slot < 2 && FirstStepAt[Slot] >= 0.0)
+	{
+		FirstStepAt[Slot] += Tactics.FirstStepExtraS;
+		bSplitLanding[Slot] = true;
+	}
 }
 
 void FAiTeamController::OnBallContact(double Time, Court::ESurface Surface)
@@ -155,6 +177,8 @@ void FAiTeamController::Read(const FAiWorldView& View)
 		Intercept.HalfSign = HalfSign;
 		Intercept.bMustBounce = View.bMustBounce;
 		Intercept.AccelFalloff = AccelFalloff;
+		// The split-step landing still to come before this player can push off.
+		Intercept.StartDelayS = FirstStepAt[Slot] >= 0.0 ? std::max(0.0, FirstStepAt[Slot] - View.Time) : 0.0;
 		Plans[Slot] = InterceptPlanner::Plan(Samples, Intercept, Profiles[Slot], Tactics);
 		Query.Plans[Slot] = Plans[Slot];
 		Query.PlayerLocal[Slot] = TeamFrame::ToLocal(HalfSign, View.OwnPositions[Slot]);
@@ -298,7 +322,13 @@ std::array<std::optional<FAiIntent>, 2> FAiTeamController::Tick(const FAiWorldVi
 	}
 
 	const FAiVec2 BallLocal = TeamFrame::ToLocal(HalfSign, View.Ball.Position);
+	if (bCaptureHoldBall)
+	{
+		HoldBallLocal = BallLocal;
+		bCaptureHoldBall = false;
+	}
 	const std::array<FAiVec2, 2> Homes = Pair.HomePositions(BallLocal);
+	const std::array<FAiVec2, 2> HoldHomes = Pair.HomePositions(HoldBallLocal);
 	std::array<std::optional<FAiIntent>, 2> Out;
 	for (int Slot = 0; Slot < 2; ++Slot)
 	{
@@ -306,12 +336,22 @@ std::array<std::optional<FAiIntent>, 2> FAiTeamController::Tick(const FAiWorldVi
 		{
 			continue;
 		}
+		const bool bHolding = FirstStepAt[Slot] >= 0.0 && View.Time < FirstStepAt[Slot];
+		if (FirstStepAt[Slot] >= 0.0 && !bHolding)
+		{
+			FirstStepAt[Slot] = -1.0;
+			bSplitLanding[Slot] = false;
+		}
 		const bool bTaking = Taker == Slot && Plans[Slot].has_value();
 		FAiIntent Intent;
+		const FAiVec Hold = bSplitLanding[Slot] ? View.OwnPositions[Slot]
+			: TeamFrame::ToCourt(HalfSign, HoldHomes[Slot] + HomeError[Slot]);
 		if (bTaking)
 		{
 			const FInterceptPlan& Plan = *Plans[Slot];
-			Intent = MoveTo(Slot, View.OwnPositions[Slot], Plan.StandPoint, true, Plan.Slack);
+			Intent = bHolding ? MoveTo(Slot, View.OwnPositions[Slot], Hold, false, 0.0)
+				: MoveTo(Slot, View.OwnPositions[Slot], Plan.StandPoint, true, Plan.Slack);
+			// The shot is chosen with the read, not the first step: the swing needs its lead.
 			const double ContactTime = PlanTime + Plan.Sample.T;
 			if (!bShotSent && View.Time >= ContactTime - Tactics.SwingLeadS)
 			{
@@ -327,6 +367,10 @@ std::array<std::optional<FAiIntent>, 2> FAiTeamController::Tick(const FAiWorldVi
 				Intent.ShotContactTime = ContactTime;
 				bShotSent = true;
 			}
+		}
+		else if (bHolding)
+		{
+			Intent = MoveTo(Slot, View.OwnPositions[Slot], Hold, false, 0.0);
 		}
 		else
 		{

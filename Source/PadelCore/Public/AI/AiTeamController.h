@@ -67,6 +67,12 @@ namespace Padel::AI
 		void OnPointEnded();
 		void OnBallHit(double Time, int HitterHalfSign, EAiShot Shot, const FAiVec& Contact, const FAiVec& Target);
 		void OnBallContact(double Time, Court::ESurface Surface);
+		// GDD 6.3: this slot split-stepped at the opponent's contact, so its first step
+		// waits for the landing (BIOMECHANICS_MOVEMENT 5.4).
+		void OnSplitStep(int Slot);
+		// Absolute time this slot may take its first step after the opponent's contact, or
+		// negative when it is free to move.
+		double GetFirstStepAt(int Slot) const { return FirstStepAt[Slot]; }
 
 		// GDD 7 partner commands, for the human's partner. Returns true when the
 		// partner takes the command, so the game can play the acknowledgement.
@@ -100,6 +106,13 @@ namespace Padel::AI
 
 		// Absolute time of the next read of the incoming ball, or negative for none.
 		double ReadAt = -1.0;
+		// GDD 8 reaction: until its first step a player holds the spot it was heading for at
+		// the opponent's contact, so it can't move on the new ball before it has read it.
+		std::array<double, 2> FirstStepAt = { -1.0, -1.0 };
+		// A split-stepper lands where it hopped: it stands rather than keep drifting.
+		std::array<bool, 2> bSplitLanding = { false, false };
+		bool bCaptureHoldBall = false;
+		FAiVec2 HoldBallLocal;
 		double PlanTime = 0.0;
 		bool bIncoming = false;
 		EAiShot LastOpponentShot = EAiShot::Drive;
