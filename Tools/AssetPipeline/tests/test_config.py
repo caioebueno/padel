@@ -53,7 +53,7 @@ class CatalogueTest(unittest.TestCase):
     def test_shipped_catalogue_is_valid(self) -> None:
         cat = catalogue.load()
         ids = [a.id for a in cat.assets]
-        for required in ("CourtGlass", "CourtFrame", "CourtMesh", "CourtNet", "CourtSurface", "Ball", "RacketPlaceholder",
+        for required in ("CourtGlass", "CourtFrame", "CourtMesh", "CourtNet", "CourtSurface", "Ball", "Racket",
                          "PlayerPlaceholderA", "PlayerPlaceholderB"):
             self.assertIn(required, ids)
 
@@ -67,7 +67,7 @@ class CatalogueTest(unittest.TestCase):
     def test_ball_and_racket_sizes_match_gdd_2(self) -> None:
         cat = catalogue.load()
         self.assertEqual(cat.get("Ball").size["diameter_m"], 0.065)
-        racket = cat.get("RacketPlaceholder").size
+        racket = cat.get("Racket").size
         self.assertLessEqual(racket["length_m"], 0.455)
         self.assertLessEqual(racket["width_m"], 0.26)
 

@@ -10,7 +10,8 @@ run it again.
 
   /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid,
                                             and Metal, WireMesh from metal_materials.py); M_PadelGlass is
-                                            built by glass_material.py, M_PadelBall* by ball_material.py
+                                            built by glass_material.py, M_PadelBall* by ball_material.py,
+                                            M_PadelRacketFace by racket_material.py
   /Game/Padel/Materials/MPC_NetReaction     the net hit reaction's parameters (written by UPadelNetReactionSubsystem)
   /Game/Padel/Materials/MI_<Group>_<Name>   one instance per palette entry
   /Game/Padel/Materials/T_*                 textures
@@ -31,8 +32,9 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 
-from asset_lib import SOURCE_ART_DIR, ball_textures, catalogue  # noqa: E402
+from asset_lib import SOURCE_ART_DIR, ball_textures, catalogue, racket_layout  # noqa: E402
 import ball_material  # noqa: E402
+import racket_material  # noqa: E402
 import glass_material  # noqa: E402
 import turf_material  # noqa: E402
 
@@ -121,8 +123,8 @@ def import_textures() -> None:
             # R is a distance field the seam edge is cut from: block compression would
             # quantise it into visible steps along the seam, so keep it uncompressed.
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
-        if png.stem.startswith("T_CourtSurface_"):
-            # Covers the court once: clamp, or the far edge bleeds into the near one.
+        if png.stem.startswith(("T_CourtSurface_", "T_Racket_Masks")):
+            # Covers the court (or the racket face) once: clamp, or the far edge bleeds into the near one.
             tex.set_editor_property("address_x", unreal.TextureAddress.TA_CLAMP)
             tex.set_editor_property("address_y", unreal.TextureAddress.TA_CLAMP)
         ASSETS.save_loaded_asset(tex)
@@ -270,6 +272,9 @@ def build_masters() -> None:
     ball_material.build_fuzz(_material("M_PadelBallFuzz"), MATERIAL_DIR, ball_cfg, ball_radius_mm)
     ball_material.build_trail(_material("M_PadelBallTrail"), fail)
 
+    # The racket's faces: carbon, the face graphic and the raised sand finish (unreal/racket_material.py).
+    racket_material.build_face(_material("M_PadelRacketFace"), MATERIAL_DIR, racket_layout.load_config())
+
     # Masked: welded mesh and the net, cut out by a mask texture. UVs are in
     # metres divided by the cell size (Blender sets them), so one tile = one cell.
     mat = _material("M_PadelMasked")
@@ -324,7 +329,8 @@ def build_masters() -> None:
     MEL.recompile_material(mat)
 
     for name in ("M_PadelOpaque", "M_PadelTurf", "M_PadelGlass", "M_PadelMasked", "M_PadelEmissive",
-                 "M_PadelNet", "M_PadelNetSolid", "M_PadelBallFelt", "M_PadelBallFuzz", "M_PadelBallTrail"):
+                 "M_PadelNet", "M_PadelNetSolid", "M_PadelBallFelt", "M_PadelBallFuzz", "M_PadelBallTrail",
+                 "M_PadelRacketFace"):
         ASSETS.save_asset(f"{MATERIAL_DIR}/{name}", only_if_is_dirty=False)
     log("master materials built")
 
@@ -368,6 +374,8 @@ def build_instances(palette: dict) -> None:
                 glass_material.apply_instance(mi, settings, linear)
             if settings["master"].startswith("Ball"):
                 ball_material.apply_instance(mi, settings, linear)
+            if settings["master"] == "RacketFace":
+                racket_material.apply_instance(mi, settings, linear)
             for key, param in (("mask", "Mask"), ("texture", "BaseTexture"), ("normal", "NormalMap")):
                 if key in settings:
                     tex = unreal.load_asset(f"{MATERIAL_DIR}/{settings[key]}")
@@ -464,7 +472,7 @@ def _import_skeletal_lods(asset: catalogue.Asset, mesh) -> None:
 
 
 def _import_static_lods(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
-    """Hand-built LODs (the ball's spheres) instead of Unreal's automatic reduction, with
+    """Hand-built LODs (the ball's spheres, the racket's builds) instead of Unreal's automatic reduction, with
     the catalogue's screen sizes."""
     subsystem = _static_mesh_editor()
     for i in range(1, len(asset.lods) + 1):

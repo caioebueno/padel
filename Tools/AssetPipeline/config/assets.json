@@ -122,7 +122,7 @@
       "_note": "The ball's speed trail: a tapered tube 1 m long along -X, stretched and aimed by APadelBall. Translucent, so not Nanite."
     },
     {
-      "id": "RacketPlaceholder",
+      "id": "Racket",
       "kind": "static",
       "category": "Equipment",
       "source": "procedural",
@@ -132,9 +132,20 @@
         "width_m": 0.26,
         "thickness_m": 0.038
       },
-      "palette": "racket_a",
-      "nanite": true,
-      "budget_tris": 12000
+      "palette": "racket",
+      "nanite": false,
+      "budget_tris": 24000,
+      "lods": [
+        {
+          "ratio": 0.25,
+          "screen_size": 0.09
+        },
+        {
+          "ratio": 0.06,
+          "screen_size": 0.03
+        }
+      ],
+      "_note": "The match racket, the invented Ostrel Keystone (GDD 2: 455 x 260 x 38 mm at most, solid, perforated face; GDD 10): diamond head, carbon face with a raised sand finish, 43 drilled holes, open heart with a bridge, alloy weight cartridge and shoulder ports, rubber bumper, overgrip. Layout and graphic in config/racket.json, colours in palette.json 'racket'. Hand-built LODs, not Nanite: it is small, moves with the hand every frame, and the broadcast camera sees it a few dozen pixels long. See docs/decisions/0008-racket.md."
     },
     {
       "id": "PlayerPlaceholderA",
