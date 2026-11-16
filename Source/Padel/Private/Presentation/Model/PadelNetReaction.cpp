@@ -10,7 +10,7 @@ namespace Padel::Presentation
 {
 	namespace
 	{
-		constexpr double Pi = 3.14159265358979323846;
+		constexpr double NetPi = 3.14159265358979323846;
 
 		// HLSL's smoothstep, so the CPU model and NetReaction.hlsl agree exactly.
 		double SmoothStep(double Edge0, double Edge1, double X)
@@ -168,7 +168,7 @@ namespace Padel::Presentation
 		{
 			return 0.0;
 		}
-		const double Time = std::exp(-S.DampingPerSecond * Age) * std::sin(2.0 * Pi * S.FrequencyHz * Age)
+		const double Time = std::exp(-S.DampingPerSecond * Age) * std::sin(2.0 * NetPi * S.FrequencyHz * Age)
 			* (1.0 - SmoothStep(0.75 * S.DurationSeconds, S.DurationSeconds, Age));
 
 		const double DY = Y - Impact.Y;
