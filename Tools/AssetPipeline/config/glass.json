@@ -1,0 +1,62 @@
+{
+  "_doc": "Tempered glass walls of the court (GDD 2, GDD 10). Panel sizes come from Source/PadelCore/Public/CourtSpec.h; this file holds the build details that are not regulation numbers: thickness, joints, edge finish, bolt fixings and the procedural dirt textures. Metres. Read by Tools/AssetPipeline/asset_lib/glass.py; see docs/decisions/0006-court-glass.md.",
+  "seed": 20261116,
+  "panel": {
+    "thickness_m": 0.012,
+    "joint_m": 0.008,
+    "back_wall_panels": 5,
+    "corner_radius_m": 0.008,
+    "corner_segments": 4,
+    "arris_m": 0.0015
+  },
+  "fixings": {
+    "edge_inset_m": 0.034,
+    "heights_m": {
+      "3.0": [
+        0.25,
+        1.5,
+        2.75
+      ],
+      "2.0": [
+        0.25,
+        1.75
+      ]
+    },
+    "bolt_radius_m": 0.006,
+    "head_radius_m": 0.0115,
+    "head_proud_m": 0.0006,
+    "bush_radius_m": 0.0145,
+    "bush_proud_m": 0.0003,
+    "gasket_radius_m": 0.02,
+    "gasket_thickness_m": 0.003,
+    "post_depth_m": 0.05,
+    "washer_radius_m": 0.012,
+    "washer_thickness_m": 0.0025,
+    "nut_across_flats_m": 0.019,
+    "nut_height_m": 0.01,
+    "thread_overhang_m": 0.004,
+    "segments": 12
+  },
+  "textures": {
+    "smudge": {
+      "size_px": 512,
+      "tile_m": 4.0,
+      "smudges": 70,
+      "wipes": 18
+    },
+    "ball_marks": {
+      "size_px": 512,
+      "tile_m": 2.0,
+      "marks": 90,
+      "mark_radius_m": 0.034
+    },
+    "roller_wave": {
+      "size_px": [
+        16,
+        128
+      ],
+      "period_m": 0.32,
+      "max_slope": 0.5
+    }
+  }
+}

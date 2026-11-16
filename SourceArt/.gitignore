@@ -1,7 +1,8 @@
 # Written by Tools/AssetPipeline/pipeline.py build: procedural outputs, rebuilt from the scripts.
 /Textures/
-/Court/SM_CourtIndoor.fbx
-/Court/SM_CourtIndoorGlass.fbx
+/Court/SM_CourtSurface.fbx
+/Court/SM_CourtFrame.fbx
+/Court/SM_CourtMesh.fbx
 /Equipment/SM_Ball.fbx
 /Equipment/SM_RacketPlaceholder.fbx
 /Characters/SK_PlayerPlaceholderA.fbx
@@ -10,3 +11,10 @@
 /Characters/SK_PlayerPlaceholderB.fbx
 /Characters/SK_PlayerPlaceholderB_LOD1.fbx
 /Characters/SK_PlayerPlaceholderB_LOD2.fbx
+/Venue/SM_VenueHall.fbx
+/Venue/SM_VenueLightTruss.fbx
+/Venue/SM_VenueMasts.fbx
+/Venue/SM_VenueGround.fbx
+/Venue/SM_VenueStands.fbx
+/Venue/SM_VenueBoards.fbx
+/Venue/SM_FloodlightHead.fbx

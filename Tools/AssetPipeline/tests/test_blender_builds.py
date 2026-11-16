@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from asset_lib import blender_runner, catalogue, court_spec
+from asset_lib import blender_runner, catalogue, court_spec, lighting
 
 try:
     blender_runner.command(Path("x.py"), Path("job.json"))
@@ -45,9 +45,11 @@ class BlenderBuildTest(unittest.TestCase):
         job = {"id": asset.asset_name, "kind": asset.kind, "builder": asset.raw.get("builder"),
                "size": asset.size, "budget_tris": asset.budget_tris, "spec": self.spec, "palette": self.palette,
                "palette_group": asset.raw.get("palette", ""), "part": asset.raw.get("part", "solid"),
-               "body": asset.raw.get("body", {}), "lods": [{"ratio": l.ratio} for l in asset.lods],
+               "body": asset.raw.get("body", {}), "net": asset.raw.get("net", {}), "lods": [{"ratio": l.ratio} for l in asset.lods],
                "out": str(out), "lod_outs": [str(self.out / f"{asset.asset_name}_LOD{i}.fbx")
                                              for i in range(1, len(asset.lods) + 1)]}
+        if asset.raw.get("builder") == "venue":
+            job["rigs"] = lighting.venue_rigs()
         job.update(extra)
         report = blender_runner.run(script, job)
         inspected = blender_runner.run("inspect_fbx", {"file": str(out)})
@@ -73,20 +75,113 @@ class BlenderBuildTest(unittest.TestCase):
         self.assertLessEqual(report["triangles"], self.cat.get("RacketPlaceholder").budget_tris)
         self.assertIn("MI_RacketA_Face", fbx["materials"])
 
-    def test_court_matches_courtspec(self) -> None:
-        _, solid = self.build("CourtIndoor", "build_court")
-        _, glass = self.build("CourtIndoorGlass", "build_court")
-        # Glass inner faces sit on the playing-area limits; its height is the back glass.
-        self.assertAlmostEqual(glass["bounds_max_m"][0], 10.0 + 0.012, delta=0.002)
-        self.assertAlmostEqual(glass["bounds_max_m"][1], 5.0 + 0.012, delta=0.002)
-        self.assertAlmostEqual(glass["bounds_max_m"][2], 3.0, delta=0.002)
-        self.assertEqual(glass["materials"], ["MI_Court_Glass"])
-        self.assertNotIn("MI_Court_Glass", solid["materials"])
-        # Floor top at Z = 0, run-off around the court.
-        self.assertAlmostEqual(solid["bounds_max_m"][0], 12.0, delta=0.01)
-        self.assertLess(solid["bounds_min_m"][2], 0.0)
-        for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Net", "MI_Court_Mesh", "MI_Court_Frame"):
-            self.assertIn(slot, solid["materials"])
+    def test_net_matches_courtspec(self) -> None:
+        asset = self.cat.get("CourtNet")
+        report, fbx = self.build("CourtNet", "build_net")
+        net = asset.raw["net"]
+        # Posts: regulation height, centred where CourtLayout's NetPost colliders are.
+        self.assertAlmostEqual(fbx["bounds_max_m"][2], self.spec["NetPostHeight"], delta=0.002)
+        self.assertAlmostEqual(fbx["bounds_min_m"][2], 0.0, delta=0.001)
+        hw = self.spec["HalfWidth"]
+        # The winch and anchor stick out past the posts' outer faces, but not far.
+        self.assertGreater(fbx["bounds_max_m"][1], hw)
+        self.assertLess(fbx["bounds_max_m"][1], hw + 0.15)
+        self.assertLess(fbx["bounds_min_m"][1], -hw)
+        self.assertGreater(fbx["bounds_min_m"][1], -hw - 0.15)
+        # Thin across X: plates and the winch, nothing that reaches into the court.
+        self.assertLess(fbx["bounds_max_m"][0] - fbx["bounds_min_m"][0], net["base_plate_m"] + 0.01)
+        self.assertLessEqual(report["triangles"], asset.budget_tris)
+        self.assertGreater(report["triangles"], 8000, "the cloth must be a dense grid for the hit reaction")
+        self.assertEqual(set(fbx["materials"]), {"MI_Court_Net", "MI_Court_NetTape", "MI_Court_NetBorder",
+                                                 "MI_Court_NetCable", "MI_Court_NetPost", "MI_Court_NetHardware",
+                                                 "MI_Court_NetCord"})
+        # The top of the tape follows CourtSpec's sag: 0.88 in the centre, 0.92 at the posts.
+        tops = report["net_tape_top_m"]
+        self.assertAlmostEqual(tops["centre"], self.spec["NetHeightCentre"], delta=0.002)
+        self.assertAlmostEqual(tops["near_post"], court_spec.net_height_at(self.spec, tops["near_post_y"]), delta=0.002)
+        self.assertGreater(tops["near_post"], 0.915)
+
+    def test_glass_walls_match_courtspec(self) -> None:
+        asset = self.cat.get("CourtGlass")
+        report, fbx = self.build("CourtGlass", "build_court_glass")
+        self.assertEqual(report["panels"], 18)
+        # Glass from the floor to the 3 m back glass; nothing on the court side of the walls
+        # but the sub-millimetre bolt heads, and the nuts behind the 50 mm posts.
+        self.assertAlmostEqual(fbx["bounds_min_m"][2], 0.0, delta=0.001)
+        self.assertAlmostEqual(fbx["bounds_max_m"][2], 3.0, delta=0.002)
+        outside = 0.012 + 0.003 + 0.05 + 0.0025 + 0.01 + 0.004
+        self.assertAlmostEqual(fbx["bounds_max_m"][0], 10.0 + outside, delta=0.002)
+        self.assertAlmostEqual(fbx["bounds_min_m"][1], -5.0 - outside, delta=0.002)
+        self.assertEqual(fbx["materials"], ["MI_Court_Glass", "MI_Court_GlassBolt", "MI_Court_GlassEdge",
+                                            "MI_Court_GlassGasket"])
+        self.assertLessEqual(report["triangles"], asset.budget_tris)
+        self.assertEqual(fbx["triangles"], report["triangles"])
+
+    def test_court_frame_and_mesh_match_courtspec(self) -> None:
+        frame_report, frame = self.build("CourtFrame", "build_court_frame")
+        mesh_report, mesh = self.build("CourtMesh", "build_court_frame")
+        hl, hw = self.spec["HalfLength"], self.spec["HalfWidth"]
+        # Posts reach the 4 m fence top (plus their caps); base plates stay on the run-off.
+        self.assertAlmostEqual(frame["bounds_max_m"][2], self.spec["FenceTotalHeight"] + 0.014, delta=0.002)
+        self.assertAlmostEqual(frame["bounds_min_m"][2], 0.0, delta=0.001)
+        self.assertAlmostEqual(frame["bounds_max_m"][0], hl + 0.015 + 0.16, delta=0.002)
+        self.assertEqual(frame["materials"], ["MI_Court_Cap", "MI_Court_Frame", "MI_Court_Steel"])
+        self.assertLessEqual(frame_report["triangles"], self.cat.get("CourtFrame").budget_tris)
+        self.assertEqual(frame_report["layout"]["posts"], 30)
+        # The mesh sits in the wall plane, in the middle of its 15 mm panel frame, inside the 30 mm tubes.
+        self.assertAlmostEqual(mesh["bounds_max_m"][0], hl + 0.0075, delta=0.001)
+        self.assertAlmostEqual(mesh["bounds_max_m"][1], hw + 0.0075, delta=0.001)
+        self.assertAlmostEqual(mesh["bounds_max_m"][2], self.spec["FenceTotalHeight"] - 0.03, delta=0.001)
+        self.assertEqual(mesh["materials"], ["MI_Court_Mesh"])
+        self.assertEqual(mesh_report["openings"], 34)
+        self.assertEqual(mesh_report["triangles"], 2 * 34)
+
+    def test_hall_holds_the_broadcast_camera_and_clears_the_ceiling(self) -> None:
+        report, fbx = self.build("VenueHall", "build_venue")
+        # GDD 9: the camera is 6-8 m behind each back glass and 7-9 m up.
+        self.assertGreater(fbx["bounds_max_m"][0], self.spec["HalfLength"] + 8.0 + 1.0)
+        self.assertLess(fbx["bounds_min_m"][0], -(self.spec["HalfLength"] + 8.0 + 1.0))
+        self.assertGreater(fbx["bounds_max_m"][2], 9.0 + 1.0)
+        # The floor sits just under the court's run-off.
+        self.assertLess(fbx["bounds_min_m"][2], -0.02)
+        self.assertLessEqual(report["triangles"], self.cat.get("VenueHall").budget_tris)
+        for slot in ("MI_Venue_Concrete", "MI_Venue_WallLower", "MI_Venue_Steel"):
+            self.assertIn(slot, fbx["materials"])
+
+    def test_light_rigs_carry_the_fixtures_out_of_play(self) -> None:
+        rigs = lighting.venue_rigs()
+        truss, truss_fbx = self.build("VenueLightTruss", "build_venue")
+        # ARENA_SPEC 6.1: the rig's underside is the 8 m ceiling plane (GDD 2), nothing lower.
+        self.assertGreaterEqual(truss_fbx["bounds_min_m"][2], self.spec["CeilingHeight"])
+        self.assertLess(truss_fbx["bounds_min_m"][2], self.spec["CeilingHeight"] + 0.01)
+        # It reaches every court fixture.
+        xs = [x for x, _, _, role in rigs["Indoor"] if role == "Court"]
+        self.assertLessEqual(truss_fbx["bounds_min_m"][0], min(xs))
+        self.assertGreaterEqual(truss_fbx["bounds_max_m"][0], max(xs))
+        self.assertLessEqual(truss["triangles"], self.cat.get("VenueLightTruss").budget_tris)
+        masts, masts_fbx = self.build("VenueMasts", "build_venue")
+        self.assertGreater(masts["min_abs_y_m"], self.spec["HalfWidth"] + 0.3)
+        top = max(z for _, _, z, _ in rigs["Outdoor"])
+        self.assertGreater(masts_fbx["bounds_max_m"][2], top)
+
+    def test_stands_and_boards_stay_outside_the_run_off(self) -> None:
+        for asset_id in ("VenueStands", "VenueBoards"):
+            report, fbx = self.build(asset_id, "build_venue")
+            self.assertGreater(report["outside_runoff_m"], 0.0, asset_id)
+            self.assertLessEqual(report["triangles"], self.cat.get(asset_id).budget_tris)
+        _, boards = self.build("VenueBoards", "build_venue")
+        # Sponsor-free: club colours only, no texture with text or logos.
+        self.assertEqual(boards["materials"], ["MI_Venue_Board", "MI_Venue_BoardStripe", "MI_Venue_Steel"])
+
+    def test_floodlight_head_shines_along_plus_x(self) -> None:
+        report, fbx = self.build("FloodlightHead", "build_venue")
+        self.assertIn("MI_Venue_FixtureLens", fbx["materials"])
+        # Lens at the origin, housing behind it, only the visor in front.
+        self.assertLess(fbx["bounds_max_m"][0], 0.2)
+        self.assertLess(fbx["bounds_min_m"][0], -0.15)
+        for size in self.extent(fbx):
+            self.assertLess(size, 0.8)
+        self.assertLessEqual(report["triangles"], self.cat.get("FloodlightHead").budget_tris)
 
     def test_placeholder_player_is_rigged_for_unreal_and_sized(self) -> None:
         asset = self.cat.get("PlayerPlaceholderA")

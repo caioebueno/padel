@@ -8,18 +8,32 @@ python3 Tools/AssetPipeline/pipeline.py all
 
 That command does three things:
 
-1. It writes the procedural textures to `SourceArt/Textures/`.
+1. It writes the procedural textures to `SourceArt/Textures/` (the turf ones from `config/court_surface.json`).
 2. It builds every enabled asset in Blender and exports it to `SourceArt/<Category>/` as FBX in Unreal units, then updates `SourceArt/manifest.csv`.
 3. It runs `unreal/import_assets.py` in the editor. That script builds the master materials and one material instance per palette entry, imports the meshes into `Content/Padel/`, assigns the materials, turns on Nanite and imports the LODs.
 
 | Asset | Unreal path | Source |
 |---|---|---|
-| `CourtIndoor` | `/Game/Padel/Court/SM_CourtIndoor` | Blender script, from `CourtSpec.h` (floor, lines, frame, mesh, net, lights) |
-| `CourtIndoorGlass` | `/Game/Padel/Court/SM_CourtIndoorGlass` | Blender script (the glass, kept separate because Nanite can't render translucent materials) |
+| `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0006](../../docs/decisions/0006-court-surface.md)) |
+| `CourtFrame` | `/Game/Padel/Court/SM_CourtFrame` | Blender script (`build_court_frame.py`): posts, corner L-posts, mesh panel frames, base plates, gussets, anchors and bolts. Nanite |
+| `CourtMesh` | `/Game/Padel/Court/SM_CourtMesh` | Blender script (`build_court_frame.py`): one quad per mesh opening; the `WireMesh` material draws the wires. Masked, not Nanite |
+| `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0006](../../docs/decisions/0006-net-and-hit-reaction.md)) |
+| `CourtGlass` | `/Game/Padel/Court/SM_CourtGlass` | Blender script `build_court_glass.py` with `config/glass.json`: 18 tempered panels with arrised edges and their bolt fixings, plus the glass dirt textures. Not Nanite, because Nanite can't render translucent materials. See [0006](../../docs/decisions/0006-court-glass.md) |
 | `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script, 65 mm, felt texture with the seam |
 | `RacketPlaceholder` | `/Game/Padel/Equipment/SM_RacketPlaceholder` | Blender script, 455 × 260 × 38 mm, perforated face, invented design |
 | `PlayerPlaceholderA`, `PlayerPlaceholderB` | `/Game/Padel/Characters/SK_*` | Blender script, rigged on Unreal mannequin bones, in the team A and team B kits |
+| `VenueHall`, `VenueStands`, `VenueBoards`, `VenueGround` | `/Game/Padel/Venue/SM_*` | Blender script (`build_venue.py`): the indoor hall, stands, perimeter boards and outdoor ground |
+| `VenueLightTruss`, `VenueMasts` | `/Game/Padel/Venue/SM_*` | Blender script, from the fixture rows in `Data/Lighting.json` (the rig and masts that carry the floodlights) |
+| `FloodlightHead` | `/Game/Padel/Venue/SM_FloodlightHead` | Blender script: one LED floodlight, lens at the origin facing +X; the game places one on every fixture |
 | `PlayerGenA`, `CourtBench` | `/Game/Padel/...` | AI (Meshy, Tripo), switched off until there's an API key |
+
+## Court steel and welded mesh
+
+`build_court_frame.py` builds the fence structure from `asset_lib/court_frame_layout.py`, which places every piece from `CourtSpec.h` and the steel sections in `config/court_frame.json`, and is tested without Blender (`tests/test_court_frame.py`):
+
+- **Posts** are 100 × 50 mm rectangular tube with rounded corners, centred on every glass and mesh joint, their court-side face 15 mm outside the court limit (12 mm glass plus a 3 mm gasket), so the glass bolts land on steel. Each corner is one L-shaped post that backs both the back glass and the side glass. Every post has a plastic cap, a 12 mm base plate with four galvanised anchors, and a rear gusset, all outside the court limit.
+- **Mesh panels** cover exactly the mesh zones of `CourtSpec.h` (`BackWallSurfaceAt`, `SideWallSurfaceAt`), at most 2 m long, each welded into a 30 × 15 mm tube frame flush with the glass inner face and bolted to the posts. Panels taller than 2.5 m get a mid rail at 1.5 m. The exits stay open to full height.
+- **Materials** (`unreal/metal_materials.py`). `M_PadelMetal` is physically based steel: powder coat is a paint (metallic 0), galvanised zinc is a metal (metallic 1), with a tiling orange-peel normal map (`T_PowderCoat_N`, written by `asset_lib/metal_textures.py`) at real scale, slight roughness variation, and dirt near the floor in world space. `M_PadelWireMesh` draws the 4 mm wires on a 50 mm grid analytically from the UVs (one UV unit is one cell) with a box filter sized by the screen-space derivatives. Up close the wires are sharp and round; once a wire is thinner than a pixel it turns into the right amount of partial coverage, which is dithered into the masked opacity and resolved by TSR. That avoids the moire and flicker that a mask texture with mipmaps gives from the broadcast camera, and there are no textures or LODs to manage.
 
 ## Setup
 
@@ -42,7 +56,9 @@ pipeline.py build [Id ...]           # Blender only: SourceArt/ and the manifest
 pipeline.py unreal                   # import SourceArt/ into Content/Padel/
 pipeline.py all [--generate]         # build, then import
 pipeline.py generate Id [Id ...]     # call the AI service and download to SourceArt/_raw/<Id>/ (costs credits)
-pipeline.py preview out.png          # Blender render of the procedural assets from the broadcast camera
+pipeline.py preview out.png [--preset IndoorClub] [--camera Broadcast]
+                                     # Cycles render lit like the game: a Data/Lighting.json preset
+                                     # (candela, lux, kelvin, EV100) from a Data/LookDev.json camera
 ```
 
 `build` never calls an AI service unless you pass `--generate`. An AI asset that hasn't been generated yet is skipped with a note. Once it has been downloaded, `build` cleans it up again from the saved file at no cost.
@@ -53,7 +69,7 @@ Add an entry to `config/assets.json`:
 
 - `id` is PascalCase. It becomes `SM_<Id>` or `SK_<Id>`.
 - `kind` is `static` or `skeletal`.
-- `category` is `Court`, `Equipment` or `Characters`.
+- `category` is `Court`, `Equipment`, `Characters` or `Venue`.
 - `source` is `procedural`, `ai` or `external`.
 - `size` is in metres: `height_m` for characters, `length_m` for props (longest horizontal side) or `diameter_m`.
 - `budget_tris` is the triangle budget.
