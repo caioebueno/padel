@@ -342,9 +342,10 @@ TEST_CASE("Anim.Contact: the windup is scrubbed by the charge, the early forward
 			LastP = T.Frame.SwingProgress;
 		}
 	}
-	// 0.15 s early is about 18 ticks of forward swing, and the last one is nearly at contact.
+	// 0.15 s early is about 18 ticks of forward swing, and the last one is nearly at contact
+	// (within about two ticks of progress: M2's slower sideways chase shifts the ideal moment).
 	CHECK(ForwardTicks >= 15);
-	CHECK(LastP > 1.9);
+	CHECK(LastP > 1.85);
 }
 
 TEST_CASE("Anim.Contact: a ball on the backhand side plays the backhand clip")

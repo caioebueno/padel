@@ -333,7 +333,9 @@ TEST_CASE("Shots.Controller: no ball means a shadow swing, a ball out of reach i
 TEST_CASE("Shots.Controller: the AI request plays through the same model and target")
 {
 	FRig Rig;
-	FPlayerShotController P(2, -1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(-8.5, 0.0, 0.0), 13);
+	// Starts beside the ball's line: since M2 a 2 m sideways chase is a shuffle, and from the
+	// centre it arrives short, where this seed's low drive clips the tape.
+	FPlayerShotController P(2, -1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(-8.5, -2.0, 0.0), 13);
 	// Mirror a feed onto Team B's half.
 	const FBallMachineFeed F = Rig.FindFeed("deep_middle");
 	Rig.Ball.Feed(Vec(-F.OriginX, -F.OriginY, F.OriginZ), Vec(-F.TargetX, -F.TargetY, 0.0), F.SpeedKmh / 3.6, F.ApexM, 1);
