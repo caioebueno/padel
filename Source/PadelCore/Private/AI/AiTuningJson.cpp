@@ -249,7 +249,8 @@ namespace
 			{ "MinContactHeightM", &FAiTactics::MinContactHeightM, nullptr },
 			{ "IdealContactHeightM", &FAiTactics::IdealContactHeightM, nullptr },
 			{ "OverheadMinHeightM", &FAiTactics::OverheadMinHeightM, nullptr },
-			{ "ContactOffsetM", &FAiTactics::ContactOffsetM, nullptr },
+			{ "ContactSideM", &FAiTactics::ContactSideM, nullptr },
+			{ "ContactForwardM", &FAiTactics::ContactForwardM, nullptr },
 			{ "InterceptWallMarginM", &FAiTactics::InterceptWallMarginM, nullptr },
 			{ "ScoreHeightWeight", &FAiTactics::ScoreHeightWeight, nullptr },
 			{ "ScoreSlackWeight", &FAiTactics::ScoreSlackWeight, nullptr },
@@ -315,6 +316,14 @@ namespace
 			{ "WindowGoodS", &FAiTactics::WindowGoodS, nullptr },
 			{ "WindowEarlyLateS", &FAiTactics::WindowEarlyLateS, nullptr },
 			{ "WindowMissExtraS", &FAiTactics::WindowMissExtraS, nullptr },
+			{ "ServeDelayS", &FAiTactics::ServeDelayS, nullptr },
+			{ "PointGapS", &FAiTactics::PointGapS, nullptr },
+			{ "WaistHeightFraction", &FAiTactics::WaistHeightFraction, nullptr },
+			{ "ContactMatchS", &FAiTactics::ContactMatchS, nullptr },
+			{ "NetClearanceM", &FAiTactics::NetClearanceM, nullptr },
+			{ "NetRetargetDepthStepM", &FAiTactics::NetRetargetDepthStepM, nullptr },
+			{ "NetRetargetSteps", nullptr, &FAiTactics::NetRetargetSteps },
+			{ "NetRetargetChargeStep", &FAiTactics::NetRetargetChargeStep, nullptr },
 		};
 		return Fields;
 	}

@@ -1,6 +1,7 @@
 // The ball physics the AI predicts with. GDD 8: the AI simulates the ball forward
-// with the same deterministic code as the match. In the game this wraps the engine's
-// ball sim (Agent 2); the native soak test uses a stand-in until that lands.
+// with the same deterministic code as the match: FAiEngineBallModel wraps the
+// engine's FBallSim. The interface stays so the planner can be tested on hand-made
+// trajectories.
 
 #pragma once
 
@@ -16,6 +17,11 @@ namespace Padel::AI
 		FAiVec Position;
 		FAiVec Velocity;
 		FAiVec Spin;
+		// The engine's ball flags (FBallState), carried so prediction steps exactly
+		// like the match.
+		bool bRolling = false;
+		bool bInCourt = true;
+		bool bTouchingNet = false;
 	};
 
 	struct FAiContact

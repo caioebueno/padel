@@ -83,7 +83,11 @@ namespace Padel::AI
 		double MinContactHeightM = 0.0;
 		double IdealContactHeightM = 0.0;
 		double OverheadMinHeightM = 0.0;
-		double ContactOffsetM = 0.0;       // GDD 5.2: the ball is about 0.8 m from the player
+		// GDD 5.2: where the ball should meet the player, beside and in front of them.
+		// The same numbers as Data/ShotModel.json IdealContactSideM / ForwardM (a test
+		// keeps them equal), so the AI stands where the shot model wants the ball.
+		double ContactSideM = 0.0;
+		double ContactForwardM = 0.0;
 		double InterceptWallMarginM = 0.0;
 		double ScoreHeightWeight = 0.0;
 		double ScoreSlackWeight = 0.0;
@@ -159,5 +163,15 @@ namespace Padel::AI
 		double WindowGoodS = 0.0;
 		double WindowEarlyLateS = 0.0;
 		double WindowMissExtraS = 0.0;
+
+		// --- Match flow, for AI players in a real match ---
+		double ServeDelayS = 0.0;          // the AI server waits this long, set, before the toss
+		double PointGapS = 0.0;            // between the end of a point and the next serve
+		double WaistHeightFraction = 0.0;  // waist height / player height, for the serve's waist rule (GDD 3.2)
+		double ContactMatchS = 0.0;        // the swing controller's contact moment must be this close to the plan's
+		double NetClearanceM = 0.0;        // the AI wants its flat shots this far over the tape
+		double NetRetargetDepthStepM = 0.0;
+		int NetRetargetSteps = 0;
+		double NetRetargetChargeStep = 0.0;
 	};
 }
