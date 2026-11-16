@@ -41,7 +41,8 @@
 		"MinContactHeightM": 0.2,
 		"IdealContactHeightM": 1.0,
 		"OverheadMinHeightM": 1.7,
-		"ContactOffsetM": 0.6,
+		"ContactSideM": 0.8,
+		"ContactForwardM": 0.3,
 		"InterceptWallMarginM": 0.25,
 		"ScoreHeightWeight": 1.0,
 		"ScoreSlackWeight": 1.0,
@@ -49,7 +50,7 @@
 		"ScoreTimeWeight": 0.3,
 		"VolleyAtNetBonus": 0.6,
 		"OverheadBonus": 0.9,
-		"SwingLeadS": 0.35,
+		"SwingLeadS": 0.7,
 		"MiddleBandM": 0.8,
 		"BetterPlacedMarginS": 0.25,
 		"ConfusionMax": 0.15,
@@ -106,6 +107,14 @@
 		"WindowPerfectS": 0.04,
 		"WindowGoodS": 0.09,
 		"WindowEarlyLateS": 0.16,
-		"WindowMissExtraS": 0.08
+		"WindowMissExtraS": 0.08,
+		"ServeDelayS": 0.8,
+		"PointGapS": 1.5,
+		"WaistHeightFraction": 0.56,
+		"ContactMatchS": 0.12,
+		"NetClearanceM": 0.3,
+		"NetRetargetDepthStepM": 0.75,
+		"NetRetargetSteps": 8,
+		"NetRetargetChargeStep": 0.2
 	}
 ]

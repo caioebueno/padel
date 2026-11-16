@@ -3,7 +3,6 @@
 #include "AI/AiTeamController.h"
 #include "AI/AiTeamFrame.h"
 #include "Support/AiTestData.h"
-#include "Support/StandInBallModel.h"
 
 using namespace Padel::AI;
 using doctest::Approx;
@@ -37,7 +36,7 @@ TEST_CASE("Ai.Team: waits for the read delay after the opponent's contact (GDD 8
 {
 	const FAiTactics& T = TestData::Tactics();
 	const FAiDifficulty& D = TestData::Difficulty("Medium");
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	FAiTeamController Team(TeamA(), T, D, Model);
 	Team.OnPointStarted(false);
 	Team.OnBallHit(10.0, -1, EAiShot::Drive, Incoming.Position, { 7.0, 0.0, 0.0 });
@@ -60,7 +59,7 @@ TEST_CASE("Ai.Team: harder levels read sooner")
 TEST_CASE("Ai.Team: exactly one player goes for the ball and sends one shot")
 {
 	const FAiTactics& T = TestData::Tactics();
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	FAiTeamController Team(TeamA(), T, TestData::Difficulty("Medium"), Model);
 	Team.OnPointStarted(false);
 	Team.OnBallHit(0.0, -1, EAiShot::Drive, Incoming.Position, { 7.0, 0.0, 0.0 });
@@ -84,7 +83,7 @@ TEST_CASE("Ai.Team: exactly one player goes for the ball and sends one shot")
 
 TEST_CASE("Ai.Team: the opponents' own shots never trigger a read")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	FAiTeamController Team(TeamA(), TestData::Tactics(), TestData::Difficulty("Medium"), Model);
 	Team.OnPointStarted(true);
 	Team.OnBallHit(0.0, 1, EAiShot::Drive, { 8.0, 0.0, 1.0 }, { -7.0, 0.0, 0.0 });
@@ -95,7 +94,7 @@ TEST_CASE("Ai.Team: the opponents' own shots never trigger a read")
 
 TEST_CASE("Ai.Commands: only the human's partner takes commands, and they clear at the point's end")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	FAiTeamController AllAi(TeamA(), TestData::Tactics(), TestData::Difficulty("Medium"), Model);
 	CHECK_FALSE(AllAi.GiveCommand(EPartnerCommand::GoNet));
 
@@ -113,7 +112,7 @@ TEST_CASE("Ai.Commands: only the human's partner takes commands, and they clear 
 
 TEST_CASE("Ai.Team: difficulty's attribute scale applies to AI players only")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	FAiTeamController Team(TeamA(LeftSlot), TestData::Tactics(), TestData::Difficulty("Easy"), Model);
 	CHECK(Team.GetProfile(RightSlot).Speed == 66);
 	CHECK(Team.GetProfile(LeftSlot).Speed == 76);
@@ -121,7 +120,7 @@ TEST_CASE("Ai.Team: difficulty's attribute scale applies to AI players only")
 
 TEST_CASE("Ai.Team: golden point receiver is the better returner (GDD 3.1)")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	FAiTeamSetup S = TeamA();
 	S.Profiles[LeftSlot].ReturnSkill = 90;
 	FAiTeamController Team(S, TestData::Tactics(), TestData::Difficulty("Medium"), Model);
@@ -130,7 +129,7 @@ TEST_CASE("Ai.Team: golden point receiver is the better returner (GDD 3.1)")
 
 TEST_CASE("Ai.Team: the same seed makes the same decisions (GDD 8 determinism)")
 {
-	const Test::FStandInBallModel Model;
+	const IAiBallModel& Model = TestData::EngineModel();
 	auto Run = [&](uint64_t Seed) {
 		FAiTeamController Team(TeamA(-1, Seed), TestData::Tactics(), TestData::Difficulty("Medium"), Model);
 		Team.OnPointStarted(false);

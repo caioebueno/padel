@@ -159,7 +159,14 @@ void FAiTeamController::Read(const FAiWorldView& View)
 	const FInterceptPlan& Any = Plans[RightSlot] ? *Plans[RightSlot] : *Plans[LeftSlot];
 	Query.BallLocalX = TeamFrame::ToLocal(HalfSign, Any.Sample.Position).X;
 	Query.Teamwork = std::min(Profiles[RightSlot].Teamwork, Profiles[LeftSlot].Teamwork);
+	const int PreviousTaker = Taker;
 	Taker = Pair.ChooseTaker(Query, Rng);
+	if (Taker != PreviousTaker)
+	{
+		// A new read can hand the ball to the partner (the mesh, a second look at the
+		// glass): the new taker still needs its shot.
+		bShotSent = false;
+	}
 	// GDD 8: a lob over them sends the pair back, but a lob they can meet in the air
 	// is a bandeja that keeps the net (GDD 4).
 	const bool bOverhead = Taker >= 0 && Plans[Taker] && Plans[Taker]->bReachable && Plans[Taker]->Kind == EContactKind::Overhead;
