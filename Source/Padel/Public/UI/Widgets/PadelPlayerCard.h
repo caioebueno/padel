@@ -49,6 +49,7 @@ public:
 	/** Large or small. Set before the card is built. */
 	void SetLarge(bool bInLarge) { bLarge = bInLarge; }
 	bool IsLarge() const { return bLarge; }
+	/** Builds the card's tree, so call SetLarge first. */
 	void SetCard(const Padel::Ui::FPlayerCardView& InCard);
 	const Padel::Ui::FPlayerCardView& GetCard() const { return Card; }
 	int32 GetPlayerId() const { return Card.Id; }

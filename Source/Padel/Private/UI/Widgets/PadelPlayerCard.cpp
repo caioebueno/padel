@@ -133,6 +133,9 @@ FVector2D UPadelPlayerCard::SmallSize()
 void UPadelPlayerCard::SetCard(const Padel::Ui::FPlayerCardView& InCard)
 {
 	Card = InCard;
+	// Build now so the card's text is filled before Slate first asks for the widget (the
+	// setup screen reads it straight away, and so do the automation tests).
+	EnsureBuilt();
 	Refresh();
 }
 

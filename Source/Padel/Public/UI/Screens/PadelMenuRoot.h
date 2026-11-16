@@ -114,6 +114,8 @@ private:
 	void SwapScreen(EPadelScreen Screen, Padel::Ui::EUiTransition Transition);
 	void ApplyScreenLayers();
 	void RebuildForOptions();
+	/** Subscribes RebuildForOptions to PadelUi::OnOptionsChanged once. */
+	void ListenForOptions();
 	void UpdateFamilyFromKey(const FKey& Key, int32 UserIndex);
 	void UpdateStageSize(const FGeometry& Geometry);
 	void PressDirection(Padel::Ui::EUiInput Input);

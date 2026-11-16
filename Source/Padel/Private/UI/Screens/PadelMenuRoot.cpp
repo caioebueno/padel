@@ -63,17 +63,29 @@ void UPadelMenuRoot::NativeOnInitialized()
 	const Padel::Ui::FUiInputTiming& Input = PadelUi::Theme().Input;
 	Repeat.Configure(Input.RepeatDelay, Input.RepeatRate);
 	Stick.SetDeadZone(Input.StickDeadZone);
-	OptionsHandle = PadelUi::OnOptionsChanged().AddUObject(this, &UPadelMenuRoot::RebuildForOptions);
+	ListenForOptions();
+}
+
+void UPadelMenuRoot::ListenForOptions()
+{
+	// UUserWidget only calls NativeOnInitialized with an owning player, so a root made
+	// from a bare world (the automation tests) subscribes from BuildTree instead.
+	if (!OptionsHandle.IsValid())
+	{
+		OptionsHandle = PadelUi::OnOptionsChanged().AddUObject(this, &UPadelMenuRoot::RebuildForOptions);
+	}
 }
 
 void UPadelMenuRoot::NativeDestruct()
 {
 	PadelUi::OnOptionsChanged().Remove(OptionsHandle);
+	OptionsHandle.Reset();
 	Super::NativeDestruct();
 }
 
 void UPadelMenuRoot::BuildTree()
 {
+	ListenForOptions();
 	UOverlay* Root = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 	WidgetTree->RootWidget = Root;
 	auto AddFull = [Root](UWidget* Widget)
