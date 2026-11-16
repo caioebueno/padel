@@ -56,7 +56,8 @@
 		"ScreenIn": 0.24, "ScreenOut": 0.20, "ScreenSlideIn": 48, "ScreenSlideOut": 32,
 		"Stagger": 0.04, "StaggerMax": 6,
 		"DialogIn": 0.16, "DialogOut": 0.10, "DialogScaleFrom": 0.96,
-		"Pulse": 1.6, "PushIn": 6.0, "PushInScale": 1.04,
+		"Pulse": 1.6, "PulseMinAlpha": 0.5, "PushIn": 6.0, "PushInScale": 1.04,
+		"TitleUnderline": 0.4, "TitleFlash": 0.1,
 		"ReduceMotionFade": 0.16,
 		"ToastSeconds": 2.5, "ToastFade": 0.2,
 		"HintFlash": 0.12
