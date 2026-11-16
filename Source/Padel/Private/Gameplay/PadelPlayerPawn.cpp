@@ -159,3 +159,19 @@ void APadelPlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EnhancedInput->BindActionValue(InputConfig->GetAction(Action));
 	}
 }
+
+void APadelPlayerPawn::ShowController(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FPlayerRatings& Ratings)
+{
+	// The team sign flips at a change of ends (GDD 3.1): turn to face the net again.
+	if (Controller.GetTeamSign() != FacingTeamSign)
+	{
+		FacingTeamSign = Controller.GetTeamSign();
+		SetActorRotation(FRotator(0.0, FacingTeamSign > 0.0 ? 180.0 : 0.0, 0.0));
+		const Padel::Court::FVec3 Right = Padel::Shots::RightAxis(FacingTeamSign);
+		const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings.ForehandSign();
+		Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
+	}
+	FVector Location = Padel::ToWorld(Controller.GetMotion().GetPosition());
+	Location.Z += PadelPlayerPawnDetail::CapsuleHalfHeight;
+	SetActorLocation(Location);
+}

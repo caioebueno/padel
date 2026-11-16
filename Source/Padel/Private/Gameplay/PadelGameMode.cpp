@@ -7,6 +7,7 @@
 #include "Engine/SkyLight.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Gameplay/PadelMatchDirector.h"
 #include "Gameplay/PadelPlayerController.h"
 #include "PadelLog.h"
 #include "Presentation/PadelBroadcastCamera.h"
@@ -17,7 +18,7 @@ APadelGameMode::APadelGameMode()
 	PlayerControllerClass = APadelPlayerController::StaticClass();
 	// Menus, HUD and the match flow (Agent 7).
 	HUDClass = APadelHUD::StaticClass();
-	// No pawn yet: the player watches from the broadcast camera until Agent 3 adds the player.
+	// No default pawn: APadelMatchDirector spawns the four players when a match starts.
 	DefaultPawnClass = nullptr;
 }
 
@@ -60,6 +61,12 @@ void APadelGameMode::SpawnPlaceholderStage()
 			Light->SetIntensity(1.0f);
 			Light->RecaptureSky();
 		}
+	}
+
+	// The real match: the HUD's Start match asks this actor for one.
+	if (bSpawnMatchDirector && !TActorIterator<APadelMatchDirector>(World))
+	{
+		World->SpawnActor<APadelMatchDirector>(APadelMatchDirector::StaticClass(), FTransform::Identity, Params);
 	}
 
 	if (!TActorIterator<APadelBroadcastCamera>(World))
