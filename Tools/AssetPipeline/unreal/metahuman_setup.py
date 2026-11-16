@@ -167,6 +167,53 @@ def build_retargeter(source: unreal.IKRigDefinition, target: unreal.IKRigDefinit
     log(f"built {RETARGETER}")
 
 
+# Outfit material slot -> palette part. The Creator's default garment is a shirt and shorts
+# that both come out grey, which reads as one long gown; MetaHuman garments colour through
+# these two parameters.
+KIT_PARTS = {"_Shirt": "Shirt", "_Short": "Shorts", "_Pants": "Shorts", "_Socks": "Socks", "_Shoe": "Shoes"}
+KIT_PARAMS = ("diffuse_color_1", "diffuse_color_2")
+
+
+def srgb_to_linear(hex_colour: str) -> unreal.LinearColor:
+    def ch(v: int) -> float:
+        c = v / 255.0
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    h = hex_colour.lstrip("#")
+    return unreal.LinearColor(ch(int(h[0:2], 16)), ch(int(h[2:4], 16)), ch(int(h[4:6], 16)), 1.0)
+
+
+def paint_kits(bodies) -> None:
+    """Colours each assembled MetaHuman's garments with its team kit from palette.json."""
+    palette = json.loads((PROJECT / "Tools" / "AssetPipeline" / "config" / "palette.json").read_text(encoding="utf-8"))
+    lib = unreal.MaterialEditingLibrary
+    for row in bodies:
+        if row["Name"] in MISSING:
+            continue
+        kit = palette.get(row.get("Kit", ""))
+        if not kit:
+            fail(f"{row['Name']}: Kit {row.get('Kit')!r} is not a palette group")
+            continue
+        folder = object_path(row["MetaHumanClass"]).rsplit("/", 1)[0]
+        painted = []
+        for path in ASSETS.list_assets(folder, recursive=True):
+            mi = unreal.load_asset(path)
+            if not isinstance(mi, unreal.MaterialInstanceConstant):
+                continue
+            name = mi.get_name()
+            part = next((p for suffix, p in KIT_PARTS.items() if name.endswith(suffix)), None)
+            if part is None or part not in kit:
+                continue
+            colour = srgb_to_linear(kit[part]["color"])
+            names = [str(n) for n in lib.get_vector_parameter_names(mi)]
+            for param in KIT_PARAMS:
+                if param in names:
+                    lib.set_material_instance_vector_parameter_value(mi, param, colour)
+            lib.update_material_instance(mi)
+            ASSETS.save_loaded_asset(mi)
+            painted.append(f"{name}={kit[part]['color']}")
+        log(f"{row['Name']}: kit {row['Kit']}: " + (", ".join(painted) if painted else "no garment materials found"))
+
+
 def main() -> None:
     settings = load_json("Animation.json")[0]
     bodies = load_json("PlayerBodies.json")
@@ -181,6 +228,8 @@ def main() -> None:
         target = target_rig(target_mesh)
         if source and target:
             build_retargeter(source, target, mesh, target_mesh)
+
+    paint_kits(bodies)
 
     if MISSING:
         log(f"players still on the placeholder: {', '.join(MISSING)}")

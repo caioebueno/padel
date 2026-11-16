@@ -22,7 +22,7 @@ Do Selva first, all the way to step 9, then check it in a match before making th
 3. **Skin, eyes, teeth** from the table.
 4. **Hair and face hair** (Grooms): pick the closest style from the table. Short styles are cheaper.
 5. **Body.** Set **Height** to the table's height and the build from the table (athletic for all four).
-6. **Wardrobe.** Pick a plain short-sleeve sports top, shorts, sports socks and trainers. Set the top colour to the team colour: Team A red `#C8321E` with black shorts `#1A1C22`; Team B purple `#6F2FA3` with white shorts `#ECECEC`. No logos or brand marks.
+6. **Wardrobe.** In **Hair & Clothing › Selection**, wear the default garment (shirt and shorts). You don't need to colour it: `metahuman_setup.py` paints the shirt and shorts in the player's team kit from `palette.json` (`Kit` in `Data/PlayerBodies.json`) every time it runs. UE 5.8's built-in wardrobe has no shoes or socks; trainers need a MetaHuman clothing pack added to the project.
 7. **Auto-Rig.** Choose **Joints Only** (no blend shapes) and run it. Wait for it to finish.
 8. **Textures.** Download the texture source at **2K**.
 9. **Assemble.** In **Assembly**, pick the **optimised** pipeline (the one for games, not "Cine") at **Medium** quality. Set the output (root) folder to `/Game/Padel/Characters/MetaHumans` and the name to the same name as step 1. Click **Assemble**. You should get `/Game/Padel/Characters/MetaHumans/SelvaArunde/BP_SelvaArunde`.
