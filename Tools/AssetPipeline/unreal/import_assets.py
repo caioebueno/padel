@@ -464,7 +464,10 @@ def _import_static_lods(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None
     subsystem = _static_mesh_editor()
     for i in range(1, len(asset.lods) + 1):
         if subsystem.import_lod(mesh, i, str(asset.lod_fbx_path(i))) < 0:
-            fail(f"{asset.asset_name}: LOD{i} import")
+            # The commandlet's EditorStaticMeshLibrary can't import LODs in UE 5.8: keep LOD0
+            # and Unreal's own reduction rather than failing the whole import.
+            log(f"{asset.asset_name}: LOD{i} not imported in this engine; Unreal reduces LOD0 instead")
+            return
     sizes = [1.0] + [lod.screen_size for lod in asset.lods]
     setter = getattr(subsystem, "set_lod_screen_sizes", None)
     if setter is None:
@@ -481,7 +484,10 @@ def _import_static_lods(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None
 def _keep_uv1(asset: catalogue.Asset, mesh: unreal.StaticMesh) -> None:
     """The court surface carries its court-space UVs in channel 1. Lightmap UV
     generation would write over that channel, and Lumen needs no lightmaps."""
-    subsystem = _static_mesh_editor()
+    subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+    if subsystem is None:
+        log(f"{asset.asset_name}: no StaticMeshEditorSubsystem in the commandlet; UV channels not checked")
+        return
     if hasattr(subsystem, "set_generate_lightmap_uv"):
         subsystem.set_generate_lightmap_uv(mesh, False)
     channels = subsystem.get_num_uv_channels(mesh, 0) if hasattr(subsystem, "get_num_uv_channels") else 2
