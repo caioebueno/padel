@@ -162,7 +162,7 @@ namespace Padel::Animation
 		const FVec3 BodyRight = Vec(-BodyForward.Y * Handed, BodyForward.X * Handed, 0.0);
 		Frame.DirectionDeg = Speed > 1e-6 ? std::atan2(DotProduct(In.Velocity, BodyRight), DotProduct(In.Velocity, BodyForward)) * RadToDeg : 0.0;
 
-		// Ready-stance depth (N1, movement doc 2.1): deeper at the net, shallower at the back.
+		// Ready-stance depth (N1, movement doc 2.1): taller at the net, lower at the back glass.
 		const double FromNet = Clamp(std::fabs(In.Position.X) / Court::HalfLength, 0.0, 1.0);
 		Frame.CrouchAlpha = Lerp(S.ReadyCrouchAlphaNet, S.ReadyCrouchAlphaBack, FromNet);
 

@@ -86,7 +86,7 @@ namespace Padel::Animation
 		// World yaw of the net direction for this player's team, degrees, Unreal convention.
 		double NetYawDeg = 0.0;
 		// N1 ready-stance depth: how much the crouched clips weigh against the upright ones
-		// (Animation.json ReadyCrouchAlphaNet at the net down to ReadyCrouchAlphaBack at the back).
+		// (Animation.json ReadyCrouchAlphaNet at the net to ReadyCrouchAlphaBack at the back).
 		double CrouchAlpha = 0.0;
 		// Play rate for the run or sprint cycle so the feet match the ground speed.
 		double StridePlayRate = 1.0;

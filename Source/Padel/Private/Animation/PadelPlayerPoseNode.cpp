@@ -179,7 +179,7 @@ bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output) const
 		return false;
 	}
 	// N1 ready-stance depth: the upright idle between points; in a rally, the crouched ready
-	// idle mixed in by CrouchAlpha (deeper at the net). The C0 crouch alone was a squat.
+	// idle mixed in by CrouchAlpha (lower at the back glass). The C0 crouch alone was a squat.
 	const float Crouch = static_cast<float>(FMath::Clamp(CrouchAlpha, 0.0, 1.0));
 	if (bReadyStance && Set.Ready && Crouch > 0.0f)
 	{

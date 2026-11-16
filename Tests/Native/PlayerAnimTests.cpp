@@ -633,7 +633,7 @@ TEST_CASE("Anim.Facing: square to the net by default, toward travel in Crossover
 	CHECK(Model.GetFrame().FacingYawDeg == Approx(180.0));
 }
 
-TEST_CASE("Anim.Ready: the stance is deeper at the net than at the back glass (N1)")
+TEST_CASE("Anim.Ready: the stance is taller at the net and lower at the back glass (N1)")
 {
 	const FAnimSettings Settings = LoadSettings();
 	const FAnimClipLibrary Clips = LoadClips();
@@ -642,16 +642,17 @@ TEST_CASE("Anim.Ready: the stance is deeper at the net than at the back glass (N
 	FPlayerAnimInput In;
 	In.TeamSign = 1.0;
 	In.bRallyLive = true;
-	In.Position = Vec(0.5, 0.0, 0.0);
-	const double AtNet = Model.Step(In, Dt).CrouchAlpha;
-	In.Position = Vec(9.5, 0.0, 0.0);
-	const double AtBack = Model.Step(In, Dt).CrouchAlpha;
-	CHECK(AtNet > AtBack);
-	CHECK(AtNet <= Settings.ReadyCrouchAlphaNet + 1e-9);
-	CHECK(AtBack >= Settings.ReadyCrouchAlphaBack - 1e-9);
-	// About 0.4 in the middle of the half (movement doc 2.1).
+	// Net players stand taller with the racket up; back-court players stay low to dig balls off the glass.
+	CHECK(Settings.ReadyCrouchAlphaBack > Settings.ReadyCrouchAlphaNet);
+	In.Position = Vec(0.0, 0.0, 0.0);
+	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(Settings.ReadyCrouchAlphaNet));
+	In.Position = Vec(10.0, 0.0, 0.0);
+	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(Settings.ReadyCrouchAlphaBack));
+	// Halfway in between in the middle of the half, about 0.4 (movement doc 2.1).
 	In.Position = Vec(5.0, 0.0, 0.0);
-	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(0.425).epsilon(0.1));
+	const double Mid = Model.Step(In, Dt).CrouchAlpha;
+	CHECK(Mid == Approx(0.5 * (Settings.ReadyCrouchAlphaNet + Settings.ReadyCrouchAlphaBack)));
+	CHECK(Mid == Approx(0.4).epsilon(0.15));
 }
 
 TEST_CASE("Anim.Contact: the forward swing runs over ForwardS with no jump, contact only on the hit tick (N2)")
