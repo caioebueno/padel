@@ -1,4 +1,4 @@
-"""Procedural textures: the mask textures for the welded mesh and the net, and the
+"""Procedural textures: the mask texture for the net, and the
 ball's felt with its seam (the seam is what makes spin readable, GDD 10).
 
 Pure Python (no numpy or Pillow) so the pipeline runs with only Blender and the
@@ -79,9 +79,10 @@ def ball_felt(path: Path, felt: str, seam: str, width: int = 512, height: int = 
 
 
 def generate_all(palette: dict, out_dir: Path = TEXTURE_DIR) -> list[Path]:
+    from . import metal_textures  # imported here: it builds on write_png above
     felt = palette["ball"]["Felt"]
     return [
-        write_png(out_dir / "T_WeldedMesh_Mask.png", 64, 64, 1, _grid_mask(64, 5.0)),
         write_png(out_dir / "T_NetGrid_Mask.png", 64, 64, 1, _grid_mask(64, 6.0)),
         ball_felt(out_dir / "T_Ball_Felt.png", felt["color"], felt.get("seam_color", "#ffffff")),
+        *metal_textures.generate_all(out_dir),
     ]

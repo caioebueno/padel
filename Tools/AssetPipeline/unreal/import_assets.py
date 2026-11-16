@@ -8,7 +8,8 @@ config/palette.json and the FBX/PNG files), like the input actions in
 PadelInputConfig.cpp, so never edit these assets by hand: change the config and
 run it again.
 
-  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive)
+  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive,
+                                            and Metal, WireMesh from metal_materials.py)
   /Game/Padel/Materials/MI_<Group>_<Name>   one instance per palette entry
   /Game/Padel/Materials/T_*                 textures
   /Game/Padel/<Category>/SM_* and SK_*      meshes, with their slots set to the MIs above
@@ -28,6 +29,9 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 from asset_lib import SOURCE_ART_DIR, catalogue  # noqa: E402
+
+sys.path.insert(0, str(HERE))
+import metal_materials  # noqa: E402  (court steel and welded mesh masters)
 
 MATERIAL_DIR = "/Game/Padel/Materials"
 MEL = unreal.MaterialEditingLibrary
@@ -350,7 +354,9 @@ def main() -> None:
     palette = catalogue.load_palette()
     import_textures()
     build_masters()
+    metal_materials.build_masters(log, fail)
     build_instances(palette)
+    metal_materials.apply_instance_params(palette, catalogue.material_name, fail)
     for asset in cat.assets:
         if asset.enabled:
             try:

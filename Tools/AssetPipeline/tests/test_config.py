@@ -53,7 +53,7 @@ class CatalogueTest(unittest.TestCase):
     def test_shipped_catalogue_is_valid(self) -> None:
         cat = catalogue.load()
         ids = [a.id for a in cat.assets]
-        for required in ("CourtIndoor", "CourtIndoorGlass", "Ball", "RacketPlaceholder",
+        for required in ("CourtIndoor", "CourtIndoorGlass", "CourtFrame", "CourtMesh", "Ball", "RacketPlaceholder",
                          "PlayerPlaceholderA", "PlayerPlaceholderB"):
             self.assertIn(required, ids)
 
@@ -150,13 +150,16 @@ class TexturesTest(unittest.TestCase):
     def test_writes_valid_pngs_of_the_right_size(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             paths = textures.generate_all(catalogue.load_palette(), Path(tmp))
-            self.assertEqual([p.name for p in paths], ["T_WeldedMesh_Mask.png", "T_NetGrid_Mask.png", "T_Ball_Felt.png"])
+            # The welded mesh needs no mask: its material draws the wires (unreal/metal_materials.py).
+            self.assertEqual([p.name for p in paths], ["T_NetGrid_Mask.png", "T_Ball_Felt.png", "T_PowderCoat_N.png"])
             for path in paths:
                 data = path.read_bytes()
                 self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
-            felt = paths[2].read_bytes()
+            felt = paths[1].read_bytes()
             self.assertEqual(int.from_bytes(felt[16:20], "big"), 512)
             self.assertEqual(int.from_bytes(felt[20:24], "big"), 256)
+            normal = paths[2].read_bytes()
+            self.assertEqual(int.from_bytes(normal[16:20], "big"), 256)
 
 
 if __name__ == "__main__":

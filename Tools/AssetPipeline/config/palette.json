@@ -27,18 +27,48 @@
       "edge_tint": "#7fb6a8"
     },
     "Frame": {
+      "master": "Metal",
+      "_note": "Anthracite polyester powder coat (satin). A paint, so a dielectric: metallic 0, albedo about 0.04 linear.",
+      "color": "#383e42",
+      "roughness": 0.42,
+      "metallic": 0.0,
+      "specular": 0.5,
+      "normal_strength": 0.35,
+      "normal_tiling_m": 0.08,
+      "roughness_variation": 0.08,
+      "grime_color": "#4a463f",
+      "grime_height_m": 0.4,
+      "grime_amount": 0.35
+    },
+    "Steel": {
+      "master": "Metal",
+      "_note": "Hot-dip galvanised bolts, nuts and washers: bare zinc, so metallic.",
+      "color": "#a9adb0",
+      "roughness": 0.4,
+      "metallic": 1.0,
+      "specular": 0.5,
+      "normal_strength": 0.0,
+      "normal_tiling_m": 0.08,
+      "roughness_variation": 0.18,
+      "grime_color": "#6d665a",
+      "grime_height_m": 0.25,
+      "grime_amount": 0.3
+    },
+    "Cap": {
       "master": "Opaque",
-      "color": "#1e2126",
-      "roughness": 0.38,
-      "metallic": 1.0
+      "_note": "Moulded black plastic post caps.",
+      "color": "#2b2c2e",
+      "roughness": 0.55
     },
     "Mesh": {
-      "master": "Masked",
-      "color": "#24272c",
+      "master": "WireMesh",
+      "_note": "Welded mesh, 50 mm cells of 4 mm wire, powder coated like the frame. The material draws the wires from the UVs (one UV unit = one cell).",
+      "color": "#383e42",
       "roughness": 0.45,
-      "metallic": 1.0,
-      "mask": "T_WeldedMesh_Mask",
-      "tiling_m": 0.05
+      "metallic": 0.0,
+      "specular": 0.5,
+      "cell_m": 0.05,
+      "wire_m": 0.004
     },
     "Net": {
       "master": "Masked",

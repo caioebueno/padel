@@ -17,9 +17,9 @@ PALETTE_PATH = CONFIG_DIR / "palette.json"
 CATEGORIES = ("Court", "Equipment", "Characters")
 KINDS = ("static", "skeletal")
 SOURCES = ("procedural", "ai", "external")
-BUILDERS = ("court", "ball", "racket", "character")
+BUILDERS = ("court", "court_frame", "ball", "racket", "character")
 PROVIDERS = ("meshy", "tripo")
-MASTERS = ("Opaque", "Turf", "Glass", "Masked", "Emissive")
+MASTERS = ("Opaque", "Turf", "Glass", "Masked", "Emissive", "Metal", "WireMesh")
 # Epic naming: SM_ static mesh, SK_ skeletal mesh.
 PREFIX = {"static": "SM", "skeletal": "SK"}
 _ID_RE = re.compile(r"^[A-Z][A-Za-z0-9]*$")
