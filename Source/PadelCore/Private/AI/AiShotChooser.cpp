@@ -1,4 +1,5 @@
 #include "AI/AiShotChooser.h"
+#include "PadelMath.h"
 
 #include "AI/AiTeamFrame.h"
 
@@ -42,8 +43,8 @@ namespace
 	{
 		const double Angle = Rng.Range(0.0, 6.283185307179586);
 		const double Radius = T.AimScatterBaseM * D.AimScatterMult * std::sqrt(Rng.NextDouble());
-		Target.X += std::cos(Angle) * Radius;
-		Target.Y += std::sin(Angle) * Radius;
+		Target.X += Padel::Math::Cos(Angle) * Radius;
+		Target.Y += Padel::Math::Sin(Angle) * Radius;
 		Target.Z = 0.0;
 
 		FAiShotDecision Decision;

@@ -1,4 +1,5 @@
 #include "Shots/ShotResolver.h"
+#include "PadelMath.h"
 
 #include "Shots/AimMapper.h"
 #include "Shots/TimingGrader.h"
@@ -96,7 +97,7 @@ namespace Padel::Shots
 		}
 		const double Angle = Rng.NextDouble() * Tau;
 		const double R = std::sqrt(Rng.NextDouble()) * Radius;
-		Intent.Target = Add(Add(Aimed, Scale(RightAxis(C.TeamSign), Pull)), Vec(std::cos(Angle) * R, std::sin(Angle) * R, 0.0));
+		Intent.Target = Add(Add(Aimed, Scale(RightAxis(C.TeamSign), Pull)), Vec(Padel::Math::Cos(Angle) * R, Padel::Math::Sin(Angle) * R, 0.0));
 		return Intent;
 	}
 

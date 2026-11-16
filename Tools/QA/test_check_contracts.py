@@ -163,6 +163,32 @@ class Checks(unittest.TestCase):
         self.f.write("Source/PadelCore/Private/Ball.cpp", '#include "Ball.h"\n')
         self.assertEqual(self.f.errors("G-04") + self.f.errors("G-05"), [])
 
+    def test_portable_math(self) -> None:
+        self.f.write("Source/PadelCore/Public/PadelCoreApi.h", "#pragma once\n")
+        self.f.write("Source/PadelCore/Private/PadelMath.cpp",
+                     '#include "PadelCoreApi.h"\n#include <cmath>\ndouble S(double X) { return std::sin(X); }\n')
+        self.f.write("Source/PadelCore/Private/Spin.cpp", """\
+            #include "PadelCoreApi.h"
+            #include "PadelMath.h"
+            // std::sin(x) in a comment is fine
+            double A(double X) { return std::atan2(X, 1.0) + Padel::Math::Sin(X) + std::sqrt(X); }
+            double B(double X) { return powf(X, 2.0f) + Rng.Exp(); }
+            """)
+        errors = self.f.errors("G-09")
+        self.assertEqual(len(errors), 2, errors)
+        self.assertTrue(any("Spin.cpp:4 calls std::atan2" in e for e in errors))
+        self.assertTrue(any("Spin.cpp:5 calls powf" in e for e in errors))
+
+    def test_fp_pragmas_reach_every_core_file(self) -> None:
+        self.f.write("Source/PadelCore/Public/PadelCoreApi.h", "#pragma once\n")
+        self.f.write("Source/PadelCore/Public/Good.h", '#pragma once\n#include "PadelCoreApi.h"\n')
+        self.f.write("Source/PadelCore/Private/Good.cpp", '#include "Good.h"\n')
+        self.f.write("Source/PadelCore/Public/Bad.h", "#pragma once\n#include <cmath>\n")
+        self.f.write("Source/PadelCore/Private/Bad.cpp", '#include "Bad.h"\n')
+        errors = self.f.errors("G-10")
+        self.assertEqual(len(errors), 2, errors)
+        self.assertTrue(all("Bad." in e for e in errors))
+
     def test_chaos_ball(self) -> None:
         self.f.write("Source/Padel/Private/Gameplay/Ball.cpp", """\
             void A() { Mesh->SetSimulatePhysics(true); }

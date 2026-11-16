@@ -1,4 +1,5 @@
 #include "AI/AiBallPredictor.h"
+#include "PadelMath.h"
 
 #include <cmath>
 
@@ -51,7 +52,7 @@ std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, d
 				{
 					const double Angle = Rng.Range(0.0, 6.283185307179586);
 					const double Radius = NoiseM * std::sqrt(Rng.NextDouble());
-					Offset = { std::cos(Angle) * Radius, std::sin(Angle) * Radius, 0.0 };
+					Offset = { Padel::Math::Cos(Angle) * Radius, Padel::Math::Sin(Angle) * Radius, 0.0 };
 				}
 				bNoiseDrawn = true;
 				if (Bounces >= 1)

@@ -1,4 +1,5 @@
 #include "AI/AiTeamController.h"
+#include "PadelMath.h"
 
 #include "AI/AiTeamFrame.h"
 
@@ -44,7 +45,7 @@ void FAiTeamController::OnPointStarted(bool bServing)
 		const double Radius = Tactics.HomeErrorMaxM * (1.0 - ByRating(Profiles[Slot].Positioning, 0.0, 1.0));
 		const double Angle = Rng.Range(0.0, 6.283185307179586);
 		const double R = Radius * std::sqrt(Rng.NextDouble());
-		HomeError[Slot] = { std::cos(Angle) * R, std::sin(Angle) * R };
+		HomeError[Slot] = { Padel::Math::Cos(Angle) * R, Padel::Math::Sin(Angle) * R };
 	}
 }
 

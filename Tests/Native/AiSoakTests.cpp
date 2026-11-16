@@ -2,7 +2,7 @@
 // score) with all four players swinging through the shot system's controller. Fixed
 // seeds; no point may hang and every point must end with a GDD 3.3 reason.
 //
-// CI runs a short soak on every PR. The full 100 matches:
+// CI runs a 24-match soak on every PR. The full 100 matches:
 //   PADEL_SOAK_MATCHES=100 Tools/RunNativeTests.sh -tc="Ai.Soak*"
 // PADEL_SOAK_DEBUG=1 prints every stuck point and whiff.
 #include "doctest.h"
@@ -314,7 +314,14 @@ namespace
 		for (int Index = 0; Index < Matches; ++Index)
 		{
 			FSoakMatch Game;
-			Total.Add(Game.Play(D, D, FirstSeed + static_cast<uint64_t>(Index)));
+			const uint64_t Seed = FirstSeed + static_cast<uint64_t>(Index);
+			const FSoakStats One = Game.Play(D, D, Seed);
+			if (std::getenv("PADEL_SOAK_PER_MATCH"))
+			{
+				std::printf("[soak]   %s seed %llu: %d points, %.2f shots/point, %d whiffs\n", Level, static_cast<unsigned long long>(Seed),
+					One.Points, One.ShotsPerPoint(), One.Whiffs);
+			}
+			Total.Add(One);
 		}
 		return Total;
 	}
@@ -374,7 +381,11 @@ namespace
 
 TEST_CASE("Ai.Soak: Medium AI-vs-AI matches finish with no stuck points")
 {
-	const FSoakStats S = Soak("Medium", SoakMatches(4), 1000);
+	// 24 matches from the fixed seeds 1000 to 1023. One match's shots per point spreads
+	// with a standard deviation of about 1.2, so 4 matches left the mean within about
+	// 0.6 of its true value and a change could fail the 12-shot cap on luck alone. With 24 it
+	// is about 0.24. PADEL_SOAK_PER_MATCH=1 prints each match.
+	const FSoakStats S = Soak("Medium", SoakMatches(24), 1000);
 	Report("Medium", S);
 	CHECK(S.StuckPoints == 0);
 	CHECK(S.Unfinished == 0);

@@ -1,5 +1,5 @@
 {
-	"_doc": "Lighting presets (GDD 10: realistic, televised indoor padel). Physically based: spot lights in candela, the sun in lux, colour in kelvin, a fixed broadcast exposure in EV100 (no eye adaptation, so the picture never pumps when the camera moves). Metres and degrees on the court axes. APadelVenueLighting applies a preset; Padel::Presentation::Lighting builds the fixtures and the native tests check every preset for court illuminance, uniformity and glare at the broadcast camera. See docs/decisions/0006-lighting-and-venue.md.",
+	"_doc": "Lighting presets (GDD 10: realistic, televised indoor padel). Physically based: spot lights in candela, the sun in lux, colour in kelvin, a fixed broadcast exposure in EV100 (no eye adaptation, so the picture never pumps when the camera moves). Metres and degrees on the court axes. APadelVenueLighting applies a preset; Padel::Presentation::Lighting builds the fixtures and the native tests check every preset for court illuminance, uniformity and glare at the broadcast camera. See docs/decisions/0009-lighting-and-venue.md.",
 	"Default": "IndoorClub",
 	"FixtureMesh": "/Game/Padel/Venue/SM_FloodlightHead",
 	"Presets": {

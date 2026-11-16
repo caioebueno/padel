@@ -14,10 +14,10 @@ That command does three things:
 
 | Asset | Unreal path | Source |
 |---|---|---|
-| `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0006](../../docs/decisions/0006-court-surface.md)) |
+| `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0008](../../docs/decisions/0008-court-surface.md)) |
 | `CourtFrame` | `/Game/Padel/Court/SM_CourtFrame` | Blender script (`build_court_frame.py`): posts, corner L-posts, mesh panel frames, base plates, gussets, anchors and bolts. Nanite |
 | `CourtMesh` | `/Game/Padel/Court/SM_CourtMesh` | Blender script (`build_court_frame.py`): one quad per mesh opening; the `WireMesh` material draws the wires. Masked, not Nanite |
-| `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0006](../../docs/decisions/0006-net-and-hit-reaction.md)) |
+| `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0010](../../docs/decisions/0010-net-and-hit-reaction.md)) |
 | `CourtGlass` | `/Game/Padel/Court/SM_CourtGlass` | Blender script `build_court_glass.py` with `config/glass.json`: 18 tempered panels with arrised edges and their bolt fixings, plus the glass dirt textures. Not Nanite, because Nanite can't render translucent materials. See [0006](../../docs/decisions/0006-court-glass.md) |
 | `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script (`build_equipment.py`) with `config/ball.json`: 65 mm, Cloth-shaded felt, seam groove, original printed mark, fuzz shell at LOD0, hand-built LOD1 and LOD2. See [0007](../../docs/decisions/0007-ball.md) |
 | `BallTrail` | `/Game/Padel/Equipment/SM_BallTrail` | Blender script: a tapered tube 1 m long along -X, stretched by `APadelBall` at high speed. Translucent |

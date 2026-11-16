@@ -253,7 +253,7 @@ TEST_CASE("Lighting.Data.ColourAndShadowBudget")
 				CHECK(std::abs(Preset.Post.WhiteBalanceK - F.TemperatureK) <= 500.0);
 			}
 		}
-		// Shadow-casting local lights are the biggest cost on an M2 Pro (decision 0006).
+		// Shadow-casting local lights are the biggest cost on an M2 Pro (decision 0009).
 		CHECK(Preset.MaxShadowedFixtures <= 4);
 		CHECK(Shadowed <= Preset.MaxShadowedFixtures);
 		CHECK((Shadowed > 0) == Preset.bFloodlightsOn);

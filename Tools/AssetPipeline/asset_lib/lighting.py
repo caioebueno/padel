@@ -1,4 +1,4 @@
-"""Reads Data/Lighting.json for the venue builders (decision 0006).
+"""Reads Data/Lighting.json for the venue builders (decision 0009).
 
 The game builds its floodlights from the same rows in C++
 (Padel::Presentation::Lighting::BuildFixtures); this mirrors only the positions, so the
