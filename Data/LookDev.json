@@ -1,0 +1,103 @@
+{
+	"_doc": "The shared look-dev stage (APadelLookDevStage, run with ?game=/Script/Padel.PadelLookDevGameMode). It places every court part and venue mesh listed here at the world origin, in court coordinates, and lights it with a Data/Lighting.json preset. Each part's owner keeps their own entry up to date. Meshes that haven't been imported yet are skipped and logged; if no Court part is present at all, the stage shows the placeholder court (APadelCourt) instead. Venue: Indoor, Outdoor or Any, matched against the active lighting preset. Cameras are look-dev bookmarks in metres; console: Padel.LookDev.Camera <name or index>, Padel.LookDev.Preset <name>, Padel.LookDev.Next.",
+	"Parts": [
+		{
+			"Part": "Surface",
+			"Group": "Court",
+			"Owner": "court surface",
+			"Venue": "Any",
+			"Meshes": ["/Game/Padel/Court/SM_CourtSurface"]
+		},
+		{
+			"Part": "Glass",
+			"Group": "Court",
+			"Owner": "court glass",
+			"Venue": "Any",
+			"Meshes": ["/Game/Padel/Court/SM_CourtGlass"]
+		},
+		{
+			"Part": "MeshAndFrame",
+			"Group": "Court",
+			"Owner": "court mesh and frame",
+			"Venue": "Any",
+			"Meshes": ["/Game/Padel/Court/SM_CourtFrame", "/Game/Padel/Court/SM_CourtMesh"]
+		},
+		{
+			"Part": "Net",
+			"Group": "Court",
+			"Owner": "court net",
+			"Venue": "Any",
+			"Meshes": ["/Game/Padel/Court/SM_CourtNet"]
+		},
+		{
+			"Part": "IndoorHall",
+			"Group": "Venue",
+			"Owner": "lighting and venue",
+			"Venue": "Indoor",
+			"Meshes": ["/Game/Padel/Venue/SM_VenueHall", "/Game/Padel/Venue/SM_VenueLightTruss"]
+		},
+		{
+			"Part": "OutdoorClub",
+			"Group": "Venue",
+			"Owner": "lighting and venue",
+			"Venue": "Outdoor",
+			"Meshes": ["/Game/Padel/Venue/SM_VenueGround", "/Game/Padel/Venue/SM_VenueMasts"]
+		},
+		{
+			"Part": "Stands",
+			"Group": "Venue",
+			"Owner": "lighting and venue",
+			"Venue": "Any",
+			"Meshes": ["/Game/Padel/Venue/SM_VenueStands", "/Game/Padel/Venue/SM_VenueBoards"]
+		}
+	],
+	"CourtFallback": [],
+	"Cameras": [
+		{
+			"_comment": "The match camera's pose (GDD 9, Data/Camera.json): judge everything here first.",
+			"Name": "Broadcast",
+			"LocationM": [17.0, 0.0, 8.0],
+			"LookAtM": [-2.0, 0.0, 0.0],
+			"FovDeg": 50.0
+		},
+		{
+			"Name": "CornerHigh",
+			"LocationM": [14.0, -12.5, 7.0],
+			"LookAtM": [0.0, 0.0, 0.5],
+			"FovDeg": 45.0
+		},
+		{
+			"Name": "NetSide",
+			"LocationM": [0.0, -11.0, 1.6],
+			"LookAtM": [0.0, 0.0, 1.0],
+			"FovDeg": 60.0
+		},
+		{
+			"_comment": "Player height inside the back corner: glass reflections and the frame up close.",
+			"Name": "BackGlassLow",
+			"LocationM": [9.0, 3.8, 1.6],
+			"LookAtM": [-4.0, -1.5, 1.2],
+			"FovDeg": 70.0
+		},
+		{
+			"Name": "NetClose",
+			"LocationM": [1.5, -3.5, 1.1],
+			"LookAtM": [0.0, -2.0, 0.85],
+			"FovDeg": 45.0
+		},
+		{
+			"_comment": "A player at the net looking up at a lob: the lights must sit outside the side walls, never behind the ball.",
+			"Name": "LobView",
+			"LocationM": [3.0, -1.5, 1.7],
+			"LookAtM": [-1.0, -5.5, 8.6],
+			"FovDeg": 75.0
+		},
+		{
+			"_comment": "Ankle height on the turf: sand, fibres and the lines.",
+			"Name": "TurfMacro",
+			"LocationM": [6.0, 1.0, 0.35],
+			"LookAtM": [4.0, 0.0, 0.0],
+			"FovDeg": 40.0
+		}
+	]
+}

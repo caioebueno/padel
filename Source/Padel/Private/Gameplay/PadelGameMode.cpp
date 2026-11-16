@@ -1,16 +1,13 @@
 #include "Gameplay/PadelGameMode.h"
 
-#include "Components/DirectionalLightComponent.h"
-#include "Components/SkyLightComponent.h"
 #include "Court/PadelCourt.h"
-#include "Engine/DirectionalLight.h"
-#include "Engine/SkyLight.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Gameplay/PadelMatchDirector.h"
 #include "Gameplay/PadelPlayerController.h"
 #include "PadelLog.h"
 #include "Presentation/PadelBroadcastCamera.h"
+#include "Presentation/PadelVenueLighting.h"
 #include "UI/PadelHUD.h"
 
 APadelGameMode::APadelGameMode()
@@ -44,23 +41,12 @@ void APadelGameMode::SpawnPlaceholderStage()
 	{
 		World->SpawnActor<APadelCourt>(APadelCourt::StaticClass(), FTransform::Identity, Params);
 		UE_LOG(LogPadel, Log, TEXT("No court in the level: spawned the placeholder court."));
+	}
 
-		// Warm overhead light (GDD 10) plus fill. Movable, since nothing is baked.
-		if (ADirectionalLight* Sun = World->SpawnActor<ADirectionalLight>(ADirectionalLight::StaticClass(),
-			FTransform(FRotator(-60.0, 25.0, 0.0)), Params))
-		{
-			UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
-			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(6.0f);
-			Light->SetLightColor(FLinearColor(1.0f, 0.95f, 0.88f));
-		}
-		if (ASkyLight* Sky = World->SpawnActor<ASkyLight>(ASkyLight::StaticClass(), FTransform::Identity, Params))
-		{
-			USkyLightComponent* Light = Sky->GetLightComponent();
-			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(1.0f);
-			Light->RecaptureSky();
-		}
+	// The venue's floodlights, sky and broadcast post-process (GDD 10, Data/Lighting.json).
+	if (!TActorIterator<APadelVenueLighting>(World))
+	{
+		World->SpawnActor<APadelVenueLighting>(APadelVenueLighting::StaticClass(), FTransform::Identity, Params);
 	}
 
 	// The real match: the HUD's Start match asks this actor for one.

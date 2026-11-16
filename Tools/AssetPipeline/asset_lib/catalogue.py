@@ -14,10 +14,10 @@ CATALOGUE_PATH = CONFIG_DIR / "assets.json"
 PALETTE_PATH = CONFIG_DIR / "palette.json"
 
 # Content/Padel/<Category>/ in Unreal, SourceArt/<Category>/ on disk (CLAUDE.md layout).
-CATEGORIES = ("Court", "Equipment", "Characters")
+CATEGORIES = ("Court", "Equipment", "Characters", "Venue")
 KINDS = ("static", "skeletal")
 SOURCES = ("procedural", "ai", "external")
-BUILDERS = ("court", "court_glass", "court_frame", "ball", "racket", "character", "net", "court_surface")
+BUILDERS = ("court_glass", "court_frame", "court_surface", "net", "ball", "racket", "character", "venue")
 PROVIDERS = ("meshy", "tripo")
 MASTERS = ("Opaque", "Turf", "Glass", "Masked", "Emissive", "Net", "NetSolid", "Metal", "WireMesh")
 # Epic naming: SM_ static mesh, SK_ skeletal mesh.

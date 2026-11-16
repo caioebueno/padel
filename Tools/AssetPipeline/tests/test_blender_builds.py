@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from asset_lib import blender_runner, catalogue, court_spec
+from asset_lib import blender_runner, catalogue, court_spec, lighting
 
 try:
     blender_runner.command(Path("x.py"), Path("job.json"))
@@ -48,6 +48,8 @@ class BlenderBuildTest(unittest.TestCase):
                "body": asset.raw.get("body", {}), "net": asset.raw.get("net", {}), "lods": [{"ratio": l.ratio} for l in asset.lods],
                "out": str(out), "lod_outs": [str(self.out / f"{asset.asset_name}_LOD{i}.fbx")
                                              for i in range(1, len(asset.lods) + 1)]}
+        if asset.raw.get("builder") == "venue":
+            job["rigs"] = lighting.venue_rigs()
         job.update(extra)
         report = blender_runner.run(script, job)
         inspected = blender_runner.run("inspect_fbx", {"file": str(out)})
@@ -72,15 +74,6 @@ class BlenderBuildTest(unittest.TestCase):
         self.assertLessEqual(y, 0.038 + 1e-3)
         self.assertLessEqual(report["triangles"], self.cat.get("RacketPlaceholder").budget_tris)
         self.assertIn("MI_RacketA_Face", fbx["materials"])
-
-    def test_court_matches_courtspec(self) -> None:
-        _, solid = self.build("CourtIndoor", "build_court")
-        self.assertNotIn("MI_Court_Glass", solid["materials"])
-        for slot in ("MI_Court_LightPanel",):
-            self.assertIn(slot, solid["materials"])
-        # The net is CourtNet, the floor SM_CourtSurface and the fence CourtFrame and CourtMesh.
-        for slot in ("MI_Court_Net", "MI_Court_Turf", "MI_Court_Line", "MI_Court_Runoff", "MI_Court_Frame", "MI_Court_Mesh"):
-            self.assertNotIn(slot, solid["materials"])
 
     def test_net_matches_courtspec(self) -> None:
         asset = self.cat.get("CourtNet")
@@ -142,6 +135,53 @@ class BlenderBuildTest(unittest.TestCase):
         self.assertEqual(mesh["materials"], ["MI_Court_Mesh"])
         self.assertEqual(mesh_report["openings"], 34)
         self.assertEqual(mesh_report["triangles"], 2 * 34)
+
+    def test_hall_holds_the_broadcast_camera_and_clears_the_ceiling(self) -> None:
+        report, fbx = self.build("VenueHall", "build_venue")
+        # GDD 9: the camera is 6-8 m behind each back glass and 7-9 m up.
+        self.assertGreater(fbx["bounds_max_m"][0], self.spec["HalfLength"] + 8.0 + 1.0)
+        self.assertLess(fbx["bounds_min_m"][0], -(self.spec["HalfLength"] + 8.0 + 1.0))
+        self.assertGreater(fbx["bounds_max_m"][2], 9.0 + 1.0)
+        # The floor sits just under the court's run-off.
+        self.assertLess(fbx["bounds_min_m"][2], -0.02)
+        self.assertLessEqual(report["triangles"], self.cat.get("VenueHall").budget_tris)
+        for slot in ("MI_Venue_Concrete", "MI_Venue_WallLower", "MI_Venue_Steel"):
+            self.assertIn(slot, fbx["materials"])
+
+    def test_light_rigs_carry_the_fixtures_out_of_play(self) -> None:
+        rigs = lighting.venue_rigs()
+        truss, truss_fbx = self.build("VenueLightTruss", "build_venue")
+        # ARENA_SPEC 6.1: the rig's underside is the 8 m ceiling plane (GDD 2), nothing lower.
+        self.assertGreaterEqual(truss_fbx["bounds_min_m"][2], self.spec["CeilingHeight"])
+        self.assertLess(truss_fbx["bounds_min_m"][2], self.spec["CeilingHeight"] + 0.01)
+        # It reaches every court fixture.
+        xs = [x for x, _, _, role in rigs["Indoor"] if role == "Court"]
+        self.assertLessEqual(truss_fbx["bounds_min_m"][0], min(xs))
+        self.assertGreaterEqual(truss_fbx["bounds_max_m"][0], max(xs))
+        self.assertLessEqual(truss["triangles"], self.cat.get("VenueLightTruss").budget_tris)
+        masts, masts_fbx = self.build("VenueMasts", "build_venue")
+        self.assertGreater(masts["min_abs_y_m"], self.spec["HalfWidth"] + 0.3)
+        top = max(z for _, _, z, _ in rigs["Outdoor"])
+        self.assertGreater(masts_fbx["bounds_max_m"][2], top)
+
+    def test_stands_and_boards_stay_outside_the_run_off(self) -> None:
+        for asset_id in ("VenueStands", "VenueBoards"):
+            report, fbx = self.build(asset_id, "build_venue")
+            self.assertGreater(report["outside_runoff_m"], 0.0, asset_id)
+            self.assertLessEqual(report["triangles"], self.cat.get(asset_id).budget_tris)
+        _, boards = self.build("VenueBoards", "build_venue")
+        # Sponsor-free: club colours only, no texture with text or logos.
+        self.assertEqual(boards["materials"], ["MI_Venue_Board", "MI_Venue_BoardStripe", "MI_Venue_Steel"])
+
+    def test_floodlight_head_shines_along_plus_x(self) -> None:
+        report, fbx = self.build("FloodlightHead", "build_venue")
+        self.assertIn("MI_Venue_FixtureLens", fbx["materials"])
+        # Lens at the origin, housing behind it, only the visor in front.
+        self.assertLess(fbx["bounds_max_m"][0], 0.2)
+        self.assertLess(fbx["bounds_min_m"][0], -0.15)
+        for size in self.extent(fbx):
+            self.assertLess(size, 0.8)
+        self.assertLessEqual(report["triangles"], self.cat.get("FloodlightHead").budget_tris)
 
     def test_placeholder_player_is_rigged_for_unreal_and_sized(self) -> None:
         asset = self.cat.get("PlayerPlaceholderA")

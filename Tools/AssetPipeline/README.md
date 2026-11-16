@@ -15,7 +15,6 @@ That command does three things:
 | Asset | Unreal path | Source |
 |---|---|---|
 | `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0006](../../docs/decisions/0006-court-surface.md)) |
-| `CourtIndoor` | `/Game/Padel/Court/SM_CourtIndoor` | Blender script, from `CourtSpec.h` (the arena light panels) |
 | `CourtFrame` | `/Game/Padel/Court/SM_CourtFrame` | Blender script (`build_court_frame.py`): posts, corner L-posts, mesh panel frames, base plates, gussets, anchors and bolts. Nanite |
 | `CourtMesh` | `/Game/Padel/Court/SM_CourtMesh` | Blender script (`build_court_frame.py`): one quad per mesh opening; the `WireMesh` material draws the wires. Masked, not Nanite |
 | `CourtNet` | `/Game/Padel/Court/SM_CourtNet` | Blender script, from `CourtSpec.h` (net cloth, tape, bands, cable, posts, winch); its materials move it when the ball hits it ([decision 0006](../../docs/decisions/0006-net-and-hit-reaction.md)) |
@@ -23,6 +22,9 @@ That command does three things:
 | `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script, 65 mm, felt texture with the seam |
 | `RacketPlaceholder` | `/Game/Padel/Equipment/SM_RacketPlaceholder` | Blender script, 455 × 260 × 38 mm, perforated face, invented design |
 | `PlayerPlaceholderA`, `PlayerPlaceholderB` | `/Game/Padel/Characters/SK_*` | Blender script, rigged on Unreal mannequin bones, in the team A and team B kits |
+| `VenueHall`, `VenueStands`, `VenueBoards`, `VenueGround` | `/Game/Padel/Venue/SM_*` | Blender script (`build_venue.py`): the indoor hall, stands, perimeter boards and outdoor ground |
+| `VenueLightTruss`, `VenueMasts` | `/Game/Padel/Venue/SM_*` | Blender script, from the fixture rows in `Data/Lighting.json` (the rig and masts that carry the floodlights) |
+| `FloodlightHead` | `/Game/Padel/Venue/SM_FloodlightHead` | Blender script: one LED floodlight, lens at the origin facing +X; the game places one on every fixture |
 | `PlayerGenA`, `CourtBench` | `/Game/Padel/...` | AI (Meshy, Tripo), switched off until there's an API key |
 
 ## Court steel and welded mesh
@@ -54,7 +56,9 @@ pipeline.py build [Id ...]           # Blender only: SourceArt/ and the manifest
 pipeline.py unreal                   # import SourceArt/ into Content/Padel/
 pipeline.py all [--generate]         # build, then import
 pipeline.py generate Id [Id ...]     # call the AI service and download to SourceArt/_raw/<Id>/ (costs credits)
-pipeline.py preview out.png          # Blender render of the procedural assets from the broadcast camera
+pipeline.py preview out.png [--preset IndoorClub] [--camera Broadcast]
+                                     # Cycles render lit like the game: a Data/Lighting.json preset
+                                     # (candela, lux, kelvin, EV100) from a Data/LookDev.json camera
 ```
 
 `build` never calls an AI service unless you pass `--generate`. An AI asset that hasn't been generated yet is skipped with a note. Once it has been downloaded, `build` cleans it up again from the saved file at no cost.
@@ -65,7 +69,7 @@ Add an entry to `config/assets.json`:
 
 - `id` is PascalCase. It becomes `SM_<Id>` or `SK_<Id>`.
 - `kind` is `static` or `skeletal`.
-- `category` is `Court`, `Equipment` or `Characters`.
+- `category` is `Court`, `Equipment`, `Characters` or `Venue`.
 - `source` is `procedural`, `ai` or `external`.
 - `size` is in metres: `height_m` for characters, `length_m` for props (longest horizontal side) or `diameter_m`.
 - `budget_tris` is the triangle budget.

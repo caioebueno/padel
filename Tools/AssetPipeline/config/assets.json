@@ -3,17 +3,6 @@
   "version": 2,
   "assets": [
     {
-      "id": "CourtIndoor",
-      "kind": "static",
-      "category": "Court",
-      "source": "procedural",
-      "builder": "court",
-      "nanite": true,
-      "budget_tris": 60000,
-      "part": "solid",
-      "_note": "Frame, mesh and lights. The net is CourtNet and the floor is CourtSurface. Glass is a separate mesh because Nanite does not render translucent materials."
-    },
-    {
       "id": "CourtSurface",
       "kind": "static",
       "category": "Court",
@@ -224,6 +213,83 @@
       },
       "nanite": true,
       "budget_tris": 20000
+    },
+    {
+      "id": "VenueHall",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "hall",
+      "nanite": true,
+      "budget_tris": 60000,
+      "_note": "Indoor hall after docs/art/ARENA_SPEC.md 2: 50 x 46 m, 15 m eaves, roof trusses from 12 m, dark acoustic walls and polished concrete. A stand-in until the arena's parametric builder lands."
+    },
+    {
+      "id": "VenueLightTruss",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "truss",
+      "nanite": true,
+      "budget_tris": 40000,
+      "_note": "The indoor light rig (ARENA_SPEC 6.1): box truss at the court fixture rows of Data/Lighting.json, underside on the 8 m ceiling plane, cross truss over the net, hoists, and the house-light bars."
+    },
+    {
+      "id": "VenueMasts",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "masts",
+      "nanite": true,
+      "budget_tris": 8000,
+      "_note": "Outdoor masts, one behind each floodlight in Data/Lighting.json."
+    },
+    {
+      "id": "VenueGround",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "ground",
+      "nanite": true,
+      "budget_tris": 500,
+      "_note": "Outdoor club ground: concrete pad, lawn, hedges."
+    },
+    {
+      "id": "VenueStands",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "stands",
+      "nanite": true,
+      "budget_tris": 60000,
+      "_note": "Ten-row grandstands on both long sides (ARENA_SPEC 5.1), three aisles, dark slate seats."
+    },
+    {
+      "id": "VenueBoards",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "boards",
+      "nanite": true,
+      "budget_tris": 6000,
+      "_note": "Perimeter boards round the run-off, club colours only (no sponsors, no text)."
+    },
+    {
+      "id": "FloodlightHead",
+      "kind": "static",
+      "category": "Venue",
+      "source": "procedural",
+      "builder": "venue",
+      "part": "floodlight",
+      "nanite": false,
+      "budget_tris": 1500,
+      "_note": "One LED floodlight, lens at the origin facing +X; APadelVenueLighting places one on every fixture."
     }
   ]
 }
