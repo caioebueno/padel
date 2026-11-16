@@ -10,6 +10,8 @@ APadelPracticeGameMode::APadelPracticeGameMode()
 	HUDClass = APadelShotDebugHUD::StaticClass();
 	// The director spawns and possesses the player once the controller is ready.
 	DefaultPawnClass = nullptr;
+	// Practice runs its own ball and machine, not a match.
+	bSpawnMatchDirector = false;
 }
 
 void APadelPracticeGameMode::StartPlay()

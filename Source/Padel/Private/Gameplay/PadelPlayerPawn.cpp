@@ -55,13 +55,35 @@ void APadelPlayerPawn::InitShots(int32 PlayerId, double TeamSign, const Padel::S
 	const Padel::Court::FVec3& StartMetres, uint64 Seed)
 {
 	ShotController = MakeUnique<Padel::Shots::FPlayerShotController>(PlayerId, TeamSign, Ratings, Library, Movement, StartMetres, Seed);
+	FaceNet(TeamSign, *Ratings);
+	SyncFromSimulation();
+}
 
+void APadelPlayerPawn::ShowController(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FPlayerRatings& Ratings)
+{
+	// The team sign flips at a change of ends (GDD 3.1).
+	if (Controller.GetTeamSign() != FacingTeamSign)
+	{
+		FaceNet(Controller.GetTeamSign(), Ratings);
+	}
+	PlaceAt(Controller.GetMotion().GetPosition());
+}
+
+void APadelPlayerPawn::FaceNet(double TeamSign, const Padel::Shots::FPlayerRatings& Ratings)
+{
+	FacingTeamSign = TeamSign;
 	// Face the net, racket on the forehand side.
 	SetActorRotation(FRotator(0.0, TeamSign > 0.0 ? 180.0 : 0.0, 0.0));
 	const Padel::Court::FVec3 Right = Padel::Shots::RightAxis(TeamSign);
-	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings->ForehandSign();
+	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings.ForehandSign();
 	Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
-	SyncFromSimulation();
+}
+
+void APadelPlayerPawn::PlaceAt(const Padel::Court::FVec3& FeetMetres)
+{
+	FVector Location = Padel::ToWorld(FeetMetres);
+	Location.Z += PadelPlayerPawnDetail::CapsuleHalfHeight;
+	SetActorLocation(Location);
 }
 
 Padel::Shots::FPlayerInputFrame APadelPlayerPawn::SampleInput() const
@@ -95,9 +117,7 @@ void APadelPlayerPawn::SyncFromSimulation()
 	{
 		return;
 	}
-	FVector Location = Padel::ToWorld(ShotController->GetMotion().GetPosition());
-	Location.Z += PadelPlayerPawnDetail::CapsuleHalfHeight;
-	SetActorLocation(Location);
+	PlaceAt(ShotController->GetMotion().GetPosition());
 }
 
 void APadelPlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

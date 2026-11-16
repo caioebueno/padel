@@ -42,10 +42,18 @@ public:
 	/** Moves the placeholder body to the simulated position. */
 	void SyncFromSimulation();
 
+	/**
+	 * In a match the shot controllers belong to the match runner (FAiMatchRunner), so the
+	 * pawn only shows one: position, and facing the net from the controller's half.
+	 */
+	void ShowController(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FPlayerRatings& Ratings);
+
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 private:
 	bool IsHeld(EPadelInputAction Action) const;
+	void FaceNet(double TeamSign, const Padel::Shots::FPlayerRatings& Ratings);
+	void PlaceAt(const Padel::Court::FVec3& FeetMetres);
 
 	UPROPERTY(VisibleAnywhere, Category = "Player")
 	TObjectPtr<UCapsuleComponent> Capsule;
@@ -64,4 +72,7 @@ private:
 	TObjectPtr<UEnhancedInputComponent> EnhancedInput;
 
 	TUniquePtr<Padel::Shots::FPlayerShotController> ShotController;
+
+	/** The half the body faces from; 0 until it first faces the net. */
+	double FacingTeamSign = 0.0;
 };

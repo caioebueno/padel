@@ -5,9 +5,9 @@
 #include "PadelGameMode.generated.h"
 
 /**
- * Match game mode. For now it makes any map playable: if the level has no court,
- * it spawns the placeholder court, lights and the broadcast camera, so pressing
- * Play on an empty level shows the court. Players, ball and rules come later.
+ * Match game mode. It makes any map playable: if the level has no court, it spawns
+ * the placeholder court, lights and the broadcast camera, and it always makes sure
+ * there is one APadelMatchDirector, which plays the real match when the HUD starts one.
  */
 UCLASS()
 class PADEL_API APadelGameMode : public AGameModeBase
@@ -18,6 +18,11 @@ public:
 	APadelGameMode();
 
 	virtual void StartPlay() override;
+
+protected:
+	/** False in modes that run their own simulation (practice). */
+	UPROPERTY(EditDefaultsOnly, Category = "Padel")
+	bool bSpawnMatchDirector = true;
 
 private:
 	void SpawnPlaceholderStage();
