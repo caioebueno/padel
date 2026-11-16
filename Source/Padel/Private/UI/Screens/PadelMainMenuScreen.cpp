@@ -74,6 +74,7 @@ void UPadelMainMenuScreen::BuildScreen()
 	// Spec 7.2: on a fresh arrival (from Title) the tiles slide in from the left, staggered.
 	// Coming back to the menu restores focus and enters as one, like any screen.
 	bStaggerEntry = GetMenuRoot() && GetMenuRoot()->GetFlow().FocusOnArrival().empty() && !PadelUi::Options().bReduceMotion;
+	bFreshEntry = bStaggerEntry;
 	EntrySeconds = 0.0f;
 	ApplyEntry();
 }

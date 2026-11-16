@@ -25,6 +25,8 @@ protected:
 	virtual void BuildScreen() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void OnElementActivated(UPadelFocusableWidget* Element) override;
+	/** The staggered tiles carry a fresh entry's move, so the stage only fades (no double slide). */
+	virtual bool UsesStageSlide() const override { return !bFreshEntry; }
 
 private:
 	void ApplyEntry();
@@ -32,6 +34,8 @@ private:
 	/** Seconds since the screen opened, for the tiles' staggered entry (spec 7.2, 9). */
 	float EntrySeconds = 0.0f;
 	bool bStaggerEntry = false;
+	/** Set once at build: this arrival staggers its tiles (stays set after they land). */
+	bool bFreshEntry = false;
 	Padel::Ui::EPadFamily ShownFamily = Padel::Ui::EPadFamily::Xbox;
 
 	/** In MainMenuTiles() order. */
