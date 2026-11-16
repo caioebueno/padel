@@ -3,6 +3,7 @@
 #include "Animation/AnimSequenceBase.h"
 #include "Animation/Model/PlayerAnimModel.h"
 #include "Court/PadelCourtUnits.h"
+#include "Gameplay/PadelShotUnits.h"
 
 void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFrame& Frame, UAnimSequenceBase* InSwing,
 	UAnimSequenceBase* InPrevSwing, UAnimSequenceBase* InCelebration, const TArray<FVector>& InTrajectoryWorld)
@@ -27,4 +28,12 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	CelebrationSequence = InCelebration;
 	CelebrationTime = static_cast<float>(Frame.CelebrationTimeS);
 	CelebrationWeight = InCelebration ? static_cast<float>(Frame.CelebrationWeight) : 0.0f;
+
+	RawSwingWeight = static_cast<float>(Frame.SwingWeight);
+	RacketTargetWorld = Padel::ToWorld(Frame.RacketPosition);
+}
+
+FAnimInstanceProxy* UPadelPlayerAnimInstance::CreateAnimInstanceProxy()
+{
+	return new FPadelPlayerAnimInstanceProxy(this, &PoseNode);
 }

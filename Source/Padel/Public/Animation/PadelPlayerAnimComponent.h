@@ -5,6 +5,7 @@
 #include "Animation/Model/PlayerAnimModel.h"
 // Complete type: the generated vtable-helper constructor destroys the TUniquePtr below.
 #include "Animation/PadelAnimData.h"
+#include "Animation/PadelPlayerPoseNode.h"
 #include "PadelPlayerAnimComponent.generated.h"
 
 class UAnimSequenceBase;
@@ -59,6 +60,9 @@ public:
 
 private:
 	UAnimSequenceBase* Resolve(const std::string& AssetPath);
+
+	/** The C++ pose's clips from Animation.json (null where not imported). */
+	FPadelLocomotionSet LoadLocomotionSet() const;
 
 	/** Spawns PlayerKey's MetaHuman over the hidden placeholder skeleton; false (and logged) when it can't. */
 	bool ShowMetaHuman(FName PlayerKey);

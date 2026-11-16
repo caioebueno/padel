@@ -106,6 +106,10 @@ def metahuman_bodies(bodies) -> dict[str, unreal.SkeletalMesh | None]:
 
 
 def build_source_rig(mesh: unreal.SkeletalMesh) -> unreal.IKRigDefinition | None:
+    # animation_setup.py builds the same rig and its retargeter uses it: reuse, don't replace.
+    existing = unreal.load_asset(SOURCE_RIG)
+    if isinstance(existing, unreal.IKRigDefinition):
+        return existing
     rig = fresh_asset(SOURCE_RIG, unreal.IKRigDefinition, unreal.IKRigDefinitionFactory())
     ctrl = unreal.IKRigController.get_controller(rig)
     if not ctrl.set_skeletal_mesh(mesh):
