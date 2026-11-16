@@ -85,7 +85,10 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 			Body->SetAnimInstanceClass(AnimClass);
 			Body->SetVisibility(true);
 			bSkeletalBody = true;
-			AttachRacket(Body);
+			if (Racket && !Data->RacketBone.IsNone())
+			{
+				Racket->AttachToComponent(Body, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Data->RacketBone);
+			}
 		}
 		else
 		{
@@ -101,6 +104,11 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 		{
 			Anim->TrajectoryTimes.Add(static_cast<float>(T));
 		}
+	}
+	// In the palm, not on the wrist's pivot (0008). A MetaHuman shown below takes it over.
+	if (bSkeletalBody)
+	{
+		AttachRacket(Body);
 	}
 	// The MetaHuman copies the placeholder skeleton's pose, so it needs that skeleton running.
 	if (bSkeletalBody && !PlayerKey.IsNone())
