@@ -54,11 +54,11 @@
 	"CourtFallback": [],
 	"Cameras": [
 		{
-			"_comment": "The match camera's pose (GDD 9, Data/Camera.json): judge everything here first.",
+			"_comment": "The match camera's pose (GDD 9, Data/Camera.json; FovDeg is horizontal at 16:9 from its 26 degree vertical field of view): judge everything here first.",
 			"Name": "Broadcast",
-			"LocationM": [17.0, 0.0, 8.0],
-			"LookAtM": [-2.0, 0.0, 0.0],
-			"FovDeg": 50.0
+			"LocationM": [24.0, 0.0, 7.25],
+			"LookAtM": [0.0, 0.0, 0.0],
+			"FovDeg": 44.6
 		},
 		{
 			"Name": "CornerHigh",
