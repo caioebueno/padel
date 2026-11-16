@@ -184,7 +184,7 @@ TEST_CASE("UI.Stats: ending rows are labelled and most common first")
 	CHECK(Rows[0].TeamA == 2);
 	CHECK(Rows[0].TeamB == 1);
 	CHECK(Rows[1].Label == "Into the net");
-	CHECK(Stats.SummaryRows().size() == 5);
+	CHECK(Stats.SummaryRows().size() == 6);
 	CHECK(Stats.TotalPoints() == 4);
 }
 
