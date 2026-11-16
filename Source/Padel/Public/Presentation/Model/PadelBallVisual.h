@@ -65,13 +65,13 @@ namespace Padel::Presentation
 		double Z = 0.0;
 	};
 
-	FBallQuat BallQuatFromAxisAngle(const FVec3& UnitAxis, double Angle);
+	FBallQuat BallQuatFromAxisAngle(const Court::FVec3& UnitAxis, double Angle);
 	// A then B: rotates by B first, then by A (like Unreal's FQuat A * B).
 	FBallQuat operator*(const FBallQuat& A, const FBallQuat& B);
-	FVec3 Rotate(const FBallQuat& Q, const FVec3& V);
+	Court::FVec3 Rotate(const FBallQuat& Q, const Court::FVec3& V);
 
 	// The angle the ball turns this frame (radians, >= 0) about the spin's own axis.
-	double ShownSpinAngle(const FVec3& SpinRadPerS, double DeltaS, const FBallVisualSettings& Settings);
+	double ShownSpinAngle(const Court::FVec3& SpinRadPerS, double DeltaS, const FBallVisualSettings& Settings);
 
 	// 0 below TrailMinSpeedMps, TrailMaxOpacity from TrailFullSpeedMps, smooth in between.
 	double TrailOpacityForSpeed(double SpeedMps, const FBallVisualSettings& Settings);
@@ -83,17 +83,17 @@ namespace Padel::Presentation
 
 		// Starts afresh at Position: no trail. The orientation is kept, so a new ball
 		// doesn't snap to a fixed pose.
-		void Reset(const FVec3& Position);
+		void Reset(const Court::FVec3& Position);
 
 		// One presented frame: the ball is at Position with this velocity and spin (sim
 		// units: metres, m/s, rad/s). DeltaS is the frame time; 0 adds a sample without
 		// turning the ball (two presents in one frame).
-		void Update(const FVec3& Position, const FVec3& Velocity, const FVec3& Spin, double DeltaS);
+		void Update(const Court::FVec3& Position, const Court::FVec3& Velocity, const Court::FVec3& Spin, double DeltaS);
 
 		const FBallQuat& GetOrientation() const { return Orientation; }
-		const FVec3& GetPosition() const { return Position; }
+		const Court::FVec3& GetPosition() const { return Position; }
 		// The trail runs from the ball back to the tail. Opacity 0 means no trail.
-		const FVec3& GetTrailTail() const { return TrailTail; }
+		const Court::FVec3& GetTrailTail() const { return TrailTail; }
 		double GetTrailLength() const { return Size(Position - TrailTail); }
 		double GetTrailOpacity() const { return TrailOpacity; }
 		const FBallVisualSettings& GetSettings() const { return Settings; }
@@ -102,15 +102,15 @@ namespace Padel::Presentation
 		struct FSample
 		{
 			double Time = 0.0;
-			FVec3 Position;
+			Court::FVec3 Position;
 		};
 
 		void UpdateTrail(double SpeedMps);
 
 		FBallVisualSettings Settings;
 		FBallQuat Orientation;
-		FVec3 Position;
-		FVec3 TrailTail;
+		Court::FVec3 Position;
+		Court::FVec3 TrailTail;
 		double TrailOpacity = 0.0;
 		double Clock = 0.0;
 		bool bHasPosition = false;

@@ -59,7 +59,7 @@ namespace Padel::Presentation
 		return true;
 	}
 
-	FBallQuat BallQuatFromAxisAngle(const FVec3& UnitAxis, double Angle)
+	FBallQuat BallQuatFromAxisAngle(const Court::FVec3& UnitAxis, double Angle)
 	{
 		const double S = std::sin(Angle * 0.5);
 		return { std::cos(Angle * 0.5), UnitAxis.X * S, UnitAxis.Y * S, UnitAxis.Z * S };
@@ -75,15 +75,15 @@ namespace Padel::Presentation
 		};
 	}
 
-	FVec3 Rotate(const FBallQuat& Q, const FVec3& V)
+	Court::FVec3 Rotate(const FBallQuat& Q, const Court::FVec3& V)
 	{
 		// v' = v + 2 q x (q x v + w v), with q the vector part.
-		const FVec3 U{ Q.X, Q.Y, Q.Z };
-		const FVec3 T = Cross(U, V) * 2.0;
+		const Court::FVec3 U{ Q.X, Q.Y, Q.Z };
+		const Court::FVec3 T = Cross(U, V) * 2.0;
 		return V + T * Q.W + Cross(U, T);
 	}
 
-	double ShownSpinAngle(const FVec3& SpinRadPerS, double DeltaS, const FBallVisualSettings& Settings)
+	double ShownSpinAngle(const Court::FVec3& SpinRadPerS, double DeltaS, const FBallVisualSettings& Settings)
 	{
 		if (DeltaS <= 0.0)
 		{
@@ -109,7 +109,7 @@ namespace Padel::Presentation
 		return Settings.TrailMaxOpacity * T * T * (3.0 - 2.0 * T);
 	}
 
-	void FBallVisual::Reset(const FVec3& InPosition)
+	void FBallVisual::Reset(const Court::FVec3& InPosition)
 	{
 		Position = InPosition;
 		TrailTail = InPosition;
@@ -119,7 +119,7 @@ namespace Padel::Presentation
 		History.push_back({ Clock, InPosition });
 	}
 
-	void FBallVisual::Update(const FVec3& InPosition, const FVec3& Velocity, const FVec3& Spin, double DeltaS)
+	void FBallVisual::Update(const Court::FVec3& InPosition, const Court::FVec3& Velocity, const Court::FVec3& Spin, double DeltaS)
 	{
 		const double Dt = std::max(DeltaS, 0.0);
 		if (!bHasPosition || Size(InPosition - Position) > Settings.TeleportDistanceM)
@@ -131,7 +131,7 @@ namespace Padel::Presentation
 		const double Angle = ShownSpinAngle(Spin, Dt, Settings);
 		if (Angle > 0.0)
 		{
-			const FVec3 Axis = SafeNormal(Spin);
+			const Court::FVec3 Axis = SafeNormal(Spin);
 			Orientation = NormalizedBallQuat(BallQuatFromAxisAngle(Axis, Angle) * Orientation);
 		}
 
@@ -157,7 +157,7 @@ namespace Padel::Presentation
 			History.erase(History.begin());
 		}
 
-		FVec3 Tail = History.front().Position;
+		Court::FVec3 Tail = History.front().Position;
 		if (History.size() >= 2 && History.front().Time < Reach)
 		{
 			// The tail lies between the oldest sample and the next one.
@@ -167,7 +167,7 @@ namespace Padel::Presentation
 			const double T = Span > 0.0 ? std::clamp((Reach - A.Time) / Span, 0.0, 1.0) : 1.0;
 			Tail = A.Position + (B.Position - A.Position) * T;
 		}
-		FVec3 Back = Tail - Position;
+		Court::FVec3 Back = Tail - Position;
 		const double Length = Size(Back);
 		if (Length > Settings.TrailMaxLengthM && Length > 0.0)
 		{
