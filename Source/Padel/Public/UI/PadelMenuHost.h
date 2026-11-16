@@ -35,7 +35,7 @@ public:
 	virtual void MenuStartMatch() = 0;
 	/** Pause: Resume, or B (spec 7.5). */
 	virtual void MenuResumeMatch() = 0;
-	/** Pause: Restart, after its dialog (spec 7.10). */
+	/** Pause: Restart, after its dialog (spec 7.10): drops the match and shows Versus, which starts it again. */
 	virtual void MenuRestartMatch() = 0;
 	/** Pause: Quit to main menu, after its dialog: the match is dropped, no stats (spec 7.10). */
 	virtual void MenuQuitMatch() = 0;

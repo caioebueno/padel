@@ -170,6 +170,9 @@ namespace Padel::Ui
 		float ToastSeconds = 2.5f;
 		float ToastFade = 0.2f;
 		float HintFlash = 0.12f;
+		// Spec 7.8's entry: set columns fade in this far apart, then the stat bars grow.
+		float StatsSetStagger = 0.12f;
+		float StatsBarGrow = 0.4f;
 	};
 
 	struct FUiInputTiming

@@ -33,6 +33,12 @@ void UPadelScreenHeader::SetRightContent(UWidget* Content)
 	}
 }
 
+void UPadelScreenHeader::SetTitleColour(const FLinearColor& InColour)
+{
+	TitleColour = InColour;
+	Refresh();
+}
+
 void UPadelScreenHeader::BuildTree()
 {
 	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
@@ -59,6 +65,7 @@ void UPadelScreenHeader::Refresh()
 		return;
 	}
 	TitleText->SetText(Title);
+	TitleText->SetColorAndOpacity(FSlateColor(TitleColour.Get(PadelUi::Colour(EUiColour::TextPrimary))));
 	BreadcrumbText->SetText(Breadcrumb);
 	BreadcrumbText->SetVisibility(Breadcrumb.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 }

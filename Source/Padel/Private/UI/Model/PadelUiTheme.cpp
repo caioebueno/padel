@@ -102,6 +102,8 @@ namespace Padel::Ui
 			PADEL_UI_FIELD("Motion", "ToastSeconds", Motion.ToastSeconds),
 			PADEL_UI_FIELD("Motion", "ToastFade", Motion.ToastFade),
 			PADEL_UI_FIELD("Motion", "HintFlash", Motion.HintFlash),
+			PADEL_UI_FIELD("Motion", "StatsSetStagger", Motion.StatsSetStagger),
+			PADEL_UI_FIELD("Motion", "StatsBarGrow", Motion.StatsBarGrow),
 
 			PADEL_UI_FIELD("Input", "EntryLock", Input.EntryLock),
 			PADEL_UI_FIELD("Input", "RepeatDelay", Input.RepeatDelay),

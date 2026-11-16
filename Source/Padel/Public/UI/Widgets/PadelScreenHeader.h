@@ -22,6 +22,8 @@ public:
 	void SetTitle(const FText& InTitle);
 	void SetBreadcrumb(const FText& InBreadcrumb);
 	void SetRightContent(UWidget* Content);
+	/** The title in another colour (Stats: the winning team's, spec 7.8). Text.Primary by default. */
+	void SetTitleColour(const FLinearColor& InColour);
 
 	FText GetTitle() const { return Title; }
 
@@ -33,6 +35,7 @@ private:
 
 	FText Title;
 	FText Breadcrumb;
+	TOptional<FLinearColor> TitleColour;
 
 	UPROPERTY()
 	TObjectPtr<UTextBlock> TitleText;

@@ -19,6 +19,7 @@ using Padel::Ui::EUiTransition;
 namespace
 {
 	// Spec 4.3's 1080p reference frame.
+	constexpr float ScreenRefWidth = 1920.0f;
 	constexpr float ScreenRefHeight = 1080.0f;
 	constexpr float ScreenHeaderTop = 64.0f;
 	constexpr float ScreenHintBarTop = 960.0f;
@@ -275,9 +276,13 @@ bool UPadelScreenWidget::HandleMenuInput(EUiInput Input, bool bRepeat)
 	switch (Input)
 	{
 	case EUiInput::Confirm:
-		if (bRepeat || InputLock.IsConfirmLocked())
+		if (bRepeat)
 		{
 			return false;
+		}
+		if (InputLock.IsConfirmLocked() || IsConfirmBlocked())
+		{
+			return OnBlockedConfirm();
 		}
 		FlashConfirmHint();
 		if (Focused)
@@ -401,6 +406,26 @@ void UPadelScreenWidget::SetHeaderVisible(bool bVisible)
 	{
 		Header->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
+}
+
+void UPadelScreenWidget::SetHintBarPauseStrip(bool bStrip)
+{
+	if (!HintBar)
+	{
+		return;
+	}
+	HintBar->SetPauseStrip(bStrip);
+	UCanvasPanelSlot* BarSlot = Cast<UCanvasPanelSlot>(HintBar->Slot);
+	if (!BarSlot)
+	{
+		return;
+	}
+	const Padel::Ui::FUiLayout& Layout = PadelUi::Theme().Layout;
+	const float Height = bStrip ? Layout.HintBarPauseStrip : Layout.HintBarHeight;
+	const float Grow = (Height - Layout.HintBarHeight) * 0.5f;
+	const float Left = bStrip ? 0.0f : Layout.SafeX;
+	BarSlot->SetPosition(FVector2D(Left, ScreenHintBarTop - Grow - ScreenRefHeight));
+	BarSlot->SetSize(FVector2D(ScreenRefWidth - 2.0f * Left, Height));
 }
 
 void UPadelScreenWidget::SetHintBarVisible(bool bVisible)
