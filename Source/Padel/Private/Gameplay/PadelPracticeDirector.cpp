@@ -71,7 +71,7 @@ void APadelPracticeDirector::SpawnAndPossessPlayer()
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	PlayerPawn = GetWorld()->SpawnActor<APadelPlayerPawn>(APadelPlayerPawn::StaticClass(), FTransform::Identity, Params);
-	PlayerPawn->InitShots(HumanPlayerId, HumanTeamSign, &Ratings, &Data.Library, &Data.Movement, HumanStart, static_cast<uint64>(Seed));
+	PlayerPawn->InitShots(HumanPlayerId, HumanTeamSign, &Ratings, &Data.Library, &Data.Movement, HumanStart, static_cast<uint64>(Seed), PlayerRow);
 
 	// Keep the broadcast camera (GDD 9) instead of switching the view to the pawn.
 	AActor* Camera = PC->GetViewTarget();

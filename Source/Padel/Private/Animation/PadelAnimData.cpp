@@ -42,6 +42,13 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.TeamMeshes = Row->TeamMeshes;
 		Out.AnimClass = Row->AnimClass;
 		Out.RacketBone = FName(*Row->RacketBone);
+		Out.MetaHumanRetargeter = Row->MetaHumanRetargeter;
+		Out.MetaHumanMinLod = Row->MetaHumanMinLod;
+		Out.MetaHumanIkLodThreshold = Row->MetaHumanIkLodThreshold;
+		if (Row->MetaHumanMinLod < 0)
+		{
+			Out.Errors.Add(TEXT("Animation.json: MetaHumanMinLod must be 0 or more"));
+		}
 		for (const std::string& Problem : Out.Settings.Validate())
 		{
 			Out.Errors.Add(UTF8_TO_TCHAR(Problem.c_str()));
@@ -71,6 +78,19 @@ FPadelAnimData FPadelAnimData::Load()
 		{
 			Out.Errors.Add(UTF8_TO_TCHAR(Problem.c_str()));
 		}
+	}
+
+	if (UDataTable* Bodies = LoadAnimTable(TEXT("PlayerBodies.json"), FPadelPlayerBodyRow::StaticStruct(), Out.Errors))
+	{
+		Bodies->ForeachRow<FPadelPlayerBodyRow>(TEXT("PlayerBodies.json"), [&Out](const FName& Key, const FPadelPlayerBodyRow& Row)
+		{
+			if (Row.MetaHumanClass.IsEmpty() || Row.BodyComponent.IsEmpty())
+			{
+				Out.Errors.Add(FString::Printf(TEXT("PlayerBodies.json: %s needs MetaHumanClass and BodyComponent"), *Key.ToString()));
+				return;
+			}
+			Out.PlayerBodies.Add(Key, Row);
+		});
 	}
 
 	for (const FString& Error : Out.Errors)

@@ -2,11 +2,15 @@
 
 #include "Animation/AnimSequenceBase.h"
 #include "Animation/PadelAnimData.h"
+#include "Animation/PadelMetaHumanAnimInstance.h"
+#include "Components/LODSyncComponent.h"
 #include "Animation/PadelPlayerAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Gameplay/PadelShotUnits.h"
+#include "Engine/World.h"
 #include "PadelLog.h"
+#include "Retargeter/IKRetargeter.h"
 
 UPadelPlayerAnimComponent::UPadelPlayerAnimComponent()
 {
@@ -16,8 +20,9 @@ UPadelPlayerAnimComponent::UPadelPlayerAnimComponent()
 // Out of line so TUniquePtr sees the complete FPadelAnimData.
 UPadelPlayerAnimComponent::~UPadelPlayerAnimComponent() = default;
 
-void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, int32 TeamIndex, USkeletalMeshComponent* InBody, USceneComponent* InRacket)
+void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, int32 TeamIndex, FName PlayerKey, USkeletalMeshComponent* InBody, USceneComponent* InRacket)
 {
+	RemoveMetaHuman();
 	Body = InBody;
 	Racket = InRacket;
 	Data = MakeUnique<FPadelAnimData>(FPadelAnimData::Load());
@@ -62,6 +67,103 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 			Anim->TrajectoryTimes.Add(static_cast<float>(T));
 		}
 	}
+	// The MetaHuman copies the placeholder skeleton's pose, so it needs that skeleton running.
+	if (bSkeletalBody && !PlayerKey.IsNone())
+	{
+		ShowMetaHuman(PlayerKey);
+	}
+}
+
+bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
+{
+	const FPadelPlayerBodyRow* Row = Data->PlayerBodies.Find(PlayerKey);
+	if (!Row)
+	{
+		return false;
+	}
+	UClass* Class = LoadObject<UClass>(nullptr, *Row->MetaHumanClass, nullptr, LOAD_Quiet | LOAD_NoWarn);
+	UIKRetargeter* Retargeter = LoadObject<UIKRetargeter>(nullptr, *Data->MetaHumanRetargeter, nullptr, LOAD_Quiet | LOAD_NoWarn);
+	UWorld* World = GetWorld();
+	if (!Class || !Class->IsChildOf(AActor::StaticClass()) || !Retargeter || !World)
+	{
+		// MetaHuman assets live outside git (0006), so a fresh clone lands here: keep the placeholder.
+		UE_LOG(LogPadel, Log, TEXT("Player %s: MetaHuman %s or retargeter %s not on disk, using the placeholder body."),
+			*PlayerKey.ToString(), *Row->MetaHumanClass, *Data->MetaHumanRetargeter);
+		return false;
+	}
+
+	FActorSpawnParameters Params;
+	Params.Owner = GetOwner();
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	MetaHuman = World->SpawnActor<AActor>(Class, Body->GetComponentTransform(), Params);
+	if (!MetaHuman)
+	{
+		UE_LOG(LogPadel, Warning, TEXT("Player %s: could not spawn %s."), *PlayerKey.ToString(), *Row->MetaHumanClass);
+		return false;
+	}
+	// Same origin and facing as the placeholder skeleton (both stand on their origin facing +Y).
+	MetaHuman->AttachToComponent(Body, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+
+	USkeletalMeshComponent* MetaBody = nullptr;
+	TInlineComponentArray<USkeletalMeshComponent*> Meshes(MetaHuman);
+	for (USkeletalMeshComponent* Mesh : Meshes)
+	{
+		if (Mesh->GetFName() == FName(*Row->BodyComponent))
+		{
+			MetaBody = Mesh;
+		}
+		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		// 60 fps on an M2 (0006): LOD 0 isn't visible from the broadcast camera.
+		Mesh->OverrideMinLOD(Data->MetaHumanMinLod);
+	}
+	if (ULODSyncComponent* LodSync = MetaHuman->FindComponentByClass<ULODSyncComponent>())
+	{
+		LodSync->MinLOD = Data->MetaHumanMinLod;
+	}
+	if (!MetaBody)
+	{
+		UE_LOG(LogPadel, Warning, TEXT("Player %s: %s has no skeletal mesh component named %s, using the placeholder body."),
+			*PlayerKey.ToString(), *Row->MetaHumanClass, *Row->BodyComponent);
+		RemoveMetaHuman();
+		return false;
+	}
+
+	MetaBody->SetAnimInstanceClass(UPadelMetaHumanAnimInstance::StaticClass());
+	UPadelMetaHumanAnimInstance* Anim = Cast<UPadelMetaHumanAnimInstance>(MetaBody->GetAnimInstance());
+	if (!Anim)
+	{
+		UE_LOG(LogPadel, Warning, TEXT("Player %s: the MetaHuman body did not take the retarget anim instance."), *PlayerKey.ToString());
+		RemoveMetaHuman();
+		return false;
+	}
+	Anim->Configure(Body, Retargeter, Data->MetaHumanIkLodThreshold);
+	// The retarget reads the placeholder's pose of this frame, so that pose must be ready first.
+	MetaBody->AddTickPrerequisiteComponent(Body);
+
+	// The placeholder keeps animating while hidden: it is the pose the MetaHuman copies.
+	Body->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	Body->SetVisibility(false);
+	if (Racket && !Data->RacketBone.IsNone())
+	{
+		Racket->AttachToComponent(MetaBody, FAttachmentTransformRules::SnapToTargetNotIncludingScale, Data->RacketBone);
+	}
+	UE_LOG(LogPadel, Log, TEXT("Player %s: showing MetaHuman %s."), *PlayerKey.ToString(), *Row->MetaHumanClass);
+	return true;
+}
+
+void UPadelPlayerAnimComponent::RemoveMetaHuman()
+{
+	if (MetaHuman)
+	{
+		MetaHuman->Destroy();
+		MetaHuman = nullptr;
+	}
+}
+
+void UPadelPlayerAnimComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+	RemoveMetaHuman();
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
 void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)

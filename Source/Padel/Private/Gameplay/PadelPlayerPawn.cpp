@@ -63,7 +63,7 @@ APadelPlayerPawn::APadelPlayerPawn()
 
 void APadelPlayerPawn::InitShots(int32 PlayerId, double TeamSign, const Padel::Shots::FPlayerRatings* Ratings,
 	const Padel::Shots::FShotLibrary* Library, const Padel::Shots::FMovementTuning* Movement,
-	const Padel::Court::FVec3& StartMetres, uint64 Seed)
+	const Padel::Court::FVec3& StartMetres, uint64 Seed, FName PlayerKey)
 {
 	ShotController = MakeUnique<Padel::Shots::FPlayerShotController>(PlayerId, TeamSign, Ratings, Library, Movement, StartMetres, Seed);
 
@@ -73,13 +73,13 @@ void APadelPlayerPawn::InitShots(int32 PlayerId, double TeamSign, const Padel::S
 	const FVector Local = GetActorTransform().InverseTransformVectorNoScale(Padel::ToWorld(Right)) * Ratings->ForehandSign();
 	Racket->SetRelativeLocation(Local * 55.0 + FVector(0.0, 0.0, 10.0));
 
-	InitAnimation(Library, TeamSign > 0.0 ? 0 : 1);
+	InitAnimation(Library, TeamSign > 0.0 ? 0 : 1, PlayerKey);
 	SyncFromSimulation();
 }
 
-void APadelPlayerPawn::InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex)
+void APadelPlayerPawn::InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex, FName PlayerKey)
 {
-	Animation->Init(Library, TeamIndex, Character, Racket);
+	Animation->Init(Library, TeamIndex, PlayerKey, Character, Racket);
 	Body->SetVisibility(!Animation->HasSkeletalBody());
 }
 
