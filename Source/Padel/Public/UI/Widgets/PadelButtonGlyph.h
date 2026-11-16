@@ -26,9 +26,15 @@ class PADEL_API UPadelButtonGlyph : public UPadelWidgetBase
 public:
 	void SetInput(Padel::Ui::EUiInput InInput);
 	/**
-	 * Show a game key instead of a menu input (the practice controls, spec 7.9): PadKey is
-	 * an Unreal gamepad key name ("Gamepad_DPad_Left"), KeyCap the keyboard key's text.
-	 * The D-pad draws as a cross with its arm marked; other pad keys use GamepadKeyLabel.
+	 * Show one pad key instead of a menu input (the Controls screen, spec 7.6), e.g.
+	 * "Gamepad_RightTrigger". Labelled for the family; a keyboard family shows Xbox labels.
+	 */
+	void SetPadKey(FName InKeyName);
+	/** Show a keyboard key cap with this text instead (the Controls keyboard tab). */
+	void SetKeyCap(const FText& InText);
+	/**
+	 * A game key that follows the family (the practice controls, spec 7.9): the pad key
+	 * ("Gamepad_DPad_Left") on a pad, the key cap text on keyboard and mouse.
 	 */
 	void SetKey(const FString& InPadKey, const FText& InKeyCap);
 	void SetFamily(Padel::Ui::EPadFamily InFamily);
@@ -47,11 +53,21 @@ protected:
 private:
 	void Refresh();
 
+	enum class EGlyphSource : uint8
+	{
+		Input,
+		PadKey,
+		KeyCap,
+		GameKey,
+	};
+
+	/** GameKey resolves to PadKey or KeyCap by family; the others are as set. */
+	EGlyphSource ResolvedSource() const;
+
 	Padel::Ui::EUiInput Input = Padel::Ui::EUiInput::Confirm;
-	/** Set by SetKey: a game key rather than a menu input. */
-	bool bRawKey = false;
-	FString PadKey;
-	FText KeyCap;
+	EGlyphSource Source = EGlyphSource::Input;
+	FName PadKey;
+	FText KeyCapText;
 	Padel::Ui::EPadFamily Family = Padel::Ui::EPadFamily::Xbox;
 	float Diameter = 40.0f;
 	float FlashTimer = 0.0f;

@@ -58,6 +58,11 @@ public:
 	virtual bool HandleInput(Padel::Ui::EUiInput Input, bool bRepeat) { return false; }
 	/** A or a click: plays the press, then tells the screen (also when locked). */
 	virtual void Activate();
+	/**
+	 * Seconds between repeats while left or right is held on this element, or 0 for the
+	 * menu's usual rate. The slider repeats faster (spec 5.3: every 60 ms).
+	 */
+	virtual float GetHeldRepeatRate() const { return 0.0f; }
 
 	FOnPadelElementEvent OnActivated;
 	/** Mouse hover: the screen moves focus here. */

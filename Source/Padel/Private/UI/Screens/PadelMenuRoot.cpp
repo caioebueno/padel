@@ -348,6 +348,15 @@ void UPadelMenuRoot::HandleInput(EUiInput Input, bool bRepeat)
 
 void UPadelMenuRoot::PressDirection(EUiInput Input)
 {
+	// Spec 5.3: left/right held on a slider repeats at its own rate; everything else at 110 ms.
+	const Padel::Ui::FUiInputTiming& Timing = PadelUi::Theme().Input;
+	float Rate = Timing.RepeatRate;
+	const UPadelFocusableWidget* Focused = ScreenWidget ? ScreenWidget->GetFocusedElement() : nullptr;
+	if (Focused && (Input == EUiInput::Left || Input == EUiInput::Right) && Focused->GetHeldRepeatRate() > 0.0f)
+	{
+		Rate = Focused->GetHeldRepeatRate();
+	}
+	Repeat.Configure(Timing.RepeatDelay, Rate);
 	Repeat.Press(Input);
 	HandleInput(Input, false);
 }
