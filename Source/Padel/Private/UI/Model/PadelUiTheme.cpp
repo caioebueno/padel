@@ -100,6 +100,11 @@ namespace Padel::Ui
 			PADEL_UI_FIELD("Motion", "ToastSeconds", Motion.ToastSeconds),
 			PADEL_UI_FIELD("Motion", "ToastFade", Motion.ToastFade),
 			PADEL_UI_FIELD("Motion", "HintFlash", Motion.HintFlash),
+			PADEL_UI_FIELD("Motion", "BadgeSwap", Motion.BadgeSwap),
+			PADEL_UI_FIELD("Motion", "VsScaleFrom", Motion.VsScaleFrom),
+			PADEL_UI_FIELD("Motion", "VsScale", Motion.VsScale),
+			PADEL_UI_FIELD("Motion", "LoadingLoop", Motion.LoadingLoop),
+			PADEL_UI_FIELD("Motion", "LoadingBounce", Motion.LoadingBounce),
 
 			PADEL_UI_FIELD("Input", "EntryLock", Input.EntryLock),
 			PADEL_UI_FIELD("Input", "RepeatDelay", Input.RepeatDelay),

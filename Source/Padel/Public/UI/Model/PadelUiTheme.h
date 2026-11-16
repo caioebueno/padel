@@ -168,6 +168,14 @@ namespace Padel::Ui
 		float ToastSeconds = 2.5f;
 		float ToastFade = 0.2f;
 		float HintFlash = 0.12f;
+		// Spec 7.3: X crosses the You / Partner badges and the Selected stroke over.
+		float BadgeSwap = 0.16f;
+		// Spec 7.4: "VS" scales from this to 1.0 as the card comes in, over VsScale seconds.
+		float VsScaleFrom = 1.2f;
+		float VsScale = 0.2f;
+		// Spec 6.16: one bounce of the loading indicator's ball, and how high it goes (px).
+		float LoadingLoop = 0.6f;
+		float LoadingBounce = 12;
 	};
 
 	struct FUiInputTiming
