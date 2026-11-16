@@ -11,7 +11,7 @@
 	},
 	{
 		"Name": "ilan_corvisa",
-		"MetaHumanClass": "/Game/Padel/Characters/MetaHumans/IlanCorvisa/BP_IlanCorvisa.BP_IlanCorvisa_C",
+		"MetaHumanClass": "/Game/Characters/IlanCorvisa/BP_IlanCorvisa.BP_IlanCorvisa_C",
 		"BodyComponent": "Body"
 	},
 	{

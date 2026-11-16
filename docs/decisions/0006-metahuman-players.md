@@ -42,8 +42,21 @@ MetaHuman assets stay out of git: `.gitignore` excludes `Content/MetaHumans/` an
 
 The four are invented: built from the Creator's presets and blends, never from a photo, scan or likeness of a real person (CLAUDE.md hard rules), and never with the "from footage / mesh" identity tools. Their looks are in `docs/animation/METAHUMAN_PLAYERS.md`.
 
+## Moving without ABP_PadelPlayer
+
+0005's AnimBP is still not built, so `UPadelPlayerAnimInstance` can run on its own: used without an AnimBP subclass, its proxy runs `FAnimNode_PadelPlayerPose` as the root, which does the same recipe in C++:
+
+1. **Locomotion:** idle, and walk and jog cycles in four directions (forward, back, left, right, relative to facing the net), blended by direction and speed on one shared phase. Walk rate is `speed / WalkClipSpeedMps`, jog rate is 0005's `StridePlayRate`.
+2. **Swing:** the swing clip at its explicit time (0005's contact-frame sync), over the upper body from `spine_01`, or the whole body by `FullBodyAlpha`.
+3. **Celebration** on top.
+4. **Until swing clips exist,** the right arm reaches for the placeholder racket target with two-bone IK (full during a swing, `ArmReadyAlpha` in the ready stance). That target meets the ball on the contact tick, so the swing is in time with the ball, without any swing clip.
+
+The component picks this class when `ABP_PadelPlayer` is missing and the idle clip is on the mesh's skeleton. A MetaHuman player's hidden driver is always `SK_PlayerPlaceholderA`, whose skeleton the clips and the MetaHuman retargeter are made for. If an `ABP_PadelPlayer` is made later, it wins: an AnimBP subclass brings its own graph and the C++ root is not used.
+
+**The clips** are Epic's UE5 mannequin idle, walk and jog from the engine's Third Person template, retargeted onto the placeholder skeleton by `Tools/AssetPipeline/unreal/animation_setup.py` (it copies the mannequin into `/Game/Characters/Mannequins`, git-ignored, and writes `/Game/Padel/Animations/Locomotion/A_*`). They're Epic content for use in Unreal projects; no padel swing clips exist yet. `Padel.Animation.NativePose` checks that the four pawns get skeletal bodies, the arms come down from the T-pose and the feet stay on the ground (it skips on a clone without the generated clips).
+
 ## Not covered yet
 
-- The prerequisites of 0005 are still needed before any MetaHuman shows: the placeholder skeletal meshes (`python3 Tools/AssetPipeline/pipeline.py all`, which needs Blender), the placeholder clips and `ABP_PadelPlayer`.
-- Left-handed players (Ruben) use the same right-hand racket bone as 0005; the mirroring is the animation model's.
+- Swing clips (0005's list); until then the swing is the arm reaching for the racket target.
+- Left-handed players (Ruben) use the same right-hand racket bone as 0005, and the arm reach uses the right arm.
 - The racket mesh is still the placeholder box.
