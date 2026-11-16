@@ -30,6 +30,7 @@ def main() -> None:
         "bounds_min_m": list(lo),
         "bounds_max_m": list(hi),
         "materials": sorted({s.material.name for o in meshes for s in o.material_slots if s.material}),
+        "uv_layers": sorted({uv.name for o in meshes for uv in o.data.uv_layers}),
         "armatures": len(armatures),
         "bones": [b.name for a in armatures for b in a.data.bones],
         "root_bones": [b.name for a in armatures for b in a.data.bones if b.parent is None],

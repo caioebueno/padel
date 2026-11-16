@@ -8,13 +8,14 @@ python3 Tools/AssetPipeline/pipeline.py all
 
 That command does three things:
 
-1. It writes the procedural textures to `SourceArt/Textures/`.
+1. It writes the procedural textures to `SourceArt/Textures/` (the turf ones from `config/court_surface.json`).
 2. It builds every enabled asset in Blender and exports it to `SourceArt/<Category>/` as FBX in Unreal units, then updates `SourceArt/manifest.csv`.
 3. It runs `unreal/import_assets.py` in the editor. That script builds the master materials and one material instance per palette entry, imports the meshes into `Content/Padel/`, assigns the materials, turns on Nanite and imports the LODs.
 
 | Asset | Unreal path | Source |
 |---|---|---|
-| `CourtIndoor` | `/Game/Padel/Court/SM_CourtIndoor` | Blender script, from `CourtSpec.h` (floor, lines, frame, mesh, net, lights) |
+| `CourtSurface` | `/Game/Padel/Court/SM_CourtSurface` | Blender script, from `CourtSpec.h` and `config/court_surface.json` (turf, lines, run-off; see [0006](../../docs/decisions/0006-court-surface.md)) |
+| `CourtIndoor` | `/Game/Padel/Court/SM_CourtIndoor` | Blender script, from `CourtSpec.h` (frame, mesh, net, lights) |
 | `CourtIndoorGlass` | `/Game/Padel/Court/SM_CourtIndoorGlass` | Blender script (the glass, kept separate because Nanite can't render translucent materials) |
 | `Ball` | `/Game/Padel/Equipment/SM_Ball` | Blender script, 65 mm, felt texture with the seam |
 | `RacketPlaceholder` | `/Game/Padel/Equipment/SM_RacketPlaceholder` | Blender script, 455 × 260 × 38 mm, perforated face, invented design |

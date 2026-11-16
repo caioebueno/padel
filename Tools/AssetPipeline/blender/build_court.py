@@ -1,4 +1,5 @@
 """Builds the indoor slice court (GDD 2, GDD 10) from CourtSpec.h measurements.
+The floor, lines and run-off are SM_CourtSurface (build_court_surface.py).
 
 Run by pipeline.py. Job keys: id, part ("solid" or "glass"), spec (CourtSpec.h
 constants in metres), palette, budget_tris, out (FBX path), report.
@@ -24,7 +25,6 @@ GLASS_THICKNESS = 0.012   # tempered panels are 10-12 mm
 PANEL_GAP = 0.008         # joint between glass panels
 POST_SIZE = 0.08          # square aluminium post
 RAIL_RADIUS = 0.025
-FLOOR_THICKNESS = 0.02
 NET_POST_SIZE = 0.08
 NET_TAPE = 0.05
 LIGHT_HEIGHT = 7.6
@@ -37,26 +37,13 @@ def net_height_at(spec: dict, y: float) -> float:
 
 def build(job: dict) -> list:
     spec, pal = job["spec"], job["palette"]["court"]
-    names = ["Turf", "Line", "Runoff", "Frame", "Mesh", "Net", "NetTape", "LightPanel", "Glass"]
+    # The floor, lines and run-off are SM_CourtSurface (build_court_surface.py).
+    names = ["Frame", "Mesh", "Net", "NetTape", "LightPanel", "Glass"]
     mats = [bc.material(f"MI_Court_{n}", pal[n]) for n in names]
     idx = {n: i for i, n in enumerate(names)}
     hl, hw = spec["HalfLength"], spec["HalfWidth"]
     solid = bmesh.new()
     glass = bmesh.new()
-
-    # --- Floor: turf, lines, run-off ---
-    bc.add_box(solid, (0, 0, -FLOOR_THICKNESS / 2), (spec["Length"], spec["Width"], FLOOR_THICKNESS), idx["Turf"])
-    outer_l = spec["Length"] + 2 * spec["RunoffBack"]
-    for s in (-1, 1):
-        bc.add_box(solid, (0, s * (hw + spec["RunoffSide"] / 2), -FLOOR_THICKNESS / 2 - 0.001),
-                   (outer_l, spec["RunoffSide"], FLOOR_THICKNESS), idx["Runoff"])
-        bc.add_box(solid, (s * (hl + spec["RunoffBack"] / 2), 0, -FLOOR_THICKNESS / 2 - 0.001),
-                   (spec["RunoffBack"], spec["Width"], FLOOR_THICKNESS), idx["Runoff"])
-    lw, lift = spec["LineWidth"], 0.002
-    centre_len = spec["ServiceLineX"] + spec["CentreLineExtension"]
-    for s in (-1, 1):
-        bc.add_box(solid, (s * spec["ServiceLineX"], 0, lift / 2), (lw, spec["Width"], lift), idx["Line"])
-        bc.add_box(solid, (s * centre_len / 2, 0, lift / 2), (centre_len, lw, lift), idx["Line"])
 
     # --- Glass panels (inner face on the court limit) ---
     t = GLASS_THICKNESS

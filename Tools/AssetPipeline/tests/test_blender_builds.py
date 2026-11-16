@@ -82,11 +82,11 @@ class BlenderBuildTest(unittest.TestCase):
         self.assertAlmostEqual(glass["bounds_max_m"][2], 3.0, delta=0.002)
         self.assertEqual(glass["materials"], ["MI_Court_Glass"])
         self.assertNotIn("MI_Court_Glass", solid["materials"])
-        # Floor top at Z = 0, run-off around the court.
-        self.assertAlmostEqual(solid["bounds_max_m"][0], 12.0, delta=0.01)
-        self.assertLess(solid["bounds_min_m"][2], 0.0)
-        for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Net", "MI_Court_Mesh", "MI_Court_Frame"):
+        for slot in ("MI_Court_Net", "MI_Court_Mesh", "MI_Court_Frame"):
             self.assertIn(slot, solid["materials"])
+        # The floor is SM_CourtSurface now (test_court_surface.py).
+        for slot in ("MI_Court_Turf", "MI_Court_Line", "MI_Court_Runoff"):
+            self.assertNotIn(slot, solid["materials"])
 
     def test_placeholder_player_is_rigged_for_unreal_and_sized(self) -> None:
         asset = self.cat.get("PlayerPlaceholderA")

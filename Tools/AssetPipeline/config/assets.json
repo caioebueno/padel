@@ -11,7 +11,18 @@
       "nanite": true,
       "budget_tris": 60000,
       "part": "solid",
-      "_note": "Floor, lines, frame, mesh, net and lights. Glass is a separate mesh because Nanite does not render translucent materials."
+      "_note": "Frame, mesh, net and lights. The floor is CourtSurface. Glass is a separate mesh because Nanite does not render translucent materials."
+    },
+    {
+      "id": "CourtSurface",
+      "kind": "static",
+      "category": "Court",
+      "source": "procedural",
+      "builder": "court_surface",
+      "nanite": true,
+      "keep_uv1": true,
+      "budget_tris": 12000,
+      "_note": "Turf over the playing area, inlaid lines and run-off (GDD 2, GDD 10). Tuning in config/court_surface.json, colours in palette.json court.Turf/Line/Runoff."
     },
     {
       "id": "CourtIndoorGlass",
