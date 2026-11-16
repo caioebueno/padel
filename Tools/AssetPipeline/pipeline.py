@@ -30,8 +30,9 @@ from asset_lib import INCOMING_DIR, RAW_DIR, REPO_ROOT, SOURCE_ART_DIR, UNREAL_D
 from asset_lib import blender_runner, catalogue, court_spec, glass, manifest, providers, textures, turf_textures  # noqa: E402
 from asset_lib.catalogue import Asset  # noqa: E402
 
-PROCEDURAL_SCRIPTS = {"court": "build_court", "court_glass": "build_court_glass", "ball": "build_equipment", "racket": "build_equipment",
-                      "character": "build_character", "net": "build_net", "court_surface": "build_court_surface"}
+PROCEDURAL_SCRIPTS = {"court": "build_court", "court_glass": "build_court_glass", "court_frame": "build_court_frame",
+                      "ball": "build_equipment", "racket": "build_equipment", "character": "build_character",
+                      "net": "build_net", "court_surface": "build_court_surface"}
 
 
 def log(msg: str) -> None:

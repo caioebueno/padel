@@ -76,10 +76,10 @@ class BlenderBuildTest(unittest.TestCase):
     def test_court_matches_courtspec(self) -> None:
         _, solid = self.build("CourtIndoor", "build_court")
         self.assertNotIn("MI_Court_Glass", solid["materials"])
-        for slot in ("MI_Court_Mesh", "MI_Court_Frame"):
+        for slot in ("MI_Court_LightPanel",):
             self.assertIn(slot, solid["materials"])
-        # The net is its own asset (CourtNet) and the floor is SM_CourtSurface (test_court_surface.py).
-        for slot in ("MI_Court_Net", "MI_Court_Turf", "MI_Court_Line", "MI_Court_Runoff"):
+        # The net is CourtNet, the floor SM_CourtSurface and the fence CourtFrame and CourtMesh.
+        for slot in ("MI_Court_Net", "MI_Court_Turf", "MI_Court_Line", "MI_Court_Runoff", "MI_Court_Frame", "MI_Court_Mesh"):
             self.assertNotIn(slot, solid["materials"])
 
     def test_net_matches_courtspec(self) -> None:
@@ -123,6 +123,25 @@ class BlenderBuildTest(unittest.TestCase):
                                             "MI_Court_GlassGasket"])
         self.assertLessEqual(report["triangles"], asset.budget_tris)
         self.assertEqual(fbx["triangles"], report["triangles"])
+
+    def test_court_frame_and_mesh_match_courtspec(self) -> None:
+        frame_report, frame = self.build("CourtFrame", "build_court_frame")
+        mesh_report, mesh = self.build("CourtMesh", "build_court_frame")
+        hl, hw = self.spec["HalfLength"], self.spec["HalfWidth"]
+        # Posts reach the 4 m fence top (plus their caps); base plates stay on the run-off.
+        self.assertAlmostEqual(frame["bounds_max_m"][2], self.spec["FenceTotalHeight"] + 0.014, delta=0.002)
+        self.assertAlmostEqual(frame["bounds_min_m"][2], 0.0, delta=0.001)
+        self.assertAlmostEqual(frame["bounds_max_m"][0], hl + 0.015 + 0.16, delta=0.002)
+        self.assertEqual(frame["materials"], ["MI_Court_Cap", "MI_Court_Frame", "MI_Court_Steel"])
+        self.assertLessEqual(frame_report["triangles"], self.cat.get("CourtFrame").budget_tris)
+        self.assertEqual(frame_report["layout"]["posts"], 30)
+        # The mesh sits in the wall plane, in the middle of its 15 mm panel frame, inside the 30 mm tubes.
+        self.assertAlmostEqual(mesh["bounds_max_m"][0], hl + 0.0075, delta=0.001)
+        self.assertAlmostEqual(mesh["bounds_max_m"][1], hw + 0.0075, delta=0.001)
+        self.assertAlmostEqual(mesh["bounds_max_m"][2], self.spec["FenceTotalHeight"] - 0.03, delta=0.001)
+        self.assertEqual(mesh["materials"], ["MI_Court_Mesh"])
+        self.assertEqual(mesh_report["openings"], 34)
+        self.assertEqual(mesh_report["triangles"], 2 * 34)
 
     def test_placeholder_player_is_rigged_for_unreal_and_sized(self) -> None:
         asset = self.cat.get("PlayerPlaceholderA")

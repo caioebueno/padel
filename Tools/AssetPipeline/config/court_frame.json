@@ -1,0 +1,51 @@
+{
+  "_doc": "Steel structure and welded mesh of the court fence (GDD 2, GDD 10), read by asset_lib/court_frame_layout.py and blender/build_court_frame.py. Lengths in metres. Wall positions and panel extents come from CourtSpec.h; this file only holds the steel sections and hardware sizes. The glass agent's fixings (glass.json) assume the post depth and gasket below, so change them together.",
+  "post": {
+    "_note": "Rectangular hollow section, 100 across the joint so both glass bolt rows (35 mm in from each panel edge) land on steel, 50 deep.",
+    "across_m": 0.1,
+    "depth_m": 0.05,
+    "corner_radius_m": 0.005,
+    "corner_segments": 3
+  },
+  "glass": {
+    "_note": "The post's court-side face sits this far outside the court limit: 12 mm glass plus a 3 mm EPDM gasket.",
+    "thickness_m": 0.012,
+    "gasket_m": 0.003
+  },
+  "cap": {
+    "_note": "Moulded plastic end cap on every post top.",
+    "height_m": 0.014,
+    "overhang_m": 0.002
+  },
+  "panel_frame": {
+    "_note": "Each mesh panel is welded into a frame of rectangular tube, bolted to the court side of the posts, flush with the glass inner face.",
+    "width_m": 0.03,
+    "depth_m": 0.015,
+    "corner_radius_m": 0.002,
+    "corner_segments": 2,
+    "max_panel_length_m": 2.0,
+    "mid_rail_min_height_m": 2.5,
+    "mid_rail_z_m": 1.5,
+    "bolt_inset_m": 0.12
+  },
+  "base_plate": {
+    "_note": "Welded to the post foot and anchored to the slab, on the outside of the court limit.",
+    "across_m": 0.2,
+    "out_m": 0.16,
+    "thickness_m": 0.012,
+    "anchor_inset_m": 0.03
+  },
+  "gusset": {
+    "height_m": 0.16,
+    "thickness_m": 0.008
+  },
+  "bolts": {
+    "_note": "Galvanised hex nuts and washers: M16 anchors on the base plates, M10 on the panel brackets.",
+    "anchor_nut_m": 0.024,
+    "anchor_washer_m": 0.034,
+    "anchor_stud_m": 0.016,
+    "panel_head_m": 0.017,
+    "panel_washer_m": 0.022,
+    "round_segments": 12
+  }
+}

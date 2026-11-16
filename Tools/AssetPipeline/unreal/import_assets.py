@@ -8,8 +8,9 @@ config/palette.json and the FBX/PNG files), like the input actions in
 PadelInputConfig.cpp, so never edit these assets by hand: change the config and
 run it again.
 
-  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid);
-                                            M_PadelGlass is built by glass_material.py
+  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid,
+                                            and Metal, WireMesh from metal_materials.py); M_PadelGlass is
+                                            built by glass_material.py
   /Game/Padel/Materials/MPC_NetReaction     the net hit reaction's parameters (written by UPadelNetReactionSubsystem)
   /Game/Padel/Materials/MI_<Group>_<Name>   one instance per palette entry
   /Game/Padel/Materials/T_*                 textures
@@ -33,6 +34,9 @@ sys.path.insert(0, str(HERE))
 from asset_lib import SOURCE_ART_DIR, catalogue  # noqa: E402
 import glass_material  # noqa: E402
 import turf_material  # noqa: E402
+
+sys.path.insert(0, str(HERE))
+import metal_materials  # noqa: E402  (court steel and welded mesh masters)
 
 MATERIAL_DIR = "/Game/Padel/Materials"
 MEL = unreal.MaterialEditingLibrary
@@ -470,7 +474,9 @@ def main() -> None:
     palette = catalogue.load_palette()
     import_textures()
     build_masters()
+    metal_materials.build_masters(log, fail)
     build_instances(palette)
+    metal_materials.apply_instance_params(palette, catalogue.material_name, fail)
     for asset in cat.assets:
         if asset.enabled:
             try:

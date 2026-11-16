@@ -75,6 +75,28 @@
       }
     },
     {
+      "id": "CourtFrame",
+      "kind": "static",
+      "category": "Court",
+      "source": "procedural",
+      "builder": "court_frame",
+      "part": "frame",
+      "nanite": true,
+      "budget_tris": 90000,
+      "_note": "Steel structure: posts, corner L-posts, mesh panel frames, base plates, gussets, anchors and bolts. Layout in asset_lib/court_frame_layout.py, sections in config/court_frame.json."
+    },
+    {
+      "id": "CourtMesh",
+      "kind": "static",
+      "category": "Court",
+      "source": "procedural",
+      "builder": "court_frame",
+      "part": "mesh",
+      "nanite": false,
+      "budget_tris": 200,
+      "_note": "One quad per mesh opening; the WireMesh material draws the wires. Not Nanite: it is masked and only a few dozen triangles, so a plain static mesh is cheaper."
+    },
+    {
       "id": "Ball",
       "kind": "static",
       "category": "Equipment",

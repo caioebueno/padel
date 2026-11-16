@@ -24,8 +24,6 @@ import bl_common as bc  # noqa: E402
 
 GLASS_THICKNESS = 0.012   # tempered panels are 10-12 mm
 PANEL_GAP = 0.008         # joint between glass panels
-POST_SIZE = 0.08          # square aluminium post
-RAIL_RADIUS = 0.025
 LIGHT_HEIGHT = 7.6
 
 
@@ -33,7 +31,8 @@ def build(job: dict) -> list:
     spec, pal = job["spec"], job["palette"]["court"]
     # The net is SM_CourtNet (build_net.py); the floor, lines and run-off are SM_CourtSurface
     # (build_court_surface.py).
-    names = ["Frame", "Mesh", "LightPanel", "Glass"]
+    # The fence posts, rails and welded mesh are SM_CourtFrame and SM_CourtMesh (build_court_frame.py).
+    names = ["LightPanel", "Glass"]
     mats = [bc.material(f"MI_Court_{n}", pal[n]) for n in names]
     idx = {n: i for i, n in enumerate(names)}
     hl, hw = spec["HalfLength"], spec["HalfWidth"]
@@ -56,42 +55,7 @@ def build(job: dict) -> list:
                 bc.add_box(glass, (sx * (x0 + x1) / 2, sy * (hw + t / 2), h / 2),
                            (x1 - x0 - PANEL_GAP, t, h), idx["Glass"])
 
-    # --- Frame: posts behind every panel joint, rails along the top ---
-    off = t + POST_SIZE / 2
-    for sx in (-1, 1):
-        for i in range(6):
-            y = -hw + i * spec["Width"] / 5
-            bc.add_box(solid, (sx * (hl + off), y, spec["FenceTotalHeight"] / 2),
-                       (POST_SIZE, POST_SIZE, spec["FenceTotalHeight"]), idx["Frame"])
-        bc.add_cylinder(solid, (sx * (hl + off), -hw - off, spec["FenceTotalHeight"]),
-                        (sx * (hl + off), hw + off, spec["FenceTotalHeight"]), RAIL_RADIUS, 8, idx["Frame"])
-        for sy in (-1, 1):
-            y = sy * (hw + off)
-            for x in (hl, spec["SideGlassStepStartX"], spec["SideGlassEndX"], spec["ExitNearX"], spec["ExitNearX"] / 2, 0.0):
-                h = spec["FenceTotalHeight"] if x >= spec["SideGlassStepStartX"] else spec["SideMeshHeight"]
-                if x == 0.0 and sx < 0:
-                    continue  # the post on the net line is shared by both halves
-                bc.add_box(solid, (sx * x, y, h / 2), (POST_SIZE, POST_SIZE, h), idx["Frame"])
-            bc.add_cylinder(solid, (sx * spec["SideGlassStepStartX"], y, spec["FenceTotalHeight"]),
-                            (sx * (hl + off), y, spec["FenceTotalHeight"]), RAIL_RADIUS, 8, idx["Frame"])
-            for x0, x1 in ((spec["SideGlassEndX"], spec["SideGlassStepStartX"]), (0.0, spec["ExitNearX"])):
-                bc.add_cylinder(solid, (sx * x0, y, spec["SideMeshHeight"]), (sx * x1, y, spec["SideMeshHeight"]),
-                                RAIL_RADIUS, 8, idx["Frame"])
-
-    # --- Welded mesh panels (masked material; UVs in metres for real cell size) ---
-    tile = job["palette"]["court"]["Mesh"].get("tiling_m", 0.05)
-    mesh_off = t + 0.004
-    for sx in (-1, 1):
-        x = sx * (hl + mesh_off)
-        bc.add_quad(solid, [(x, -hw, spec["BackGlassHeight"]), (x, hw, spec["BackGlassHeight"]),
-                            (x, hw, spec["FenceTotalHeight"]), (x, -hw, spec["FenceTotalHeight"])], idx["Mesh"], tile)
-        for sy in (-1, 1):
-            y = sy * (hw + mesh_off)
-            for x0, x1, z0, z1 in ((spec["SideGlassStepStartX"], hl, spec["SideGlassFullHeight"], spec["FenceTotalHeight"]),
-                                   (spec["SideGlassEndX"], spec["SideGlassStepStartX"], spec["SideGlassStepHeight"], spec["SideMeshHeight"]),
-                                   (0.0, spec["ExitNearX"], 0.0, spec["SideMeshHeight"])):
-                bc.add_quad(solid, [(sx * x0, y, z0), (sx * x1, y, z0), (sx * x1, y, z1), (sx * x0, y, z1)],
-                            idx["Mesh"], tile)
+    # The fence posts, rails and welded mesh are built by build_court_frame.py (CourtFrame, CourtMesh).
 
     # The net, its tape and posts are SM_CourtNet (build_net.py), so the hit reaction
     # can move them with their own materials.

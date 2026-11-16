@@ -1,8 +1,7 @@
 path,source,licence,notes
-SourceArt/Textures/T_WeldedMesh_Mask.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
 SourceArt/Textures/T_NetGrid_Mask.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
 SourceArt/Textures/T_Ball_Felt.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
-SourceArt/Court/SM_CourtIndoor.fbx,procedural: Tools/AssetPipeline/blender/build_court.py,original (this repo),"static mesh, 1296 tris; Unreal: /Game/Padel/Court/SM_CourtIndoor"
+SourceArt/Court/SM_CourtIndoor.fbx,procedural: Tools/AssetPipeline/blender/build_court.py,original (this repo),"static mesh, 468 tris; Unreal: /Game/Padel/Court/SM_CourtIndoor"
 SourceArt/Court/SM_CourtIndoorGlass.fbx,procedural: Tools/AssetPipeline/blender/build_court.py,original (this repo),"static mesh, 216 tris; Unreal: /Game/Padel/Court/SM_CourtIndoorGlass"
 SourceArt/Equipment/SM_Ball.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 720 tris; Unreal: /Game/Padel/Equipment/SM_Ball"
 SourceArt/Equipment/SM_RacketPlaceholder.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 4150 tris; Unreal: /Game/Padel/Equipment/SM_RacketPlaceholder"
@@ -16,3 +15,6 @@ SourceArt/Textures/T_Turf_N.png,procedural: Tools/AssetPipeline/asset_lib/turf_t
 SourceArt/Textures/T_Turf_Masks.png,procedural: Tools/AssetPipeline/asset_lib/turf_textures.py,original (this repo),texture (config/court_surface.json)
 SourceArt/Textures/T_CourtSurface_Masks.png,procedural: Tools/AssetPipeline/asset_lib/turf_textures.py,original (this repo),texture (config/court_surface.json)
 SourceArt/Court/SM_CourtSurface.fbx,procedural: Tools/AssetPipeline/blender/build_court_surface.py,original (this repo),"static mesh, 7148 tris; Unreal: /Game/Padel/Court/SM_CourtSurface"
+SourceArt/Textures/T_PowderCoat_N.png,procedural: Tools/AssetPipeline/asset_lib/textures.py,original (this repo),texture
+SourceArt/Court/SM_CourtFrame.fbx,procedural: Tools/AssetPipeline/blender/build_court_frame.py,original (this repo),"static mesh, 40336 tris; Unreal: /Game/Padel/Court/SM_CourtFrame"
+SourceArt/Court/SM_CourtMesh.fbx,procedural: Tools/AssetPipeline/blender/build_court_frame.py,original (this repo),"static mesh, 68 tris; Unreal: /Game/Padel/Court/SM_CourtMesh"
