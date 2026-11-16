@@ -30,6 +30,8 @@ struct PADEL_API FPadelShotRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Contact") double ContactHeightMaxM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double PreferredContactHeightM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double ContactHeightPerBodyHeight = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double LowContactHeightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Contact") double LowContactNetClearanceM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactSideM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactForwardM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Contact") double IdealContactSideBackM = 0.0;

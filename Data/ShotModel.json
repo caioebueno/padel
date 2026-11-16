@@ -56,6 +56,7 @@
 		"PredictStepS": 0.008333333,
 		"HeightCostWeight": 0.7,
 		"OutOfBandCostWeight": 3.0,
-		"TimeCostPerS": 0.1
+		"TimeCostPerS": 0.1,
+		"GravityMps2": 9.81
 	}
 ]

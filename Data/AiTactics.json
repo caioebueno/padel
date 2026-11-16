@@ -55,7 +55,7 @@
 		"ScoreTimeWeight": 0.3,
 		"VolleyAtNetBonus": 2.0,
 		"OverheadBonus": 2.0,
-		"SwingLeadS": 0.7,
+		"SwingLeadS": 1.0,
 		"MiddleBandM": 0.8,
 		"BetterPlacedMarginS": 0.25,
 		"ConfusionMax": 0.15,

@@ -1,11 +1,13 @@
 // One player's movement and swings, human or AI, engine-free (GDD 4, 5, 6.3, 7).
 //
-// Press a shot button: windup starts and charges. Release: the contact moment. The
-// release is graded against the ideal moment, when the predicted ball comes closest
-// to the ideal contact point. Early releases meet the ball at the ideal moment (the
-// Forward phase), late ones at the release; holding through the window fires at the
-// late edge. Contact builds an FShotContext and hands the resolved FShotIntent to the
-// ball through IBallPort.
+// Press a shot button: windup starts and charges. Release: the forward swing starts,
+// and the racket meets the ball the shot's ForwardS later (GDD 5.1). That contact
+// moment (release + ForwardS) is graded against the ideal moment, when the predicted
+// ball comes closest to the ideal contact point. Early releases meet the ball at the
+// ideal moment, others at release + ForwardS; both wait in the Forward phase. Holding
+// through the window starts the forward swing so contact lands on the late edge.
+// Contact builds an FShotContext and hands the resolved FShotIntent to the ball
+// through IBallPort.
 
 #pragma once
 
@@ -58,7 +60,7 @@ namespace Padel::Shots
 		void CancelAiShot() { bAiPending = false; }
 		// How long before the ideal moment the swing for this request starts. A request
 		// that arrives later than this releases with less charge than it asked for.
-		double AiSwingLeadS(double Charge, double TimingOffsetS) const;
+		double AiSwingLeadS(EShotType ShotType, double Charge, double TimingOffsetS) const;
 
 		// The match calls this when the other team hits, for the split-step (GDD 6.3).
 		bool NotifyOpponentContact();
@@ -91,6 +93,11 @@ namespace Padel::Shots
 		// Seconds from now to the ideal contact moment (negative once it has passed).
 		double TimeToIdealS() const { return IdealTimeS - NowS; }
 		const FVec3& GetIdealBallPosition() const { return IdealBallPosition; }
+		// GDD 5.1: the forward swing a release starts now (the contact shot's ForwardS).
+		double ForwardSwingS() const;
+		// Seconds to contact: in the Forward phase the fixed contact moment, before it the
+		// ideal moment. For animation (N2) to time the forward swing.
+		double TimeToContactS() const;
 		// The ideal contact point for a shot beside the player, on the given side (+1
 		// right): the shot's forehand point on the forehand side, else its backhand one.
 		FVec3 IdealContactPoint(const FShotParams& Shot, double Side, double Height) const;

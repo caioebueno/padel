@@ -59,5 +59,6 @@ Padel::Shots::FShotModel FPadelShotModelRow::ToCore() const
 	Out.HeightCostWeight = HeightCostWeight;
 	Out.OutOfBandCostWeight = OutOfBandCostWeight;
 	Out.TimeCostPerS = TimeCostPerS;
+	Out.GravityMps2 = GravityMps2;
 	return Out;
 }

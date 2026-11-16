@@ -24,9 +24,10 @@ namespace
 		EShotButton Button = EShotButton::Drive;
 		bool bAttack = false;
 		bool bTouch = false;
-		// Press this long before the ideal moment: the charge is about Lead / 0.6 s.
+		// Press this long before the release that makes a perfect contact: the charge is
+		// about Lead / 0.6 s.
 		double LeadS = 0.3;
-		// Release this long after the ideal moment.
+		// Make contact (release + ForwardS, GDD 5.1) this long after the ideal moment.
 		double OffsetS = 0.0;
 		// Move so the ball comes to the ideal contact point on this side (+1 right).
 		double Side = 1.0;
@@ -111,7 +112,7 @@ namespace
 							In.Move = FVec2{ DotProduct(To, RightAxis(P.GetTeamSign())) / D * Gain, DotProduct(To, ForwardAxis(P.GetTeamSign())) / D * Gain };
 						}
 					}
-					if (!bPressed && bGlassReady && P.TimeToIdealS() <= Plan.LeadS && P.GetPhase() == ESwingPhase::Idle)
+					if (!bPressed && bGlassReady && P.TimeToIdealS() - P.ForwardSwingS() <= Plan.LeadS && P.GetPhase() == ESwingPhase::Idle)
 					{
 						bPressed = true;
 					}
@@ -123,7 +124,7 @@ namespace
 					In.bDrive = Plan.Button == EShotButton::Drive;
 					In.bLob = Plan.Button == EShotButton::Lob;
 					In.bOverhead = Plan.Button == EShotButton::Overhead;
-					if (P.GetPhase() == ESwingPhase::Windup && P.HasIdealMoment() && -P.TimeToIdealS() >= Plan.OffsetS - 1e-9)
+					if (P.GetPhase() == ESwingPhase::Windup && P.HasIdealMoment() && P.ForwardSwingS() - P.TimeToIdealS() >= Plan.OffsetS - 1e-9)
 					{
 						In.bDrive = In.bLob = In.bOverhead = false;
 						// GDD 7: the stick at release is the aim.
@@ -211,7 +212,7 @@ TEST_CASE("Shots.Controller: every slice shot can be played on purpose")
 	Bandeja.LeadS = 0.2;
 	FPlan Smash;
 	Smash.Button = EShotButton::Overhead;
-	Smash.LeadS = 0.75; // full charge
+	Smash.LeadS = 0.95; // full charge, with room for the ideal moment to move while chasing
 	FPlan Vibora;
 	Vibora.Button = EShotButton::Overhead;
 	Vibora.bAttack = true;
@@ -302,7 +303,9 @@ TEST_CASE("Shots.Controller: releasing late grades late, holding fires at the la
 TEST_CASE("Shots.Controller: an early release meets the ball at the ideal moment, graded early")
 {
 	FRig Rig;
-	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(8.5, 0.0, 0.0), 3);
+	// On the drive's stand point (M2): the early release comes while the player is planted,
+	// not while a slow shuffle still moves the ideal moment.
+	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(8.5, 2.0, 0.0), 3);
 	Rig.Feed("deep_middle");
 	FPlan Plan;
 	Plan.LeadS = 0.4;
@@ -346,6 +349,9 @@ TEST_CASE("Shots.Controller: the AI request plays through the same model and tar
 	P.RequestAiShot(EShotType::Drive, Target, 0.5, 0.0);
 	FPlan Plan;
 	Plan.LeadS = -100.0; // the bot never presses: the AI request does
+	// Standing still, so the ideal moment doesn't move under the request: the swing
+	// starts AiSwingLeadS before it and reaches the requested charge at the release.
+	Plan.bChase = false;
 	const FResult R = Rig.Play(P, Plan);
 	REQUIRE(R.bHit);
 	CHECK(R.Intent.PlayerId == 2);
@@ -430,7 +436,9 @@ TEST_CASE("Shots.Controller: AiSwingLeadS says when a request must arrive")
 	FRig Rig;
 	FPlayerShotController P(0, 1.0, &Rig.Player, &Rig.Lib, &Rig.Move, Vec(3.5, 0.0, 0.0), 21);
 	const FShotModel& M = Rig.Lib.Model;
-	CHECK(P.AiSwingLeadS(0.5, 0.0) == Approx(0.5 * M.ChargeTimeS));
-	CHECK(P.AiSwingLeadS(0.5, -0.05) == Approx(0.5 * M.ChargeTimeS + 0.05));
-	CHECK(P.AiSwingLeadS(1.0, 0.0) == Approx(M.ChargeTimeS + M.AiChargeLeadS));
+	const double DriveForward = Rig.Lib.Get(EShotType::Drive).ForwardS;
+	const double SmashForward = Rig.Lib.Get(EShotType::Smash).ForwardS;
+	CHECK(P.AiSwingLeadS(EShotType::Drive, 0.5, 0.0) == Approx(0.5 * M.ChargeTimeS + DriveForward));
+	CHECK(P.AiSwingLeadS(EShotType::Drive, 0.5, -0.05) == Approx(0.5 * M.ChargeTimeS + DriveForward + 0.05));
+	CHECK(P.AiSwingLeadS(EShotType::Smash, 1.0, 0.0) == Approx(M.ChargeTimeS + M.AiChargeLeadS + SmashForward));
 }

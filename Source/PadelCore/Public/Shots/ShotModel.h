@@ -105,6 +105,10 @@ namespace Padel::Shots
 		// Cost per second of waiting, so the earlier of two equal chances wins.
 		double TimeCostPerS = 0.0;
 
+		// Gravity for the shot model's own arcs (the low-contact lift); the same value as
+		// Physics.json's, which a native test checks.
+		double GravityMps2 = 0.0;
+
 		std::vector<std::string> Validate() const;
 	};
 }

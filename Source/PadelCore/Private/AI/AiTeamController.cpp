@@ -240,10 +240,16 @@ int FAiTeamController::SideSwitchTaker(const FTakerQuery& Query, const std::arra
 	{
 		return -1;
 	}
-	// The partner crosses behind only if they can get there; otherwise the lobbed player
-	// turns and chases it as usual.
+	// The partner crosses behind only when they get there with more time than the lobbed
+	// player turning round would have; otherwise the lobbed player chases it as usual and the
+	// pair keeps its sides (a needless cross leaves a hole while the two are crossing).
 	const int Partner = 1 - Lobbed;
-	return Query.Plans[Partner] && Query.Plans[Partner]->bReachable ? Partner : -1;
+	if (!Query.Plans[Partner] || !Query.Plans[Partner]->bReachable)
+	{
+		return -1;
+	}
+	const bool bLobbedReaches = Query.Plans[Lobbed] && Query.Plans[Lobbed]->bReachable;
+	return !bLobbedReaches || Query.Plans[Partner]->Slack > Query.Plans[Lobbed]->Slack ? Partner : -1;
 }
 
 FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& Target, bool bChasing, double Slack) const

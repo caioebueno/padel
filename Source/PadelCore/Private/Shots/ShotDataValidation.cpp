@@ -61,6 +61,8 @@ namespace Padel::Shots
 		Positive(E, "ContactHeightMaxM", ContactHeightMaxM);
 		Ordered(E, "ContactHeight", ContactHeightMinM, ContactHeightMaxM);
 		NonNegative(E, "ContactHeightPerBodyHeight", ContactHeightPerBodyHeight);
+		NonNegative(E, "LowContactHeightM", LowContactHeightM);
+		NonNegative(E, "LowContactNetClearanceM", LowContactNetClearanceM);
 		Positive(E, "IdealContactSideM", IdealContactSideM);
 		Positive(E, "IdealContactSideBackM", IdealContactSideBackM);
 		Ordered(E, "Depth", DepthShortM, DepthDeepM);
@@ -108,6 +110,7 @@ namespace Padel::Shots
 		Positive(E, "ServeTossHeightM", ServeTossHeightM);
 		Positive(E, "PredictHorizonS", PredictHorizonS);
 		Positive(E, "PredictStepS", PredictStepS);
+		Positive(E, "GravityMps2", GravityMps2);
 		return E;
 	}
 

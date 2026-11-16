@@ -26,6 +26,9 @@ namespace
 
 	// The pair at the net (team A, +X): right player at local X +1.75, left at -1.75.
 	const std::array<FAiVec2, 2> NetLocal = { FAiVec2{ 1.75, 3.0 }, FAiVec2{ -1.75, 3.0 } };
+	// The stagger with the ball on the left (GDD 8): the left player stepped in to volley,
+	// the right player dropped back and is the one better placed for a lob over the left.
+	const std::array<FAiVec2, 2> StaggeredLocal = { FAiVec2{ 1.2, 4.5 }, FAiVec2{ -1.75, 1.8 } };
 
 	// Where a ball first touches anything, in team A's frame. A first bounce on team A's
 	// ground is a landing; anything else (the net, the glass, the wrong half) is not.
@@ -64,7 +67,7 @@ namespace
 
 	// An opponent's lob from (-8, Y0) that first bounces at about TargetDepth on team A's
 	// half, found by bisection on the ball's forward speed (the engine model has drag).
-	FAiBall Lob(const IAiBallModel& Model, double Y0, double TargetY, double TargetDepth)
+	FAiBall Lob(const IAiBallModel& Model, double Y0, double TargetY, double TargetDepth, double Vz = 9.0)
 	{
 		double Lo = 3.0;
 		double Hi = 20.0;
@@ -73,7 +76,7 @@ namespace
 		{
 			const double Vx = 0.5 * (Lo + Hi);
 			const double Time = (8.0 + TargetDepth) / Vx;
-			Ball = { { -8.0, Y0, 1.0 }, { Vx, (TargetY - Y0) / Time, 9.0 }, {} };
+			Ball = { { -8.0, Y0, 1.0 }, { Vx, (TargetY - Y0) / Time, Vz }, {} };
 			const FFirstContact C = FirstContact(Model, Ball);
 			const bool bTooLong = C.bLong || (C.bLanded && C.Local.Y > TargetDepth);
 			(bTooLong ? Hi : Lo) = Vx;
@@ -109,7 +112,7 @@ namespace
 	};
 
 	// Plays a lob at a pair standing at the net and moves the players as the AI asks.
-	FLobRun PlayLob(FAiTeamController& Team, const IAiBallModel& Model, FAiBall Ball)
+	FLobRun PlayLob(FAiTeamController& Team, const IAiBallModel& Model, FAiBall Ball, const std::array<FAiVec2, 2>& StartLocal)
 	{
 		Team.OnPointStarted(false);
 		Team.OnBallHit(0.0, 1, EAiShot::Volley, { 3.0, 0.0, 1.0 }, { -7.0, 0.0, 0.0 });  // own volley: both at the net
@@ -118,7 +121,7 @@ namespace
 		std::array<FAiVec, 2> Own;
 		for (int Slot = 0; Slot < 2; ++Slot)
 		{
-			Own[Slot] = TeamFrame::ToCourt(1, NetLocal[Slot]);
+			Own[Slot] = TeamFrame::ToCourt(1, StartLocal[Slot]);
 		}
 		FLobRun Run;
 		double Time = 0.1;
@@ -208,19 +211,20 @@ TEST_CASE("Ai.SideSwitch: swapped, the players take each other's homes and side 
 	CHECK(Pair.ChooseTaker(Q, Rng) == RightSlot);
 }
 
-TEST_CASE("Ai.SideSwitch: a lob over the left player sends the right player across to take it, once")
+TEST_CASE("Ai.SideSwitch: a lob over the left player sends the better-placed right player across to take it, once")
 {
 	const FAiTactics T = WithSwitch(7.0);
 	const IAiBallModel& Model = TestData::EngineModel();
-	// From the opponents' left, over our left player (court Y +1.75) to land deep on our left.
-	const FAiBall Ball = Lob(Model, -1.0, 2.0, 8.6);
+	// From the opponents' left, over our left player (court Y +1.75) to land deep on the
+	// left of the middle, behind the player who stepped in.
+	const FAiBall Ball = Lob(Model, -1.0, 0.5, 8.6, 12.0);
 	const std::optional<FAiVec2> L = Landing(Model, Ball);
 	REQUIRE(L.has_value());
 	REQUIRE(L->Y > 7.0);
 	REQUIRE(L->X < 0.0);
 
 	FAiTeamController Team(AllAi(), T, TestData::Difficulty("Medium"), Model);
-	const FLobRun Run = PlayLob(Team, Model, Ball);
+	const FLobRun Run = PlayLob(Team, Model, Ball, StaggeredLocal);
 	CHECK(Run.bSwappedDuringFlight);
 	CHECK(Run.FirstTaker == RightSlot);
 	// GDD 3.3 and 8: one player of the pair plays the ball, exactly once.
@@ -234,13 +238,27 @@ TEST_CASE("Ai.SideSwitch: a lob over the left player sends the right player acro
 	CHECK_FALSE(Team.GetPair().IsSwapped());
 }
 
+TEST_CASE("Ai.SideSwitch: the lobbed player keeps a lob they are better placed for")
+{
+	// Level at the net and the lob deep behind the left player's own corner: turning round
+	// is quicker than the partner's cross, so nobody crosses and no hole opens.
+	const FAiTactics T = WithSwitch(7.0);
+	const IAiBallModel& Model = TestData::EngineModel();
+	const FAiBall Ball = Lob(Model, -1.0, 2.5, 8.6);
+	FAiTeamController Team(AllAi(), T, TestData::Difficulty("Medium"), Model);
+	const FLobRun Run = PlayLob(Team, Model, Ball, NetLocal);
+	CHECK_FALSE(Run.bSwappedDuringFlight);
+	CHECK(Run.FirstTaker == LeftSlot);
+	CHECK(Run.Shots == 1);
+}
+
 TEST_CASE("Ai.SideSwitch: with SideSwitchMinLobDepthM = 0 the same lob plays as on main")
 {
 	const IAiBallModel& Model = TestData::EngineModel();
-	const FAiBall Ball = Lob(Model, -1.0, 2.0, 8.6);
+	const FAiBall Ball = Lob(Model, -1.0, 0.5, 8.6, 12.0);
 	const FAiTactics Off = WithSwitch(0.0);
 	FAiTeamController Team(AllAi(), Off, TestData::Difficulty("Medium"), Model);
-	const FLobRun Run = PlayLob(Team, Model, Ball);
+	const FLobRun Run = PlayLob(Team, Model, Ball, StaggeredLocal);
 	CHECK_FALSE(Run.bSwappedDuringFlight);
 	// Without the switch the lobbed player turns and chases it.
 	CHECK(Run.FirstTaker == LeftSlot);

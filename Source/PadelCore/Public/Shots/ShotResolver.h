@@ -32,6 +32,12 @@ namespace Padel::Shots
 		static double PositionPowerLimit(double DistanceM, const FShotModel& Model);
 		static double StaminaFactor(double Stamina, const FShotModel& Model);
 
+		// Where the flatter gravity-only arc from Origin to Target at SpeedMps crosses the
+		// net plane (X = 0), metres; -1 when the speed can't reach the target.
+		static double NetCrossingHeight(const FVec3& Origin, const FVec3& Target, double SpeedMps, double Gravity);
+		// The fastest speed up to SpeedMps whose arc passes ClearanceM over the tape.
+		static double NetClearingSpeed(const FVec3& Origin, const FVec3& Target, double SpeedMps, double ClearanceM, double Gravity);
+
 		// GDD 5.1 Miss: a weak, random ball, often into the net or a short pop-up.
 		static FShotIntent Mishit(const FShotContext& Context, const FShotModel& Model, FPadelRng& Rng);
 	};

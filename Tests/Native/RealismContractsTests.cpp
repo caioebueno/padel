@@ -50,23 +50,6 @@ TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by
 	CHECK(T.FirstStepExtraS == Approx(0.0));
 }
 
-TEST_CASE("Contracts.Realism: Shots.json's forward swing is still neutral (GDD 5.1)")
-{
-	using namespace Padel::Shots;
-	const FShotLibrary Lib = ShotTestData::LoadLibrary();
-	CHECK(Lib.Validate().empty());
-	for (int Index = 0; Index < ShotTypeCount; ++Index)
-	{
-		const Padel::EShotType Type = static_cast<Padel::EShotType>(Index);
-		if (Type == Padel::EShotType::Mishit)
-		{
-			continue;
-		}
-		CAPTURE(Padel::ShotTypeName(Type));
-		CHECK(Lib.Get(Type).ForwardS == Approx(0.0));
-	}
-}
-
 TEST_CASE("Contracts.Realism: AnimClips.json has no contact points yet (0005)")
 {
 	const Padel::Animation::FAnimClipLibrary Clips = AnimTestData::LoadClips();
