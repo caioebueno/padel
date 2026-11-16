@@ -188,7 +188,7 @@ One family, **Barlow** (SIL Open Font Licence 1.1), in two widths: **Barlow Cond
 | `Type.Heading` | Condensed SemiBold | 32 / 36 | +2% | UPPER | Small tile labels, list button labels, tab labels. |
 | `Type.Body` | Barlow Medium | 28 / 36 | 0 | Sentence | Descriptions, settings labels. |
 | `Type.BodySmall` | Barlow Medium | 26 / 34 | 0 | Sentence | Hint bar labels, helper text. Smallest allowed size (today's `FontSmall` is 22, too small). |
-| `Type.Label` | Condensed Bold | 26 / 30 | +8% | UPPER | Stat labels ("ATT"), badges, the profile chip. |
+| `Type.Label` | Condensed Bold | 26 / 30 | +8% | UPPER | Badges, breadcrumbs, small captions. |
 | `Type.Stat` | Condensed Bold | 40 / 40 | 0 | — | Stat numbers, overall rating on small cards. Tabular. |
 | `Type.Overall` | Condensed ExtraBold | 88 / 80 | −2% | — | Overall rating on the large player card. Tabular. |
 
@@ -199,11 +199,12 @@ Text sizes scale with the DPI rule in 4.4. The **Text size** setting (7.7) multi
 - **Base unit 8 px.** Tokens `Space.1` to `Space.8` = 8, 16, 24, 32, 48, 64, 96, 128.
 - **Safe area:** `Safe.X` 96 px left and right, `Safe.Y` 64 px top and bottom. That's inside the 90% title-safe area (96 × 54 px at 1080p), with 10 px to spare top and bottom for TVs that overscan. Nothing interactive or textual goes outside it, only backgrounds. This replaces the 48 px `SafeMargin`.
 - **Grid:** 12 columns inside the safe area (1728 px wide): column 122 px, gutter 24 px (12 × 122 + 11 × 24 = 1728). A span of n columns is 146n − 24 px wide: 3 = 414, 4 = 560, 5 = 706, 6 = 852, 8 = 1144. Screens below give positions as columns.
-- **Header band:** top of safe area, 96 px tall. Holds the screen title (left) and the profile chip or a context line (right).
+- **Header band:** top of safe area, 96 px tall. Holds the screen title (left) and a context line (right).
 - **Hint bar band:** bottom of safe area, 56 px tall (6.1).
 - **Content area:** y 184–936, between the header and hint bar bands with a 24 px gap from each: 1080 − 64 − 96 − 24 − 24 − 56 − 64 = **752 px** tall.
 - **Radius:** `Radius.Panel` 12 px (tiles, cards, dialogs), `Radius.Control` 8 px (buttons, selectors), `Radius.Pill` 999 px (badges, toggles, chips).
-- **Glass panel recipe:** `Glass.Fill` + 24 px background blur (UMG `BackgroundBlur`, strength 12; fall back to a flat fill at blur 0 if the **Reduce transparency** setting is on or the GPU tier is Low) + 1 px `Glass.Edge` + 1 px `Glass.EdgeTop` + drop shadow `#000000` at 0.45, 0 × 12 px offset, 32 px blur.
+- **Glass panel recipe:** `Glass.Fill` + 1 px `Glass.Edge` + 1 px `Glass.EdgeTop` + drop shadow `#000000` at 0.45, 0 × 12 px offset, 32 px blur. Panels are **plain translucent fills, with no blur of their own**.
+- **One blur per screen, at most.** The frosted look comes from a single full-screen `BackgroundBlur` layer (strength 10) placed under all the panels and over the backdrop, or from depth of field on the menu camera, which is cheaper still. Each UMG `BackgroundBlur` is a full-resolution pass over a live Lumen scene, so per-panel blur would break GDD 1's 60 fps budget on an M2 Pro (Metal), and menus count. Pause reuses the same single layer. No blur at all when **Reduce transparency** is on or the GPU tier is Low.
 - **Focus ring:** 3 px `Colour.Accent` outside the element's edge with 2 px gap, matching its radius, plus `Accent.Glow`. Focus also scales the element to 1.03 (tiles and cards) or 1.0 (list rows, which slide 8 px right instead) so focus is shown by shape and motion, not colour alone.
 
 ### 4.4 Resolution and scaling
@@ -232,7 +233,7 @@ Text sizes scale with the DPI rule in 4.4. The **Text size** setting (7.7) multi
 | Change value | D-pad / stick left and right on a selector | Left/Right, A/D | Click the arrows | Cycles a selector (6.8), moves a slider (6.10). |
 | Tab left / right | LB / RB | Q / E | Click a tab | Switches tabs (Settings, Controls, Stats). |
 | Secondary action | X | R | — | Per screen: "Reset to default" in Settings, "Swap player" in Setup. Shown in the hint bar only when live. |
-| Tertiary action | Y | F | — | Per screen: "Details" on a player card. Shown only when live. |
+| Tertiary action | Y | F | — | Unused in the slice (post-slice: Details on a player card, 6.6). |
 | Pause / resume | Start (Menu) | Esc in match | — | Opens Pause in a match; on the Pause screen, resumes. Does nothing on other menu screens. |
 | Skip | A | Enter | Click | Skips the title fade and the Versus card. |
 
@@ -289,14 +290,14 @@ The strip at the bottom of every menu screen that says what each live button doe
 
 - **Anatomy:** a row of hint items, right-aligned, inside the hint bar band (4.3). Each item: glyph (40 px) + 8 px gap + label (`Type.BodySmall`, `Text.Primary`). 32 px between items. Optional left-aligned context text (`Type.BodySmall`, `Text.Secondary`), for example the Settings description line.
 - **Background:** none on screens with a scrim; on Pause it sits on a full-width `Surface.Charcoal` strip at 0.8 alpha, 88 px tall, so it reads over the frozen match.
-- **Order, right to left:** Confirm (A), Back (B), then X, Y, then LB/RB as a pair ("LB RB  Change tab"). The most used is nearest the right edge, where the eye ends.
+- **Order, left to right, everywhere:** A first, then X, Y, then LB RB as a pair ("LB RB  Change tab"), then B last. The group is right-aligned, so B always sits at the right edge and A always leads. Every hint list and mock-up in this spec uses this order.
 - **States:** an item exists only while its action is live. A hint whose action becomes unavailable (for example, X "Reset" when everything is already default) is removed, not greyed. When A is pressed anywhere, the A glyph flashes `Accent` for 120 ms.
 - **Behaviour:** items are clickable with the mouse and do the same as the button.
-- **Copy:** one or two words, a verb first: "Select", "Back", "Change tab", "Swap player", "Reset", "Details", "Resume", "Skip".
+- **Copy:** one or two words, a verb first: "Select", "Back", "Change tab", "Swap player", "Reset", "Resume", "Skip".
 
 ### 6.2 Buttons
 
-Two kinds.
+Three kinds.
 
 **Primary button (`UPadelPrimaryButton`)** — the one main action on a screen ("Start match", "Rematch", "Quit game" in a dialog). At most one per screen.
 
@@ -310,6 +311,17 @@ Two kinds.
 | Pressed | `Accent.Pressed` | `OnAccent` | Scale 0.98, 80 ms |
 | Disabled | `Glass.Fill` | `Text.Disabled` | No stroke; skipped by navigation |
 | Danger variant, focused | `State.Danger` | `#FFFFFF` | Used only for "Quit game" |
+
+**Secondary button (`UPadelSecondaryButton`)**: the alternative next to a primary button ("Main menu" on Stats, the safe option in dialogs).
+
+- Size: 240 × 64 px (Stats) or 320 × 72 px (dialogs). `Radius.Control`. Label `Type.Heading`, centred, upper case.
+
+| State | Fill | Label | Other |
+|---|---|---|---|
+| Default | `Glass.Fill` | `Text.Secondary` | 2 px `Glass.Edge` stroke |
+| Focused | `Glass.FillRaised` | `Text.Primary` | Focus ring + glow, scale 1.03 |
+| Pressed | `Glass.FillRaised` | `Text.Primary` | Scale 0.98, 80 ms |
+| Disabled | `Glass.Fill` at 0.5 | `Text.Disabled` | No stroke; skipped by navigation |
 
 **List button (`UPadelListButton`)** — vertical menus (Pause, dialogs' secondary options, Controls and Settings categories).
 
@@ -335,7 +347,7 @@ The main menu's large picture buttons.
 | Default | 100%, desaturated 20%, brightness 0.85 | `Text.Primary` | 1 px `Glass.Edge` | — |
 | Focused | Full colour, brightness 1.0, slow 4% push-in over 6 s | `Text.Primary` | Focus ring + glow | Scale 1.03, description fades in to full |
 | Pressed | Brightness 1.1 | — | Ring stays | Scale 0.99, 80 ms, then the screen transition |
-| Locked | Desaturated 100%, brightness 0.5 | `Text.Disabled` | 1 px `Glass.Edge` | Padlock icon 48 px centred, "Coming soon" badge. Focused locked: ring shows, image does not colour up, description reads why. |
+| Locked | **No image**: a flat `Glass.Fill` panel with a 64 px line icon for the mode (a trophy outline for Career, two linked figures for Team Builder), so no art is commissioned for modes that don't exist | `Text.Secondary` for the label and description (they're meant to be read; ≥ 6:1) | 1 px `Glass.Edge` | Padlock icon 32 px next to the label and the "Coming soon" badge show the locked state. Focused locked: ring shows, fill doesn't raise, description reads why. |
 
 ### 6.4 Badge (`UPadelBadge`)
 
@@ -343,7 +355,9 @@ The main menu's large picture buttons.
 - Variants: **Coming soon** (`Surface.Charcoal` fill, `Colour.Lock` text, padlock 16 px), **New** (`Accent` fill, `OnAccent` text), **You** (`Accent` stroke 2 px, `Accent` text; marks the player you control), **Partner** (`Glass.Edge` stroke, `Text.Secondary` text).
 - Not focusable.
 
-### 6.5 Profile chip (`UPadelProfileChip`)
+### 6.5 Profile chip (`UPadelProfileChip`), post-slice
+
+**Not built in the slice**: it does nothing until there are profiles. Kept here so the header leaves room for it later.
 
 - Top right of the main menu header (not top left: the screen title takes the left, and the eye reads the title first).
 - 280 × 56 px pill, `Glass.Fill`. A 40 px circle with initials, then the profile name (`Type.Label`). One line only: a second line would need text below the 26 px minimum.
@@ -351,38 +365,38 @@ The main menu's large picture buttons.
 
 ### 6.6 Player card (`UPadelPlayerCard`)
 
-Shows one player on the setup and versus screens.
+Shows one player on the setup screen. **Our own composition, a broadcast "player graphic"**, built like the lower-third name strap a TV match shows when it introduces a player. It deliberately avoids the trading-card layout common in football sims (a big rating stacked over a position code in a corner, portrait in the middle, three-letter stat codes under the name), per the GDD 1 rule on copying UI layouts.
 
-- **Large:** 3 columns × 560 px (414 × 560). **Small:** 3 columns × 296 px (opponents on setup).
+- **Large:** 390 × 560 px in Setup (half the "your pair" panel's inner width, 7.3). **Small:** 321 × 200 px (opponents on setup).
 - **Anatomy (large), top to bottom:**
-  - Top band 8 px in the team colour.
-  - Overall rating `Type.Overall`, top-left, with "OVR" (`Type.Label`, `Text.Secondary`) under it.
-  - Side and hand, top-right, stacked: "LEFT SIDE" / "RIGHT-HANDED" (`Type.Label`).
-  - Player render, waist up, centred, 320 px tall (asset pipeline portrait; until it exists, a silhouette in the team colour at 0.25 alpha).
-  - Name: first name (`Type.Heading`, `Text.Secondary`) over surname (`Type.Title`, `Text.Primary`).
-  - Play style tag pill ("POWER"), `Glass.Edge` stroke.
-  - Four stat rows: label (`Type.Label`, 56 px wide), number (`Type.Stat`, tabular, 64 px wide), bar (fills to number/99 in `Text.Primary` at 0.85; the track is `Glass.Edge`).
-  - Optional badge row: You / Partner.
-- **Small card** drops the render to 120 px, shows overall, surname and the four stats as a 2×2 grid of label + number with no bars.
+  - **Name strap**, 96 px tall, the full card width, in the team colour at 0.9 alpha: surname (`Type.Title`, `Colour.OnAccent` `#0A1020`, which passes 7:1 on both team colours) with the first name above it (`Type.Label`). A thin 4 px white top edge, like a broadcast strap.
+  - **Portrait**, waist up, 280 px tall, standing on the strap's lower edge, left-aligned at 24 px (not centred), with the team name in large outline type behind it (`Type.Display` at 0.08 alpha). Until the asset pipeline renders portraits, a silhouette in the team colour at 0.25 alpha.
+  - **Profile line**, right of the portrait, stacked in `Type.BodySmall`, `Text.Secondary`: "Left side", "Right-handed", "1.86 m", and the play style ("Power play"). Words, not codes.
+  - **Overall meter**, a bottom band 72 px tall on `Surface.Charcoal`: the word "Overall" (`Type.Body`, `Text.Secondary`) on the left, a 12 px meter across the middle filled to rating/99 in the team colour, the number (`Type.Stat`, tabular) on the right. The rating is one labelled meter among the card's information, not a hero number in a corner.
+  - **Four stat rows** above the band: full-word label (`Type.Body`, 160 px wide: Attack, Defence, Net, Movement), a bar (fills to number/99 in `Text.Primary` at 0.85 on a `Glass.Edge` track), the number (`Type.Stat` at 32 px, tabular, right).
+  - **Badge**, top-right corner of the strap: You / Partner (6.4).
+- **Small card:** the name strap (72 px) and the overall meter only, with no portrait and no stat rows. It sits in a 321 px wide slot.
 - **The four card stats** (display only, from `Data/Players.json`, averaged and rounded; the grouping lives in `Data/UiTheme.json` → `PlayerCardStats` so it's tunable text):
 
-| Label | Name on Details | Averages |
-|---|---|---|
-| `ATT` | Attack | Overhead, Bandeja, Víbora, Power |
-| `DEF` | Defence | Wall Play, Lob, Drive, Backhand |
-| `NET` | Net | Volley, Touch, Anticipation, Positioning |
-| `MOV` | Movement | Speed, Acceleration, Agility, Stamina |
+| Label | Averages |
+|---|---|
+| Attack | Overhead, Bandeja, Víbora, Power |
+| Defence | Wall Play, Lob, Drive, Backhand |
+| Net | Volley, Touch, Anticipation, Positioning |
+| Movement | Speed, Acceleration, Agility, Stamina |
 
+- **Play style** comes from the UI roster (`FRosterPlayer::Style`, already in `PadelUiRoster.cpp`), since `Data/Players.json` has no style field yet. Adding one is Agent 3's file and its own PR (W14); the roster table then goes, as decision 0003 already plans for names.
 - **Overall:** GDD 6.2 gives the idea (weights depend on preferred side) but not the numbers, and no code computes it (G5). This spec proposes `Padel::Ui::OverallRating(const FPlayerRow&)` in the UI model, reading weights from a new `OverallWeights` block in `Data/Players.json` (Agent 3's file, so its own PR; 13 Q1). Until then the card shows the plain average of all 23 attributes, which gives Arunde 78, Ventara 77, Corvisa 78, Halvaro 77 (inside GDD 6.4's 75–82).
 
 | State | Frame | Other |
 |---|---|---|
 | Default | `Glass.Fill`, 1 px `Glass.Edge` | — |
-| Focused | `Glass.FillRaised`, focus ring | Scale 1.03, render does a 2% push-in |
-| Selected (you control this player) | 2 px `Accent` stroke even when not focused | "YOU" badge |
-| Disabled (not choosable) | `Glass.Fill` | Not focusable; used for the opponents on setup |
+| Selected (you control this player) | 2 px `Accent` stroke | "YOU" badge |
+| Not selected (your partner) | `Glass.Fill`, 1 px `Glass.Edge` | "PARTNER" badge |
 
-- **Details (Y):** on a focused card, Y opens an overlay panel (5 columns × 720 px, centred) listing all 23 attributes in GDD 6.1's groups (Technical, Physical, Mental) as label + number + bar, two columns, plus height, hand, side and style. B or Y closes it. Read-only.
+In the slice the cards are **not focusable** (7.3: X swaps from anywhere), so they have no focused or pressed state.
+
+- **Details (post-slice):** a later Y action would open an overlay listing all 23 attributes in GDD 6.1's groups. When it lands, all four cards (including the opponents, the main reason to open it) become focusable and gain the focused state of the tile (ring, scale 1.03).
 
 ### 6.7 Toggle (`UPadelToggle`)
 
@@ -443,9 +457,11 @@ Volumes and similar values.
 
 ### 6.14 Screen header (`UPadelScreenHeader`)
 
-- The header band (4.3): screen title `Type.Display` left; optional breadcrumb above it in `Type.Label`, `Text.Secondary` ("PAUSE  /  SETTINGS"); the right side holds the profile chip (main menu), the match score line (Pause) or nothing.
+- The header band (4.3): screen title `Type.Display` left; optional breadcrumb above it in `Type.Label`, `Text.Secondary` ("PAUSE  /  SETTINGS"); the right side holds the profile chip (post-slice, main menu), the match score line (Pause) or nothing.
 
 ### 6.15 Background (`APadelMenuBackdrop`, an actor, not a widget)
+
+Slice must: one fixed camera shot of the court per screen family. Slice if time: the slow paths below.
 
 - The menus render over the court level with a slow camera dolly: a looping 40 s path around the outside of the glass at 2–4 m height, one move per screen family (Title: low wide orbit; Main: high slow push along the side glass; Setup: behind the back glass looking down the court, like the broadcast camera). The path points live in `Data/Camera.json` → `MenuShots`.
 - Optional idle players hitting soft balls on court (post-slice; for the slice the court is empty, with arena lights and a little haze).
@@ -454,7 +470,7 @@ Volumes and similar values.
 
 ### 6.16 Loading indicator
 
-- A padel ball icon (20 px, `Accent`) bouncing on a short line, 600 ms loop, bottom-right of the safe area, with "Loading" in `Type.Label`. Shown only if a load takes over 300 ms.
+- A padel ball icon (20 px, `Text.Primary`) bouncing on a short line, 600 ms loop, bottom-right of the safe area, with "Loading" in `Type.Label`. Shown only if a load takes over 300 ms.
 
 ---
 
@@ -494,7 +510,7 @@ Positions are in grid columns (C1–C12) inside the safe area, and pixel rows fr
 
 ```
 y 64   ┌──────────────────────────────────────────────────────────────────────┐
-       │ PADEL STREET                                       ( PLAYER 1  ◉ )   │  header
+       │ PADEL STREET                                                         │  header
 y 160  ├──────────────────────────────────────────────────────────────────────┤
 y 184  │ ┌───────────────────────────────────────────┐ ┌─────────────────────┐ │
        │ │                                           │ │ PRACTICE            │ │
@@ -519,11 +535,10 @@ The featured player from the brief is the hero tile's image (Ventara and Arunde,
 |---|---|---|---|---|---|---|---|
 | `Main.QuickMatch` | Tile, Hero | C1–C8, y 184–704 | QUICK MATCH | You and an AI partner against two AI players. | Team Lagoon mid-rally at the net | Match setup (7.3) | Default, Focused, Pressed |
 | `Main.Practice` | Tile, Small | C9–C12, y 184–432 | PRACTICE | Ball machine drills for every shot. | Ball machine and one player on court | Practice (7.9) | Default, Focused, Pressed |
-| `Main.Settings` | Tile, Small | C9–C12, y 456–704 | SETTINGS | Audio, display, gameplay and accessibility. | Close-up of the court glass and frame | Settings (7.7), opener = Main | Default, Focused, Pressed |
-| `Main.Career` | Tile, Small (Locked) | C1–C4, y 728–936 (208 px tall) | CAREER | Coming in a later update. | Empty court, arena lights | Toast "Career is coming in a later update." | Locked (+ focused) |
-| `Main.TeamBuilder` | Tile, Small (Locked) | C5–C8, y 728–936 | TEAM BUILDER | Coming in a later update. | Rackets on a bench | Toast "Team Builder is coming in a later update." | Locked (+ focused) |
+| `Main.Settings` | Tile, Small | C9–C12, y 456–704 | SETTINGS | Audio and accessibility. | Close-up of the court glass and frame | Settings (7.7), opener = Main | Default, Focused, Pressed |
+| `Main.Career` | Tile, Small (Locked) | C1–C4, y 728–936 (208 px tall) | CAREER | Coming in a later update. | None: flat glass + trophy line icon (6.3) | Toast "Career is coming in a later update." | Locked (+ focused) |
+| `Main.TeamBuilder` | Tile, Small (Locked) | C5–C8, y 728–936 | TEAM BUILDER | Coming in a later update. | None: flat glass + linked-figures line icon (6.3) | Toast "Team Builder is coming in a later update." | Locked (+ focused) |
 | `Main.Controls` | Tile, Small | C9–C12, y 728–936 | CONTROLS | See every button. | Gamepad on the bench | Controls (7.6), opener = Main | Default, Focused, Pressed |
-| `Main.Profile` | Profile chip | header right | PLAYER 1 | — | — | not focusable | — |
 
 The bottom row is 208 px tall, shorter than the 248 px Small tiles above it, so the Small tile is specified with a height token, not a fixed size.
 
@@ -558,47 +573,46 @@ The bottom row is 208 px tall, shorter than the 248 px Small tiles above it, so 
 ```
 y 64   QUICK MATCH                                         LAGOON  vs  EMBER
 y 160  ───────────────────────────────────────────────────────────────────────
-y 184  ┌────────── YOUR PAIR ──────────────┐      ┌──── OPPONENTS ────┐
-       │ ┌────────────┐   ┌────────────┐   │      │ ┌──────┐ ┌──────┐ │
-       │ │  77  OVR   │   │  78  OVR   │   │  VS  │ │ 78   │ │ 77   │ │
-       │ │ [render]   │   │ [render]   │   │      │ │CORVI.│ │HALVA.│ │
-       │ │ MIKKO      │   │ SELVA      │   │      │ └──────┘ └──────┘ │
-       │ │ VENTARA    │   │ ARUNDE     │   │      ├─── MATCH RULES ───┤
-       │ │ ATT 83 ███ │   │ ATT 72 ██  │   │      │ Difficulty ‹MED›  │
-       │ │ DEF 74 ██  │   │ DEF 81 ███ │   │      │ Format [1|BO3]    │
-       │ │ NET 75 ██  │   │ NET 78 ██  │   │      │ Golden point [ON] │
-       │ │ MOV 76 ██  │   │ MOV 80 ███ │   │      │                   │
-       │ │   [YOU]    │   │ [PARTNER]  │   │      │ [ START MATCH  ]  │
-       │ └────────────┘   └────────────┘   │      └───────────────────┘
-y 936  └───────────────────────────────────┘
-y 960                              [A] Select  [X] Swap player  [Y] Details  [B] Back
+y 184  ┌─────────── YOUR PAIR · LAGOON ───────────┐     ┌─ OPPONENTS · EMBER ─┐
+       │ ┌──────────────────┐ ┌──────────────────┐ │     │┌────────┐┌────────┐│
+       │ │▀ MIKKO     [YOU] │ │▀ SELVA [PARTNER] │ │     ││▀CORVISA││▀HALVARO││
+       │ │  VENTARA         │ │  ARUNDE          │ │     ││Ovr ▬▬ 78││Ovr ▬▬ 77││
+       │ │ [portrait] Left  │ │ [portrait] Right │ │ VS  │└────────┘└────────┘│
+       │ │            side  │ │            side  │ │     ├─── MATCH RULES ────┤
+       │ │ Attack   ███  83 │ │ Attack   ██   72 │ │     │ Difficulty ‹MEDIUM›│
+       │ │ Defence  ██   74 │ │ Defence  ███  81 │ │     │ Format [1 SET|BO3] │
+       │ │ Net      ██   75 │ │ Net      ██   78 │ │     │ Golden point [ON]  │
+       │ │ Movement ██   76 │ │ Movement ███  80 │ │     │                    │
+       │ │ Overall ▬▬▬▬  77 │ │ Overall ▬▬▬▬  78 │ │     │ [  START MATCH   ] │
+       │ └──────────────────┘ └──────────────────┘ │     └────────────────────┘
+y 936  └──────────────────────────────────────────┘
+y 960  [A] Start match  [X] Swap player  [B] Back
 ```
 
-| Region | Columns | Rows |
+| Region | Columns / size | Rows |
 |---|---|---|
-| Your pair panel (glass), title "YOUR PAIR · LAGOON" in `Team.Lagoon` | C1–C6 | y 184–936 |
-| Two large player cards inside it | C1–C3 and C4–C6 (with 24 px inner padding) | y 248–808 |
-| "VS" mark | between C6 and C7, centred | y 520, `Type.Display`, `Text.Disabled` |
-| Opponents panel, title "OPPONENTS · EMBER" in `Team.Ember` | C8–C12 | y 184–480 |
-| Two small cards inside it | C8–C10, C10–C12 | y 232–464 (232 px; the small card is 232 tall here) |
-| Match rules panel, title "MATCH RULES" | C8–C12 | y 504–936 |
-| Start match (primary button) | C8–C12, full panel width minus padding | y 832–912 |
+| Your pair panel, title "YOUR PAIR · LAGOON" in `Team.Lagoon` | C1–C6 (852 px) | y 184–936 |
+| Two large player cards inside it, 24 px panel padding, 24 px gap: (852 − 48 − 24) / 2 = **390 px** each | x +24 and +438 within the panel | y 256–816 |
+| "VS" mark | C7, centred | y 520, `Type.Display`, `Text.Secondary` |
+| Opponents panel, title "OPPONENTS · EMBER" in `Team.Ember` | C8–C12 (706 px) | y 184–448 |
+| Two small cards inside it, 24 px padding, 16 px gap: (706 − 48 − 16) / 2 = **321 px** each | | y 232–432 (200 px) |
+| Match rules panel, title "MATCH RULES" | C8–C12 | y 472–936 |
+| Start match (primary button), panel width minus padding (658 × 64) | C8–C12 | y 848–912 |
 
 The header right shows "LAGOON  vs  EMBER" in team colours (`Type.Heading`).
 
 **Elements:**
 
-| Id | Component | Label / content | A does | Left/Right | X | Y | States |
-|---|---|---|---|---|---|---|---|
-| `Setup.YouCard` | Player card, large, Selected | The player you control (default Mikko Ventara) with "YOU" badge | Nothing (already you); plays a soft confirm sound | Moves focus to the other card | Swap: you take the other Lagoon player | Details | Focused / Selected |
-| `Setup.PartnerCard` | Player card, large | Your AI partner, "PARTNER" badge | Choose this player: they become YOU, the other becomes PARTNER (`FMatchSetup::CyclePlayer`) | Moves focus | Same as A | Details | Default / Focused |
-| `Setup.Opponent1`, `Setup.Opponent2` | Player card, small, Disabled | Ilan Corvisa, Ruben Halvaro | not focusable | — | — | — | Disabled |
-| `Setup.Difficulty` | Selector | "Difficulty" · EASY / MEDIUM / HARD (default MEDIUM) | Steps forward, wraps | Steps, no wrap | — | — | Default / Focused / At an end |
-| `Setup.Format` | Segmented | "Format" · 1 SET / BEST OF 3 (default BEST OF 3, GDD 13 decision 5) | — | Selects | — | — | Default / Focused |
-| `Setup.GoldenPoint` | Toggle | "Golden point" · ON / OFF (default ON) | Toggles | Left Off, Right On | — | — | Default / Focused |
-| `Setup.Start` | Primary button | "START MATCH" with A glyph | Starts: Versus (7.4), then match | — | — | — | Default / Focused / Pressed |
+| Id | Component | Label / content | Focusable | A does | Left/Right | States |
+|---|---|---|---|---|---|---|
+| `Setup.YouCard`, `Setup.PartnerCard` | Player card, large | The player you control (default Mikko Ventara) with "YOU", and your AI partner with "PARTNER" | No | — | — | Selected / Not selected |
+| `Setup.Opponent1`, `Setup.Opponent2` | Player card, small | Ilan Corvisa, Ruben Halvaro | No | — | — | Default |
+| `Setup.Difficulty` | Selector | "Difficulty" · EASY / MEDIUM / HARD (default MEDIUM) | Yes | Steps forward, wraps | Steps, no wrap | Default / Focused / At an end |
+| `Setup.Format` | Segmented | "Format" · 1 SET / BEST OF 3 (default BEST OF 3, GDD 13 decision 5) | Yes | — | Selects | Default / Focused |
+| `Setup.GoldenPoint` | Toggle | "Golden point" · ON / OFF (default ON) | Yes | Toggles | Left Off, Right On | Default / Focused |
+| `Setup.Start` | Primary button | "START MATCH" with A glyph | Yes (default) | Starts: Versus (7.4) if built, else straight to the match | — | Default / Focused / Pressed |
 
-**Card swap behaviour.** The cards don't move when you swap. The "YOU" and "PARTNER" badges cross-fade (160 ms) and the Selected stroke moves to the other card; focus stays on the card you pressed. Moving the cards would make the focus jump.
+**Swap player (X, from anywhere on the screen).** X swaps which Lagoon player you control (`FMatchSetup::CyclePlayer`), whatever is focused, and is always in the hint bar. So the cards never need focus and there's no navigation trap between the cards and the rules. The cards don't move: the "YOU" and "PARTNER" badges cross-fade (160 ms) and the Selected stroke moves to the other card. Keyboard: R. Mouse: click either large card.
 
 **Descriptions, shown under the focused rules row (`Type.BodySmall`, `Text.Secondary`):**
 
@@ -607,29 +621,25 @@ The header right shows "LAGOON  vs  EMBER" in team colours (`Type.Heading`).
 | Difficulty | Easy | The AI reads your shots late and plays it safe. |
 | | Medium | A fair match. The AI plays smart padel and makes some mistakes. |
 | | Hard | The AI reads the ball early, attacks the net and rarely misses. |
-| Format | 1 set | First to 6 games, with a tie-break at 6–6. About 15 minutes. |
-| | Best of 3 | First to win 2 sets. About 35 minutes. |
+| Format | 1 set | First to 6 games, by two clear. Tie-break at 6–6. |
+| | Best of 3 | First to win 2 sets. Each set is first to 6 games, by two clear, with a tie-break at 6–6. |
 | Golden point | On | At deuce, one deciding point. The receiving pair picks who receives. |
 | | Off | Advantage scoring: win by two points from deuce. |
 
-The "about N minutes" figures must come from the soak test's average match length, not guesses; the copy shows them only once a soak run has measured them (13 Q6). Until then the times are left out.
+No match-length times are shown. If they're added later, they must come from the soak test's measured average, not guesses (13 Q6).
 
 The descriptions must match the GDD 3.1 rules (tie-break at 6–6, golden point receiver choice). Agent 2 checks this copy against the referee.
 
-**Focus map:**
+**Focus map:** four focusable elements in one vertical list, wrapping. Left/right belong to the focused control's value.
 
 | From | Up | Down | Left | Right |
 |---|---|---|---|---|
-| YouCard / PartnerCard (whichever is on the left, C1–C3) | — | — | — | the other card |
-| Card on the right (C4–C6) | — | — | the left card | Difficulty |
-| Difficulty | Start (wrap) | Format | — (selector uses left/right) | — |
-| Format | Difficulty | GoldenPoint | — | — |
-| GoldenPoint | Format | Start | — | — |
-| Start | GoldenPoint | Difficulty (wrap) | the right card | — |
+| Difficulty | Start (wrap) | Format | value | value |
+| Format | Difficulty | GoldenPoint | value | value |
+| GoldenPoint | Format | Start | value | value |
+| Start (default) | GoldenPoint | Difficulty (wrap) | — | — |
 
-Selectors, the segmented control and the toggle use left/right for their values, so **leaving the rules panel to the cards uses Start → Left**, or B. To make that discoverable, when a rules row is focused the hint bar shows "◁ ▷ Change" and when Start is focused it shows "◁ Players". (An alternative is LB/RB to jump between the two panels; 13 Q7.)
-
-**Hint bar:** A Select · X Swap player (cards only) · Y Details (cards only) · B Back.
+**Hint bar:** A Start match (or A Change on a rules row) · X Swap player · B Back.
 
 **Edge cases:**
 
@@ -637,7 +647,7 @@ Selectors, the segmented control and the toggle use left/right for their values,
 - If `Data/Players.json` lacks a player, the card shows "Player {id}" (`DisplayName` fallback) and "--" for stats, and Start stays enabled.
 - `FMatchSetup::DifficultyKey()` returns "easy/medium/hard" but the rows in `Data/Difficulty.json` are named "Easy/Medium/Hard". The match owner must match them case-insensitively, or one side changes (a gap for Agent 4, not a UI change).
 
-### 7.4 Versus (pre-match card)
+### 7.4 Versus (pre-match card), slice if time
 
 **Purpose:** a short broadcast-style beat between setup and the first serve, and time to load the match. **Entry:** Setup.Start, Pause.Restart (confirmed), Stats.Rematch. **Exit:** automatically after 2.5 s, or A to skip once the match is ready.
 
@@ -671,9 +681,9 @@ The game is paused (`SetPause(true)`, as today) and the match stays visible behi
 | Element | Position | Spec |
 |---|---|---|
 | Scrim | full | `Bg.Scrim` at 0.70 + blur 8 (no blur if Reduce transparency). |
-| Header | header band | Title "PAUSED" (`Type.Display`); right side: the score line (`Type.Heading`, tabular), for example "LAGOON 6–4  3–2  30–15  EMBER", from `Padel::Ui::SummaryLine(LastScore)`, with team names in team colours and the serving team marked with a small lime ball icon. |
+| Header | header band | Title "PAUSED" (`Type.Display`); right side: the score line (`Type.Heading`, tabular), for example "LAGOON 6–4  3–2  30–15  EMBER", from `Padel::Ui::SummaryLine(LastScore)`, with team names in team colours and the serving team marked with a small ball icon in `Text.Primary`. |
 | Menu column | C1–C4, from y 216 | Glass panel, list buttons (6.2), 72 px each, 8 px apart. |
-| Context panel | C6–C12, y 216–760 | Shows what the focused item does, for the slice: on Resume and Restart, the match rules ("MEDIUM · BEST OF 3 · GOLDEN POINT") and the two pairs; on Controls, a small version of the gamepad diagram (7.6); on Settings, "Audio, display, gameplay and accessibility"; on Quit, "The match will not be saved." Not focusable. |
+| Context panel | C6–C12, y 216–760 | Shows what the focused item does, for the slice: on Resume and Restart, the match rules ("MEDIUM · BEST OF 3 · GOLDEN POINT") and the two pairs; on Controls, a small version of the gamepad diagram (7.6); on Settings, "Audio and accessibility"; on Quit, "The match will not be saved." Not focusable. |
 | Hint bar | bottom, on its charcoal strip | A Select · B Resume |
 
 **Elements:**
@@ -740,64 +750,52 @@ The game is paused (`SetPause(true)`, as today) and the match stays visible behi
 
 ### 7.7 Settings
 
-**Purpose:** the few settings the slice needs. **Reading order:** the tab, the focused row, its description. **Entry:** Main.Settings or Pause.Settings. **Exit:** B → opener.
+**Purpose:** the few settings the slice needs, and no more. Every row needs a working feature behind it, so each one names its hook and owner. **Reading order:** the tab, the focused row, its description. **Entry:** Main.Settings or Pause.Settings. **Exit:** B → opener.
 
-**Every change applies immediately** and is saved when leaving the screen (`UPadelSettings`, a `UGameUserSettings` subclass, 11.3). One exception: display mode and resolution, which show a 10 s "Keep these display settings?" dialog (7.10) and revert if not confirmed.
+**Every change applies immediately** and is saved when leaving the screen (`UPadelSettings`, a `UGameUserSettings` subclass, 11.3). There's no Apply button.
 
 **Layout:**
 
 | Element | Position | Spec |
 |---|---|---|
 | Header | header band | "SETTINGS", breadcrumb "PAUSE / SETTINGS" when opened from Pause. |
-| Tab bar | y 176 | GAMEPLAY · DISPLAY · AUDIO · ACCESSIBILITY. |
-| Settings list | C1–C7, y 248–936 | Glass panel; rows 72 px with 8 px gaps; scrolls if it overflows (with a 4 px scroll indicator on the right). |
+| Tab bar | y 176 | AUDIO · ACCESSIBILITY in the slice (GAMEPLAY is added if time allows). |
+| Settings list | C1–C7, y 248–936 | Glass panel; rows 72 px with 8 px gaps. |
 | Description panel | C8–C12, y 248–600 | The focused row's name (`Type.Title`) and description (`Type.Body`, `Text.Secondary`). |
-| Hint bar | | A Select (toggles only) · X Reset tab to default (only if anything on the tab isn't default) · LB RB Change tab · B Back |
+| Hint bar | | A Change (toggles and selectors) · X Reset (only if anything on the tab isn't default) · LB RB Change tab · B Back |
 
 The X reset asks first: dialog "Reset {tab} settings?" (7.10).
 
-**Gameplay tab:**
+**Slice: must**
 
-| Id | Control | Label | Values (default **bold**) | Description |
-|---|---|---|---|---|
-| `Set.TimingCue` | Toggle | Timing cue | **On** / Off | Shows Early, Good, Perfect or Late next to your player after each of your shots. |
-| `Set.Vibration` | Toggle | Vibration | **On** / Off | Controller rumble on hits, glass and the end of a point. |
-| `Set.Vibration.Strength` | Slider | Vibration strength | 0–100, **70** | Disabled when Vibration is off. |
-| `Set.StickDeadZone` | Slider | Stick dead zone | 5–30, **15** | How far you push the stick before your player moves. GDD 7 lists dead-zone settings as post-slice; this one is in only if Agent 1 exposes it (13 Q8), otherwise the row is left out. |
-| `Set.PartnerCallouts` | Toggle | Partner command prompts | **On** / Off | Shows the command you gave your partner at the bottom left. |
+*Audio tab:*
 
-**Display tab:**
+| Id | Control | Label | Values (default **bold**) | Description | Hook and owner |
+|---|---|---|---|---|---|
+| `Set.Vol.Master` | Slider | Master volume | 0–100, **80** | — | A `USoundMix` with one `USoundClass` per row below, pushed at start; the slider sets the class volume. Presentation (`UPadelMatchAudio` already routes every match sound), W15. |
+| `Set.Vol.Effects` | Slider | Ball and court | 0–100, **100** | Racket, glass, mesh and footsteps. These help you read the point. | Same mix, class `Effects`. |
+| `Set.Vol.Crowd` | Slider | Crowd | 0–100, **70** | — | Same mix, class `Crowd` (`CrowdPoint`, `CrowdBigPoint`). |
+| `Set.Vol.Ui` | Slider | Menu sounds | 0–100, **70** | — | Same mix, class `Ui`; only once the menu sounds exist (W10), otherwise the row is left out. |
 
-| Id | Control | Label | Values (default **bold**) | Description |
-|---|---|---|---|---|
-| `Set.WindowMode` | Selector | Display mode | **Fullscreen** / Borderless / Windowed | Confirm dialog on change. |
-| `Set.Resolution` | Selector | Resolution | The display's supported list, default **native** | Disabled in Borderless (always native). Confirm dialog on change. |
-| `Set.VSync` | Toggle | V-sync | **On** / Off | — |
-| `Set.FrameLimit` | Selector | Frame rate limit | 30 / **60** / 120 / Unlimited | GDD 1 targets 60 fps. |
-| `Set.Quality` | Selector | Graphics quality | Low / Medium / **High** / Epic, default from the engine's benchmark | Sets Unreal's scalability group. Mac default is High with lower Lumen settings, per GDD 1. |
-| `Set.Brightness` | Slider | Brightness | 0–100, **50** | Shows a reference image (the court's back glass) in the description panel while focused. |
+A sound plays at the new volume each time an audio slider changes (from its own class), so the player can hear the level. A **Menu music** slider is added only if a menu music loop is added; none exists today.
 
-**Audio tab:**
+*Accessibility tab:*
 
-| Id | Control | Label | Values | Description |
-|---|---|---|---|---|
-| `Set.Vol.Master` | Slider | Master volume | 0–100, **80** | — |
-| `Set.Vol.Effects` | Slider | Ball and court | 0–100, **100** | Racket, glass, mesh and footsteps. GDD 10: these are part of readability. |
-| `Set.Vol.Crowd` | Slider | Crowd | 0–100, **70** | — |
-| `Set.Vol.Music` | Slider | Menu music | 0–100, **60** | Music plays in menus only. |
-| `Set.Vol.Ui` | Slider | Menu sounds | 0–100, **70** | — |
+| Id | Control | Label | Values (default **bold**) | Description | Hook and owner |
+|---|---|---|---|---|---|
+| `Set.TextSize` | Selector | Text size | **Default** / Large / Largest | Makes text bigger in menus and the HUD. | Multiplies the type tokens (4.2) in `FPadelUiTheme`; screens rebuild on change. UI. |
+| `Set.ReduceMotion` | Toggle | Reduce motion | **Off** / On | Stops the menu camera, tile push-ins, pulses and slides; screens cross-fade instead. | `FPadelUiTheme::bReduceMotion`, read by `UPadelScreenWidget` and the backdrop. UI and Presentation. |
 
-A sound plays at the new volume each time an audio slider changes (from its own category), so the player can hear the level.
+**Slice: if time**
 
-**Accessibility tab:**
+| Id | Tab | Control | Label | Values | Description | Hook and owner |
+|---|---|---|---|---|---|---|
+| `Set.TimingCue` | Gameplay | Toggle | Timing cue | **On** / Off | Shows Early, Good, Perfect or Late next to your player after each of your shots. | Gate the `EPadelHudMessage::TimingCue` call in `APadelHUD::OnBallHit`. UI. |
+| `Set.PartnerCallouts` | Gameplay | Toggle | Partner command prompts | **On** / Off | Shows the command you gave your partner at the bottom left. | Gate `APadelHUD::ShowPartnerCommand`. UI. |
+| `Set.ReduceTransparency` | Accessibility | Toggle | Reduce transparency | **Off** / On | Solid panels instead of glass. | Swaps `Glass.*` for `Surface.Charcoal` and drops the blur layer (4.3). UI. |
+| `Set.TeamColours` | Accessibility | Selector | Team colours | **Lagoon and Ember** / High contrast | High contrast swaps the teams to blue `#3DA5FF` and pink `#FF5FA2`, checked for deuteranopia, protanopia and tritanopia. Yellow is avoided because it fights the ball. | `Team.*` tokens; HUD, cards and stats read them. UI. |
 
-| Id | Control | Label | Values | Description |
-|---|---|---|---|---|
-| `Set.TextSize` | Selector | Text size | **Default** / Large / Largest | Scales body text in menus and the HUD (4.2). |
-| `Set.ReduceMotion` | Toggle | Reduce motion | **Off** / On | Stops the menu camera, tile push-ins, pulses and slide transitions; screens cross-fade instead. |
-| `Set.ReduceTransparency` | Toggle | Reduce transparency | **Off** / On | Solid panels instead of glass. |
-| `Set.TeamColours` | Selector | Team colours | **Lagoon and Ember** / High contrast | High contrast swaps the teams to `#3DA5FF` (blue) and `#FF5FA2` (pink), checked for deuteranopia, protanopia and tritanopia. Yellow is avoided because it fights the ball. Affects HUD, cards and stats. |
-| `Set.HoldToConfirm` | Toggle | Hold to confirm | **Off** / On | Destructive actions (Quit, Restart) need A held 0.8 s instead of a dialog. |
+**Post-slice** (not built, not shown): a Display tab (window mode, resolution with a revert dialog, V-sync, frame limit, graphics quality; the engine defaults and `GameUserSettings.ini` cover the slice), Brightness, Vibration and its strength (nothing in `Source/` plays force feedback, and the GDD doesn't mention rumble; it needs a Gameplay feature first), Stick dead zone (GDD 7 puts dead-zone settings post-slice), Hold to confirm, and rebinding.
 
 **Focus map:** a vertical list per tab, wrapping. Left/right change the focused control's value. A toggles a toggle, steps a selector forward (wrapping), and does nothing on a slider.
 
@@ -817,20 +815,20 @@ y 184  ┌───────────────────────�
        ┌────────────── SUMMARY | SHOTS | POINTS (tabs) ─────────────────────────┐
        │                    LAGOON                         EMBER                 │
        │  Points won          68   ██████████▌│███████▌        57                │
-       │  Winners             21   ██████▌    │█████           16                │  y 424–872
+       │  Winners             21   ██████▌    │█████           16                │  y 424–848
        │  Errors              14   ████▌      │██████          19                │
        │  Smashes              9   ███        │██▌              7                │
        │  Points won off the glass  ...                                          │
        └────────────────────────────────────────────────────────────────────────┘
-y 880  Average rally 8.4 shots · 31% of points…          [ REMATCH ]  [ MAIN MENU ]
+y 872  Average rally 8.4 shots · 31% of points…          [ REMATCH ]  [ MAIN MENU ]
 y 960                                           [A] Select   [LB RB] Change tab
 ```
 
 **Header:** title "{TEAM} WIN" (`Type.Display`, in the winning team's colour) or "MATCH STATS" if the match was abandoned (not reachable in the slice, since Quit skips stats). Right side "MATCH STATS" in `Type.Label`.
 
-**Score panel (C1–C12, y 184–400):** two rows, one per team. Team name (`Type.Title`, team colour), pair surnames (`Type.Body`, `Text.Secondary`), then one column per set (`Type.Score`, tabular), the winner of each set at full `Text.Primary` and the loser at `Text.Secondary`. A tie-break set shows the tie-break score as a superscript ("7⁵" style: `Type.Label` raised 32 px). A check mark (lime) after the winning team. Data: `FMatchStats::FinalSets`; tie-break points need adding to the stats model (W8).
+**Score panel (C1–C12, y 184–400):** two rows, one per team. Team name (`Type.Title`, team colour), pair surnames (`Type.Body`, `Text.Secondary`), then one column per set (`Type.Score`, tabular), the winner of each set at full `Text.Primary` and the loser at `Text.Secondary`. A tie-break set shows the tie-break score as a superscript ("7⁵" style: `Type.Label` raised 32 px). A check mark in the winning team's colour after the winning team. Data: `FMatchStats::FinalSets`; tie-break points need adding to the stats model (W8).
 
-**Stats panel (C1–C12, y 424–872), three tabs:**
+**Stats panel (C1–C12, y 424–848), three tabs:**
 
 Each row: label (`Type.Body`, `Text.Secondary`, left, C1–C4), Team A number (`Type.Stat`, right-aligned at C5), a centred comparison bar (C6–C9: Team A grows left from the centre in `Team.Lagoon`, Team B right in `Team.Ember`, both scaled to the larger of the two; 16 px tall), Team B number (C10, left-aligned). The higher number in each row is `Text.Primary`, the lower `Text.Secondary`, except for Errors and Double faults where lower is better and the highlight flips.
 
@@ -842,22 +840,29 @@ Each row: label (`Type.Body`, `Text.Secondary`, left, C1–C4), Team A number (`
 
 The brief's "points won off the glass" isn't the same as today's "shots off the glass" (`OffGlassShots`): it's points won by the team where that team played a shot off the glass. The stats model needs a per-team count of points won with an off-glass shot by the winning team (W8). The summary keeps both: "Shots off the glass" stays in the SHOTS tab.
 
-**Footer line (y 888):** "Average rally {n} shots · {p}% of points had a shot off the glass" (`Type.BodySmall`, `Text.Secondary`, left), from `AverageRally()` and `GlassPointShare()`.
+**Footer line (y 872–936, left of the buttons, vertically centred):** "Average rally {n} shots · {p}% of points had a shot off the glass" (`Type.BodySmall`, `Text.Secondary`, left), from `AverageRally()` and `GlassPointShare()`.
 
-**Buttons (bottom right, C8–C12, y 880–952):**
+**Buttons (bottom right, C8–C12, y 872–936, the last 64 px of the content area):**
 
 | Id | Component | Label | A does |
 |---|---|---|---|
-| `Stats.Rematch` | Primary button (320 × 72) | REMATCH | Same setup, Versus → match (today's "Play again") |
-| `Stats.MainMenu` | List button styled as secondary (240 × 72, `Glass.Fill`, 2 px `Glass.Edge`) | MAIN MENU | Main menu |
+| `Stats.Rematch` | Primary button (320 × 64) | REMATCH | Same setup, Versus → match (today's "Play again") |
+| `Stats.MainMenu` | Secondary button (6.2, 240 × 64) | MAIN MENU | Main menu |
 
-The buttons sit at y 880–944 on the right, the footer line to their left on the same row, and the hint bar stays in its band at y 960.
+The hint bar stays in its own band at y 960.
+
+**Stray-press lock.** A is also the drive, volley and serve button, so a player still pressing A at match point would land here (4 s after `OnMatchWon`) with focus on Rematch, and the 120 ms entry lock is too short to stop that. So on Stats:
+
+- Confirm is **ignored until the entry animation has finished and at least 1.0 s has passed** since the screen appeared (`StatsConfirmLockSeconds` in `Data/UiTheme.json`).
+- An A press during the animation only **finishes the animation** (jumps to its end state); it never activates a button.
+- A held across the screen change does nothing: confirm needs a fresh press that started after the lock ended.
+- The buttons show their Disabled look during the lock and switch to Default/Focused as it ends, so the player can see when they're live.
 
 **Focus map:** Rematch ↔ Main menu (left/right, no wrap); up/down do nothing. The stats panel isn't focusable; LB/RB change its tab. If a tab overflows (SHOTS with eight rows fits; POINTS can have up to ~10 reasons), the right stick scrolls it.
 
 **Hint bar:** A Select · LB RB Change tab. (No B hint, since B does nothing here.)
 
-**Entry animation:** the score rows count up set by set (each set column fades in 120 ms apart), then the stat bars grow from the centre over 400 ms, staggered 40 ms per row. A skips the animation to its end state. Reduce motion shows the end state at once.
+**Entry animation:** the score rows count up set by set (each set column fades in 120 ms apart), then the stat bars grow from the centre over 400 ms, staggered 40 ms per row. A finishes the animation at once (and doesn't press anything; see the stray-press lock above). Reduce motion shows the end state at once, and the 1.0 s lock still applies.
 
 ### 7.9 Practice
 
@@ -888,9 +893,7 @@ All use the modal dialog (6.12). Safe option focused by default and on the right
 | `Dlg.QuitMatch` | Quit to main menu? | The match will not be saved. | QUIT MATCH (Danger) | KEEP PLAYING | Pause.Quit |
 | `Dlg.Restart` | Restart the match? | The score goes back to 0–0. | RESTART | KEEP PLAYING | Pause.Restart |
 | `Dlg.ResetTab` | Reset {tab} settings? | All {tab} settings go back to their defaults. | RESET | CANCEL | Settings X |
-| `Dlg.KeepDisplay` | Keep these display settings? | Going back in {n} seconds. | KEEP | GO BACK (focused, and chosen automatically at 0) | Settings, window mode or resolution change |
 
-If **Hold to confirm** is on (7.7), Restart and the quits skip the dialog; instead the button shows a lime fill growing left to right while A is held for 0.8 s, and releasing early cancels.
 
 ### 7.11 HUD alignment (not redesigned here)
 
@@ -899,7 +902,7 @@ The in-match HUD keeps its layout. To match the menus it only:
 - Uses the Barlow fonts and tabular figures for the score bug and score card.
 - Uses `Team.*` and `Text.*` tokens from the theme file instead of `PadelUiStyle` constants.
 - Keeps its yellow callout accent until the HUD pass (lime is menus only, 4.1; 13 Q4).
-- The golden point receiver prompt (GDD 3.1, GDD 7 "stick + A") uses the dialog look (6.12) with the two Lagoon player names as buttons and a hint bar "◁ ▷ Choose · A Confirm". It opens focused on the human's own player (today's `OpenGoldenPrompt(Setup.HumanPlayerId, …)`), so A alone always works. There's no timeout: the match is held while it's open (as `APadelHUD::Tick` does today), and Pause can't open over it.
+- The golden point receiver prompt (GDD 3.1, GDD 7 "stick + A") uses the dialog look (6.12) with the two Lagoon player names as buttons and a hint bar "◁ ▷ Choose · A Confirm". It opens focused on the human's own player (today's `OpenGoldenPrompt(Setup.HumanPlayerId, …)`), so A alone always works. It needs the same stray-press rule as Stats: the player is likely mid-swing on A when deuce arrives, so the prompt ignores A for 0.5 s after it opens and needs a fresh press (HUD pass). There's no timeout: the match is held while it's open (as `APadelHUD::Tick` does today), and Pause can't open over it.
 
 ### 7.12 Edge and error states
 
@@ -908,7 +911,7 @@ The in-match HUD keeps its layout. To match the menus it only:
 | `Data/UiTheme.json` missing or invalid | Built-in default tokens (the values in section 4), and one `LogPadel` warning. Never a blank screen. |
 | `Data/Players.json` missing a player | Card shows "Player {id}" and "--" stats (7.3); Start stays enabled. |
 | Tile or portrait image missing | The tile shows a flat `Glass.Fill` with the court line icon; the card shows the team-colour silhouette. |
-| Very long names (localised or future players) | Names shrink to 85% of their size once, then truncate with an ellipsis; the full name shows on Details (Y). Layouts must hold strings 30% longer than English (section 10). |
+| Very long names (localised or future players) | Names shrink to 85% of their size once, then truncate with an ellipsis (the first name goes first, then the surname is truncated). Layouts must hold strings 30% longer than English (section 10). |
 | One-set match | The score panel shows one set column; nothing else changes. |
 | Golden point off | Versus rules line reads "ADVANTAGE" instead of "GOLDEN POINT". |
 | No points off the glass | The glass rows show 0 with an empty bar; the footer reads "0% of points had a shot off the glass". |
@@ -935,7 +938,7 @@ Every user-facing string, with its `LOCTEXT` key (namespace `PadelMenu`, except 
 | `Main.Practice` | Practice |
 | `Main.Practice.Desc` | Ball machine drills for every shot. |
 | `Main.Settings` | Settings |
-| `Main.Settings.Desc` | Audio, display, gameplay and accessibility. |
+| `Main.Settings.Desc` | Audio and accessibility. |
 | `Main.Controls` | Controls |
 | `Main.Controls.Desc` | See every button. |
 | `Main.Career` | Career |
@@ -958,14 +961,15 @@ Every user-facing string, with its `LOCTEXT` key (namespace `PadelMenu`, except 
 | `Setup.Format` | Format |
 | `Setup.Format.OneSet` | 1 set |
 | `Setup.Format.BestOf3` | Best of 3 |
-| `Setup.Format.OneSet.Desc` | First to 6 games, with a tie-break at 6–6. |
-| `Setup.Format.BestOf3.Desc` | First to win 2 sets. |
+| `Setup.Format.OneSet.Desc` | First to 6 games, by two clear. Tie-break at 6–6. |
+| `Setup.Format.BestOf3.Desc` | First to win 2 sets. Each set is first to 6 games, by two clear, with a tie-break at 6–6. |
 | `Setup.GoldenPoint` | Golden point |
 | `Setup.GoldenPoint.On.Desc` | At deuce, one deciding point. The receiving pair picks who receives. |
 | `Setup.GoldenPoint.Off.Desc` | Advantage scoring: win by two points from deuce. |
 | `Setup.Start` | Start match |
-| `Card.Ovr` | OVR |
-| `Card.Att` / `.Def` / `.Net` / `.Mov` | ATT / DEF / NET / MOV |
+| `Card.Overall` | Overall |
+| `Card.Attack` / `.Defence` / `.Net` / `.Movement` | Attack / Defence / Net / Movement |
+| `Card.Style.*` | Wall play / Net play / Power play / Touch play / All-round (from the roster's style tag) |
 | `Card.Side.Left` / `.Right` | Left side / Right side |
 | `Card.Hand.Left` / `.Right` | Left-handed / Right-handed |
 | `Versus.Vs` | vs |
@@ -1002,7 +1006,7 @@ Every user-facing string, with its `LOCTEXT` key (namespace `PadelMenu`, except 
 | `Practice.Body` | The ball machine feeds you balls. Play any shot, including off the glass. |
 | `Practice.Start` | Start practice |
 | `Practice.Quit` | Quit practice |
-| `Hint.Select` / `.Back` / `.Quit` / `.Resume` / `.Skip` / `.ChangeTab` / `.Swap` / `.Details` / `.Reset` / `.Change` / `.Players` / `.Start` / `.MainMenu` | Select / Back / Quit / Resume / Skip / Change tab / Swap player / Details / Reset / Change / Players / Start / Main menu |
+| `Hint.Select` / `.Back` / `.Quit` / `.Resume` / `.Skip` / `.ChangeTab` / `.Swap` / `.Reset` / `.Change` / `.StartMatch` / `.Start` / `.MainMenu` | Select / Back / Quit / Resume / Skip / Change tab / Swap player / Reset / Change / Start match / Start / Main menu |
 | `Dlg.*` | As in the 7.10 table. |
 
 Copy rules: no exclamation marks; numbers as digits; "AI" not "CPU"; GDD shot names (víbora with its accent, chiquita, bandeja). Team and player names come from the roster (`Padel::Ui` roster, later `Data/Players.json`), never typed into copy.
@@ -1039,9 +1043,9 @@ Motion is subtle and quick: it confirms input and shows where things came from. 
 - **Text minimum 26 px at 1080p**, scalable to 1.3× (4.2). Every screen must be laid out and screenshot-tested at Largest (11.5).
 - **Contrast** as in 4.1.
 - **Team colours** have a high-contrast set (7.7) and never carry meaning alone: team names are always written next to team colour.
-- **No timed choices in menus.** The only timed element is the display-settings revert (10 s, defaults to the safe choice).
-- **Reduce motion** and **Reduce transparency** (7.7).
-- **Hold to confirm** as an alternative to dialogs for players who find dialog navigation hard.
+- **No timed choices in menus.** The only timers are input locks (Stats, 7.8), which only ever stop a press, never make a choice.
+- **Reduce motion** (slice) and **Reduce transparency** (if time) (7.7).
+- **Hold to confirm** (post-slice): an alternative to dialogs, where destructive buttons need A held 0.8 s.
 - **Controller disconnect** pauses the match (7.5) and shows a toast in menus.
 - **Every action reachable with a keyboard alone and a mouse alone**, as well as a gamepad.
 - **Localisation-ready:** every string is a `LOCTEXT` (section 8), case is applied by style not typed, and every layout holds strings 30% longer than English (7.12).
@@ -1060,7 +1064,7 @@ Everything stays in `Source/Padel/{Public,Private}/UI/` (Agent 7's area), built 
 | `APadelHUD` | Keeps the screen state machine and match wiring; screen building moves out into one widget per screen. `EPadelScreen` grows (section 3). |
 | `UPadelScreenWidget` (abstract) | Base for every screen: header, content area, hint bar, focus map, focus memory, entry/exit animation, input lock. |
 | `UPadelTitleScreen`, `UPadelMainMenuScreen`, `UPadelSetupScreen`, `UPadelVersusScreen`, `UPadelPauseScreen`, `UPadelControlsScreen`, `UPadelSettingsScreen`, `UPadelStatsScreen`, `UPadelPracticeIntroScreen` | One per screen in section 7. |
-| Components | `UPadelHintBar`, `UPadelPrimaryButton`, `UPadelListButton`, `UPadelMenuTile`, `UPadelBadge`, `UPadelProfileChip`, `UPadelPlayerCard`, `UPadelToggle`, `UPadelSelector`, `UPadelSegmented`, `UPadelSlider`, `UPadelTabBar`, `UPadelDialog`, `UPadelToast`, `UPadelScreenHeader` (section 6). |
+| Components | `UPadelHintBar`, `UPadelPrimaryButton`, `UPadelSecondaryButton`, `UPadelListButton`, `UPadelMenuTile`, `UPadelBadge`, `UPadelPlayerCard`, `UPadelToggle`, `UPadelSelector`, `UPadelSegmented`, `UPadelSlider`, `UPadelTabBar`, `UPadelDialog`, `UPadelToast`, `UPadelScreenHeader` (section 6). |
 | `APadelMenuBackdrop` | The menu camera paths (6.15). In `Presentation/` (camera area), so a separate task for that area's owner. |
 | `UPadelSettings` | `UGameUserSettings` subclass for 7.7, applied on change. |
 | `UPadelMenuWidget` | Retired once every screen has moved; tests move to the new screens. |
@@ -1094,7 +1098,9 @@ In the order they unblock each other. "Area" is the folder that owns it.
 | W10 | Menu sound cues | Presentation | W7 |
 | W11 | Menu backdrop camera paths | Presentation | Court level |
 | W12 | Tile images and player portraits rendered by the asset pipeline | Asset pipeline | Characters |
-| W13 | `UPadelSettings` and Settings screen | UI | W3, W4 |
+| W13 | `UPadelSettings` and Settings screen | UI | W3, W4, W15 |
+| W14 | A play style field in `Data/Players.json`, so the card stops reading the UI roster's style tag | Data (Agent 3) | — |
+| W15 | Sound classes and a sound mix for the volume sliders | Presentation | — |
 
 ### 11.5 Tests
 
@@ -1105,19 +1111,26 @@ In the order they unblock each other. "Area" is the folder that owns it.
   - `Padel.UI.Focus.<Screen>`: every screen opens with its default focus, and B returns focus to the opener.
   - `Padel.UI.Pause.Blocked`: Start does nothing during the golden point prompt, Versus and the end card.
   - `Padel.UI.Dialog.SafeDefault`: every dialog opens on its safe option and B picks it.
+  - `Padel.UI.Stats.StrayConfirm`: an A held from the last point, and an A pressed during the entry animation, neither start a rematch; a fresh A after the lock does.
+  - `Padel.UI.Setup.SwapAnywhere`: X swaps the player from every focusable element on Setup.
   - `Padel.UI.Settings.Persist`: a changed setting survives a reload.
   - `Padel.UI.Layout.LargestText`: each screen at Text size Largest has no clipped text (each `UTextBlock`'s desired size fits its slot).
 - **Screenshots:** a capture of each screen at 1920×1080 and 2560×1600 (16:10 Mac) at default and Largest text, attached to the implementing PR.
 
 ---
 
-## 12. Slice scope: in, stubbed, out
+## 12. Slice scope: must, if time, post-slice
 
-| In the slice | Shown but locked | Out (not shown) |
-|---|---|---|
-| Title, Main menu, Quick Match setup, Versus, Pause, Controls (read-only), Settings, Stats, Practice entry and pause, confirm dialogs | Career tile, Team Builder tile, drop shot row on Controls | Rebinding, profiles and online, local multiplayer setup, team and partner choice beyond Lagoon, replays, commentary and subtitles, store, news feeds, menu music beyond one loop |
+The GDD 12 "In" list names the main menu, setup and stats, and a "simple" menu means the slice builds the must column first and stops there if time runs short.
 
----
+| | Slice: must | Slice: if time | Post-slice |
+|---|---|---|---|
+| **Screens** | Title (7.1), Main menu (7.2), Quick Match setup (7.3), Pause (7.5), Controls, read-only (7.6), Settings, cut down (7.7), Stats (7.8), confirm dialogs (7.10), Practice entry and pause (7.9; needs Caio's yes, 13 Q10) | Versus card (7.4; without it Start goes straight to the match, as today) | Career, Team Builder, profiles, online, local multiplayer setup, team and partner choice beyond Lagoon, replays, tutorial |
+| **Settings** | Audio volumes, Text size, Reduce motion | Timing cue, Partner command prompts, Reduce transparency, high-contrast team colours | Display tab, Brightness, Vibration, Stick dead zone, Hold to confirm, rebinding |
+| **Components** | Hint bar, primary, secondary and list buttons, tile, badge, player card (no Details), toggle, selector, segmented control, slider, tabs, dialog, toast, screen header | — | Profile chip, card Details overlay |
+| **Presentation** | A fixed menu camera shot on the court (one per screen family), the single blur layer, motion tokens | Backdrop camera paths (6.15), menu sounds (W10) | Idle players on the menu court, menu music |
+| **Art** | Locked tiles as flat glass plus a line icon; portraits as team-colour silhouettes; tiles over a still of the court | Rendered tile images and player portraits (W12) | — |
+| **Shown but locked** | Career and Team Builder tiles, the drop shot row on Controls | — | — |
 
 ## 13. Open decisions for Caio
 
@@ -1129,10 +1142,10 @@ Each has a default, so building isn't blocked.
 4. **HUD accent.** Move the HUD's yellow callouts to lime too? Default: no, lime is too close to the ball when it moves; keep yellow in the HUD until the HUD pass, or pick a white-on-charcoal callout instead.
 5. **Choosing teams.** Let the human play for Ember, or choose any two of the four as a pair? Default: no for the slice (GDD 6.4 fixes the pairs).
 6. **Match length copy.** Show "about 15 / 35 minutes" on the format descriptions once the soak test measures it? Default: yes, once measured.
-7. **Setup navigation.** Use LB/RB to jump between "your pair" and "match rules" panels, in addition to Start → Left? Default: no, keep LB/RB for tabs only.
+7. **Player card Details.** Add the Y "Details" overlay with all 23 attributes (6.6) after the slice? Default: post-slice; it makes all four cards focusable when it lands.
 8. **Stick dead zone setting.** GDD 7 says dead-zone settings are post-slice. Default: leave the row out unless Agent 1 exposes it cheaply.
 9. **CommonUI.** Move from plain UMG to CommonUI (11.1)? Default: not for the slice; decision 0003 stands.
-10. **Practice in the slice menu.** Keep the Practice tile live (GDD 12 item 3 needs the ball machine), or lock it and keep practice a dev-only map? Default: live.
+10. **Practice in the slice menu.** Keep the Practice tile live (GDD 12 item 3 can't be met without the ball machine), or lock it and keep practice a dev-only map? Default: live. GDD 12's "In" list doesn't name practice, so a yes needs a one-line GDD 12 edit in its own PR (CLAUDE.md: GDD changes go in their own PR).
 
 ---
 
@@ -1142,20 +1155,20 @@ Paste this to get mock-ups. They come back as **reference images only**: the bui
 
 > Design the menu screens for an original 2v2 padel video game, working title "Padel Street" (a working title only). Mock up every screen below at 1920×1080, for a gamepad on a TV seen from 2.5 m.
 >
-> **Hard rules.** Everything is original: no real brands, leagues, tours, players, logos, and no layouts, tile grids, fonts or screen names copied from any existing sports game. Aim for the polish of a modern TV sports broadcast, but simpler. Only Quick Match, Practice, Settings and Controls work; Career and Team Builder are shown as locked "Coming soon" tiles that clearly look locked, not broken.
+> **Hard rules.** Everything is original: no real brands, leagues, tours, players, logos, and no layouts, tile grids, fonts or screen names copied from any existing sports game. Aim for the polish of a modern TV sports broadcast, but simpler. Only Quick Match, Practice, Settings and Controls work; Career and Team Builder are shown as locked "Coming soon" tiles that clearly look locked, not broken: a flat glass panel with a simple line icon and a padlock, no photo, with the label still easy to read.
 >
-> **Style.** Deep navy `#070B14` and charcoal `#151922`, glassy translucent panels (`#111A2B` at 72%, 24 px blur, a 1 px white edge at 10% and a brighter 1 px top edge) as a nod to the court's glass walls, and one accent, electric lime `#C8F03C`, used only for focus, the main button and selected marks. Text warm white `#F4F1E8`. Team Lagoon teal `#2EC4B6`, Team Ember orange `#FF7A3D`. Font: Barlow Condensed (titles, labels, numbers with tabular figures) and Barlow (body). No text smaller than 26 px. 12-column grid inside a 96 px side and 64 px top/bottom safe area. Corners 12 px on panels, 8 px on buttons. The live court (blue turf, glass, dark frame, arena lights) is always the dimmed background.
+> **Style.** Deep navy `#070B14` and charcoal `#151922`, glassy translucent panels (`#111A2B` at 72%, a 1 px white edge at 10% and a brighter 1 px top edge, over one soft full-screen blur of the background, not a blur per panel) as a nod to the court's glass walls, and one accent, electric lime `#C8F03C`, used only for focus, the main button and selected marks. Text warm white `#F4F1E8`. Team Lagoon teal `#2EC4B6`, Team Ember orange `#FF7A3D`. Font: Barlow Condensed (titles, labels, numbers with tabular figures) and Barlow (body). No text smaller than 26 px. 12-column grid inside a 96 px side and 64 px top/bottom safe area. Corners 12 px on panels, 8 px on buttons. The live court (blue turf, glass, dark frame, arena lights) is always the dimmed background.
 >
 > **Focus** is a 3 px lime ring with a soft glow plus a 3% scale-up (list rows: a lime bar on the left and an 8 px slide), never colour alone. Every screen has a button hint bar bottom right ("A Select  B Back") with neutral, original button glyphs.
 >
 > **Screens.**
 > 1. **Title:** "PADEL STREET" wordmark, "2V2 PADEL", "Press any button" pulsing, over a slow shot of the court.
-> 2. **Main menu:** a large Quick Match tile (8 columns, players mid-rally at the net) with Practice and Settings tiles stacked on its right, and a bottom row of Career (locked), Team Builder (locked) and Controls. Profile chip "PLAYER 1" top right.
-> 3. **Quick Match setup:** left, "YOUR PAIR · LAGOON" with two large player cards (overall rating, side and hand, waist-up render, name, play-style pill, four stat bars ATT DEF NET MOV, a YOU or PARTNER badge); right top, "OPPONENTS · EMBER" with two small cards; right bottom, "MATCH RULES" with Difficulty ‹ MEDIUM ›, Format [1 SET | BEST OF 3], Golden point ON/OFF toggle, and a lime START MATCH button (focused). Players: Mikko Ventara 77 (left side, power), Selva Arunde 78 (right side, wall), Ilan Corvisa 78 (right side, all-round), Ruben Halvaro 77 (left side, touch).
+> 2. **Main menu:** a large Quick Match tile (8 columns, players mid-rally at the net) with Practice and Settings tiles stacked on its right, and a bottom row of Career (locked), Team Builder (locked) and Controls.
+> 3. **Quick Match setup:** left, "YOUR PAIR · LAGOON" with two large player cards (our own broadcast "player graphic", not a sports-game trading card: a name strap in the team colour across the top with first name over surname and a YOU or PARTNER badge, a waist-up portrait standing on the strap's lower edge and set to the left, a profile line in words on its right such as "Left side, Right-handed, 1.86 m, Power play", four stat rows with full-word labels Attack, Defence, Net, Movement, each a bar and a number, and at the bottom an "Overall" meter in the team colour with its number; no big rating or position code in a corner); right top, "OPPONENTS · EMBER" with two small cards (name strap and Overall meter only); a "SWAP PLAYER" hint on X; right bottom, "MATCH RULES" with Difficulty ‹ MEDIUM ›, Format [1 SET | BEST OF 3], Golden point ON/OFF toggle, and a lime START MATCH button (focused). Players: Mikko Ventara 77 (left side, power), Selva Arunde 78 (right side, wall), Ilan Corvisa 78 (right side, all-round), Ruben Halvaro 77 (left side, touch).
 > 4. **Versus card:** LAGOON vs EMBER, player names, rules line "MEDIUM · BEST OF 3 · GOLDEN POINT".
 > 5. **Pause:** over the frozen match, "PAUSED", score line top right, a list: Resume, Restart match, Controls, Settings, Quit to main menu, with a context panel on the right.
 > 6. **Controls:** an original, generic two-stick gamepad line drawing with labels: Move and aim, Sprint, Drive/volley/serve, Lob, Overhead, Attack modifier, Touch modifier, four partner commands on the D-pad, Pause; a Gamepad/Keyboard tab bar.
-> 7. **Settings:** tabs Gameplay, Display, Audio, Accessibility; a list of toggles, selectors and sliders on the left and a description panel on the right.
+> 7. **Settings:** tabs Audio and Accessibility; volume sliders (Master, Ball and court, Crowd, Menu sounds), Text size selector and Reduce motion toggle on the left, and a description panel on the right.
 > 8. **Post-match stats:** "LAGOON WIN" in teal, a score panel by set (6–4, 3–6, 7–5), tabs Summary/Shots/Points, rows with centre-out comparison bars (Points won, Winners, Errors, Smashes, Points won off the glass, Double faults), a footer "Average rally 8.4 shots", and REMATCH (lime) and MAIN MENU buttons.
 > 9. **Dialogs:** "Quit to main menu?" with QUIT MATCH (red) and KEEP PLAYING (focused).
 >
