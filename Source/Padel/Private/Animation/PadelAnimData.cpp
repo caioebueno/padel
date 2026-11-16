@@ -68,6 +68,10 @@ FPadelAnimData FPadelAnimData::Load()
 			W.KneeBendUnits = Row->WarpKneeBendM * Cm;
 			W.ElbowBendUnits = Row->WarpElbowBendM * Cm;
 			W.MaxReachShare = Row->WarpMaxReachShare;
+			W.OverheadBlendUnits = Row->WarpOverheadBlendM * Cm;
+			W.TorsoClearanceUnits = Row->WarpTorsoClearanceM * Cm;
+			W.MaxToeRiseUnits = Row->WarpMaxToeRiseM * Cm;
+			W.MaxOverheadLeanDeg = Row->WarpMaxOverheadLeanDeg;
 			for (const double Share : { Row->WarpPelvisDownShare, Row->WarpPelvisForwardShare, Row->WarpSpineSideShare, Row->WarpSpineForwardShare,
 				Row->WarpSpineDownShare, Row->WarpTrunkTurnShare })
 			{
@@ -77,7 +81,7 @@ FPadelAnimData FPadelAnimData::Load()
 					break;
 				}
 			}
-			if (Row->WarpMaxPelvisDropM < 0.0 || Row->WarpMaxPelvisForwardM < 0.0 || Row->WarpKneeBendM < 0.0 || Row->WarpElbowBendM < 0.0
+			if (Row->WarpMaxPelvisDropM < 0.0 || Row->WarpMaxPelvisForwardM < 0.0 || Row->WarpKneeBendM < 0.0 || Row->WarpElbowBendM < 0.0 || Row->WarpOverheadBlendM <= 0.0 || Row->WarpTorsoClearanceM < 0.0 || Row->WarpMaxToeRiseM < 0.0 || Row->WarpMaxOverheadLeanDeg < 0.0 || Row->WarpMaxOverheadLeanDeg > 90.0
 				|| Row->WarpMaxSpineDeg < 0.0 || Row->WarpMaxSpineDeg > 90.0 || Row->WarpMaxTrunkTurnDeg < 0.0 || Row->WarpMaxTrunkTurnDeg > 90.0)
 			{
 				Out.Errors.Add(TEXT("Animation.json: Warp limits must be 0 or more (angles up to 90 degrees)"));

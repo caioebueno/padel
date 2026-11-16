@@ -284,29 +284,137 @@ namespace PadelContactWarp
 			const FTransform Upper = CS.GetComponentSpaceTransform(Bones.UpperArm);
 			const FTransform Lower = CS.GetComponentSpaceTransform(Bones.LowerArm);
 			const FTransform HandCS = CS.GetComponentSpaceTransform(Bones.Hand);
-			const double Reach = (FVector::Dist(Upper.GetLocation(), Lower.GetLocation()) + FVector::Dist(Lower.GetLocation(), HandCS.GetLocation())) * Tuning.MaxReachShare;
+			const FVector Shoulder = Upper.GetLocation();
+			const double Reach = (FVector::Dist(Shoulder, Lower.GetLocation()) + FVector::Dist(Lower.GetLocation(), HandCS.GetLocation())) * Tuning.MaxReachShare;
 			const FVector FaceOffset = HandCS.GetRotation().RotateVector(In.FaceInHand);
+			const double Face = FaceOffset.Size();
+			const FVector ToTarget = In.TargetCS - Shoulder;
+			const double Distance = ToTarget.Size();
+			const FVector Line = ToTarget.GetSafeNormal();
+			// Overheads (target above the shoulder): a long arm, the elbow up and out to the racket
+			// side. Blended in by height so forehands and backhands are as before.
+			const double Overhead = Smooth((In.TargetCS.Z - Shoulder.Z) / FMath::Max(Tuning.OverheadBlendUnits, 1.0));
+			FVector Out = Shoulder - (Bones.Spine.Num() > 0 ? CS.GetComponentSpaceTransform(Bones.Spine.Last()).GetLocation() : Shoulder);
+			Out.Z = 0.0;
+			Out = Out.GetSafeNormal();
+			FVector UpOut = (FVector::UpVector + Out).GetSafeNormal();
+			UpOut = (UpOut - FVector::DotProduct(UpOut, Line) * Line).GetSafeNormal();
+
 			FVector HandGoal = In.TargetCS - FaceOffset;
-			FQuat Turn = FQuat::Identity;
-			if (FVector::Dist(Upper.GetLocation(), HandGoal) > Reach && !FaceOffset.IsNearlyZero())
+			bool bAim = false;
+			if (FVector::Dist(Shoulder, HandGoal) > Reach && Face > KINDA_SMALL_NUMBER)
 			{
-				const FVector Line = (In.TargetCS - Upper.GetLocation()).GetSafeNormal();
-				HandGoal = In.TargetCS - Line * FaceOffset.Size();
-				Turn = FQuat::FindBetweenVectors(FaceOffset, Line * FaceOffset.Size());
+				// Past the arm's reach: the racket along the arm's line, as a stretched reach does.
+				HandGoal = In.TargetCS - Line * Face;
+				bAim = true;
+			}
+			if (Overhead > 0.0 && Face > KINDA_SMALL_NUMBER && Distance > KINDA_SMALL_NUMBER)
+			{
+				// The hand at full reach, where the racket's face can still touch the target: the
+				// circle where the reach sphere (shoulder) meets the racket sphere (target), on its
+				// up-and-out side. Out of reach altogether, the racket along the arm's line.
+				const double Along = (Reach * Reach - Face * Face + Distance * Distance) / (2.0 * Distance);
+				const double Across = FMath::Sqrt(FMath::Max(Reach * Reach - Along * Along, 0.0));
+				const FVector Stretched = Distance >= Reach + Face ? In.TargetCS - Line * Face : Shoulder + Line * Along + UpOut * Across;
+				HandGoal = FMath::Lerp(HandGoal, Stretched, Overhead);
+				bAim = true;
 			}
 			const float A = FMath::Clamp(In.ArmAlpha, 0.0f, 1.0f);
 			const FVector Effector = FMath::Lerp(HandCS.GetLocation(), HandGoal, A);
-			// Keep the elbow bending the way the current pose bends it.
-			const FVector Mid = (Upper.GetLocation() + HandCS.GetLocation()) * 0.5;
-			const FVector Bend = (Lower.GetLocation() - Mid).GetSafeNormal() * Tuning.ElbowBendUnits;
-			SolveLimb(CS, Bones.UpperArm, Bones.LowerArm, Bones.Hand, Effector, Bend);
-			if (!Turn.Equals(FQuat::Identity))
+			// Keep the elbow bending the way the current pose bends it; up and out for an overhead.
+			const FVector Mid = (Shoulder + HandCS.GetLocation()) * 0.5;
+			const FVector Current = (Lower.GetLocation() - Mid).GetSafeNormal();
+			const FVector Pole = (Current.IsNearlyZero() ? UpOut : FMath::Lerp(Current, UpOut, Overhead)).GetSafeNormal();
+			SolveLimb(CS, Bones.UpperArm, Bones.LowerArm, Bones.Hand, Effector, Pole * Tuning.ElbowBendUnits);
+			// Keep the forearm out of the torso (a capsule from the pelvis up the spine): when the arc
+			// takes it across the body, push the hand out from the spine and reach again.
+			if (Valid(Bones.Pelvis) && Bones.Spine.Num() > 0 && Tuning.TorsoClearanceUnits > 0.0)
 			{
+				const FVector Bottom = CS.GetComponentSpaceTransform(Bones.Pelvis).GetLocation();
+				const FVector Top = CS.GetComponentSpaceTransform(Bones.Spine.Last()).GetLocation();
+				FVector Goal = Effector;
+				for (int32 Pass = 0; Pass < 3; ++Pass)
+				{
+					const FVector Elbow = CS.GetComponentSpaceTransform(Bones.LowerArm).GetLocation();
+					const FVector Wrist = CS.GetComponentSpaceTransform(Bones.Hand).GetLocation();
+					const FVector ForearmMid = (Elbow + Wrist) * 0.5;
+					const FVector OnSpine = FMath::ClosestPointOnSegment(ForearmMid, Bottom, Top);
+					const double Gap = FVector::Dist(ForearmMid, OnSpine);
+					if (Gap >= Tuning.TorsoClearanceUnits)
+					{
+						break;
+					}
+					FVector Away = ForearmMid - OnSpine;
+					Away.Z = 0.0;
+					Away = Away.IsNearlyZero() ? FacingAxis : Away.GetSafeNormal();
+					Goal += Away * (Tuning.TorsoClearanceUnits - Gap) * 2.0;
+					SolveLimb(CS, Bones.UpperArm, Bones.LowerArm, Bones.Hand, Goal, Pole * Tuning.ElbowBendUnits);
+				}
+			}
+			if (bAim)
+			{
+				// Turn the racket so the face, not the hand's old angle, points at the target.
 				FTransform Hand = CS.GetComponentSpaceTransform(Bones.Hand);
+				const FVector Now = Hand.GetRotation().RotateVector(In.FaceInHand);
+				const FQuat Turn = FQuat::FindBetweenVectors(Now, In.TargetCS - Hand.GetLocation());
 				Hand.SetRotation(FQuat::Slerp(FQuat::Identity, Turn, A) * Hand.GetRotation());
 				SetCS(CS, Bones.Hand, Hand);
 			}
 		};
+		// Overheads past the arm's reach: lean the trunk towards the ball and rise onto the toes
+		// (the pelvis up, the legs straightening under it) before the arm reaches.
+		if (In.ArmAlpha > 0.0f && Bones.Spine.Num() > 0 && Valid(Bones.Pelvis))
+		{
+			const FVector Shoulder = CS.GetComponentSpaceTransform(Bones.UpperArm).GetLocation();
+			const double ArmLength = FVector::Dist(Shoulder, CS.GetComponentSpaceTransform(Bones.LowerArm).GetLocation())
+				+ FVector::Dist(CS.GetComponentSpaceTransform(Bones.LowerArm).GetLocation(), CS.GetComponentSpaceTransform(Bones.Hand).GetLocation());
+			const double Short = FVector::Dist(Shoulder, In.TargetCS) - (ArmLength * Tuning.MaxReachShare + In.FaceInHand.Size());
+			const double Overhead = Smooth((In.TargetCS.Z - Shoulder.Z) / FMath::Max(Tuning.OverheadBlendUnits, 1.0));
+			const double A = FMath::Clamp(In.ArmAlpha, 0.0f, 1.0f) * Overhead;
+			if (Short > 0.0 && A > 0.0)
+			{
+				FTransform Feet[2];
+				bool bLeg[2];
+				for (int32 Side = 0; Side < 2; ++Side)
+				{
+					bLeg[Side] = Valid(Bones.Thigh[Side]) && Valid(Bones.Calf[Side]) && Valid(Bones.Foot[Side]);
+					if (bLeg[Side])
+					{
+						Feet[Side] = CS.GetComponentSpaceTransform(Bones.Foot[Side]);
+					}
+				}
+				const double Rise = FMath::Min(Short, Tuning.MaxToeRiseUnits) * A;
+				FTransform Pelvis = CS.GetComponentSpaceTransform(Bones.Pelvis);
+				Pelvis.AddToTranslation(FVector(0.0, 0.0, Rise));
+				SetCS(CS, Bones.Pelvis, Pelvis);
+				for (int32 Side = 0; Side < 2; ++Side)
+				{
+					if (bLeg[Side])
+					{
+						// As close to the planted foot as the straight leg allows: the heel comes up.
+						SolveLimb(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side].GetLocation(), FacingAxis * Tuning.KneeBendUnits);
+					}
+				}
+				// Lean: turn the spine so the racket shoulder heads for the ball.
+				const FVector Pivot = CS.GetComponentSpaceTransform(Bones.Spine[0]).GetLocation();
+				const FVector NewShoulder = CS.GetComponentSpaceTransform(Bones.UpperArm).GetLocation();
+				FVector Axis;
+				double Angle;
+				FQuat::FindBetweenVectors(NewShoulder - Pivot, In.TargetCS - Pivot).ToAxisAndAngle(Axis, Angle);
+				Angle = FMath::Min(Angle, FMath::DegreesToRadians(Tuning.MaxOverheadLeanDeg)) * A;
+				if (Angle > KINDA_SMALL_NUMBER && Axis.IsNormalized())
+				{
+					const FQuat Step(Axis, Angle / Bones.Spine.Num());
+					for (const FCompactPoseBoneIndex Bone : Bones.Spine)
+					{
+						FTransform T = CS.GetComponentSpaceTransform(Bone);
+						T.SetRotation(Step * T.GetRotation());
+						SetCS(CS, Bone, T);
+					}
+				}
+			}
+		}
+
 		ReachArm();
 
 		// Past the arm's reach (a low backhand): bend the spine on towards what's still missing,

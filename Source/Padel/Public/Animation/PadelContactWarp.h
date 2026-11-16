@@ -56,6 +56,10 @@ struct PADEL_API FPadelWarpTuning
 	double KneeBendUnits = 20.0;
 	double ElbowBendUnits = 20.0;
 	double MaxReachShare = 0.98;
+	double OverheadBlendUnits = 40.0;
+	double TorsoClearanceUnits = 14.0;
+	double MaxToeRiseUnits = 12.0;
+	double MaxOverheadLeanDeg = 30.0;
 };
 
 /**
