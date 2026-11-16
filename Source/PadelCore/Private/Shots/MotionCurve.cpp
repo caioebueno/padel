@@ -8,6 +8,62 @@ namespace Padel::Shots::MotionCurve
 {
 namespace
 {
+	// G-09 / test plan P-12: libm's exp and log round differently per platform, so the
+	// curve uses these, built from correctly rounded operations in a fixed order (and the
+	// exact frexp / ldexp). Accurate to a few ulp, the same bits on every compiler.
+	constexpr double Ln2Hi = 6.93147180369123816490e-01;
+	constexpr double Ln2Lo = 1.90821492927058770002e-10;
+
+	// e^R - 1 for |R| <= about 0.35, Taylor to R^16.
+	double Expm1Small(double R)
+	{
+		double Term = R;
+		double Sum = R;
+		for (int N = 2; N <= 16; ++N)
+		{
+			Term = Term * R / N;
+			Sum += Term;
+		}
+		return Sum;
+	}
+
+	double PortableExpm1(double X)
+	{
+		if (X > -0.35 && X < 0.35)
+		{
+			return Expm1Small(X);
+		}
+		if (X < -40.0)
+		{
+			return -1.0;
+		}
+		const double K = std::floor(X / (Ln2Hi + Ln2Lo) + 0.5);
+		const double R = (X - K * Ln2Hi) - K * Ln2Lo;
+		return std::ldexp(1.0 + Expm1Small(R), static_cast<int>(K)) - 1.0;
+	}
+
+	// ln(Y) for Y > 0: Y = M 2^E with M in [sqrt(1/2), sqrt(2)), ln M = 2 atanh((M-1)/(M+1)).
+	double PortableLog(double Y)
+	{
+		int E = 0;
+		double M = std::frexp(Y, &E);
+		if (M < 0.70710678118654752440)
+		{
+			M *= 2.0;
+			--E;
+		}
+		const double S = (M - 1.0) / (M + 1.0);
+		const double S2 = S * S;
+		double Power = S;
+		double Sum = S;
+		for (int N = 3; N <= 31; N += 2)
+		{
+			Power *= S2;
+			Sum += Power / N;
+		}
+		return 2.0 * Sum + (E * Ln2Lo + E * Ln2Hi);
+	}
+
 	double ClampFalloff(double Falloff)
 	{
 		return std::clamp(Falloff, 0.0, 1.0);
@@ -17,7 +73,7 @@ namespace
 	// Tf = TimeToTop / f, and is capped at TopSpeed, which it reaches at CapTime (never for f = 1).
 	double CapTime(double TimeToTop, double F)
 	{
-		return F >= 1.0 ? std::numeric_limits<double>::infinity() : -(TimeToTop / F) * std::log1p(-F);
+		return F >= 1.0 ? std::numeric_limits<double>::infinity() : -(TimeToTop / F) * PortableLog(1.0 - F);
 	}
 
 	double UncappedDistance(double T, double TopSpeed, double TimeToTop, double F)
@@ -25,13 +81,13 @@ namespace
 		const double Tf = TimeToTop / F;
 		const double U = T / Tf;
 		// t - Tf (1 - e^(-u)) loses everything to cancellation for small u; use the series.
-		const double Shape = U < 1e-4 ? Tf * (U * U / 2.0 - U * U * U / 6.0) : T + Tf * std::expm1(-U);
+		const double Shape = U < 1e-4 ? Tf * (U * U / 2.0 - U * U * U / 6.0) : T + Tf * PortableExpm1(-U);
 		return TopSpeed / F * Shape;
 	}
 
 	double UncappedSpeed(double T, double TopSpeed, double TimeToTop, double F)
 	{
-		return -TopSpeed / F * std::expm1(-T * F / TimeToTop);
+		return -TopSpeed / F * PortableExpm1(-T * F / TimeToTop);
 	}
 }
 

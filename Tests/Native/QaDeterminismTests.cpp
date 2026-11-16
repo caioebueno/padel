@@ -91,8 +91,10 @@ namespace
 
 	constexpr int PointsToPlay = 12;
 	constexpr std::uint64_t Seed = 20261116;
-	// Recorded on Linux/GCC 13 from main at 8d98356 plus PadelMath. See the comment at the top before changing it.
-	constexpr std::uint64_t ExpectedChecksum = 0xb4cd9a662dfaf193ULL;
+	// Re-recorded for M1 (#44: acceleration falls with speed, braking 1.0, AI arrival cap),
+	// which changes the seeded match on purpose. Same value on Linux/GCC 13 and the Mac
+	// (Apple Clang). See the comment at the top before changing it.
+	constexpr std::uint64_t ExpectedChecksum = 0xddfb8623a13fea39ULL;
 }
 
 TEST_CASE("QA.Determinism: a seeded AI match gives the same checksum on every platform (TP P-12)")

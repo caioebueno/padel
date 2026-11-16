@@ -50,6 +50,12 @@ TEST_CASE("Shots.MotionCurve: full falloff follows x(t) = V (t - tau (1 - e^(-t/
 		CHECK(Shots::MotionCurve::DistanceAt(T, V, Tau, 1.0) == Approx(V * (T - Tau * (1.0 - std::exp(-T / Tau)))));
 		CHECK(Shots::MotionCurve::SpeedAt(T, V, Tau, 1.0) == Approx(V * (1.0 - std::exp(-T / Tau))));
 	}
+	// The curve's own exp (G-09: no libm in PadelCore) agrees with libm to a few ulp.
+	for (double T = 0.0005; T < 12.0; T *= 1.37)
+	{
+		CAPTURE(T);
+		CHECK(Shots::MotionCurve::SpeedAt(T, V, Tau, 1.0) == Approx(V * -std::expm1(-T / Tau)).epsilon(1e-13));
+	}
 	// Top speed is only approached.
 	CHECK(Shots::MotionCurve::SpeedAt(10.0, V, Tau, 1.0) < V);
 }
@@ -62,6 +68,8 @@ TEST_CASE("Shots.MotionCurve: partial falloff reaches top speed and then cruises
 	// Heads for V / F on the time constant TimeToTop / F, capped at V: reached at
 	// -(TimeToTop / F) ln(1 - F).
 	const double Cap = -(TimeToTop / F) * std::log(1.0 - F);
+	// The cap time uses the curve's own log; just either side of libm's value it switches.
+	CHECK(Shots::MotionCurve::SpeedAt(Cap * (1.0 - 1e-12), V, TimeToTop, F) == Approx(V).epsilon(1e-11));
 	CHECK(Shots::MotionCurve::SpeedAt(Cap - 0.01, V, TimeToTop, F) < V);
 	CHECK(Shots::MotionCurve::SpeedAt(Cap + 0.01, V, TimeToTop, F) == Approx(V));
 	const double AtCap = Shots::MotionCurve::DistanceAt(Cap, V, TimeToTop, F);
