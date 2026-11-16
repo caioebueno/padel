@@ -201,6 +201,7 @@ TEST_CASE("Ai.Engine: four AI players serve, return and finish a point on the re
 		Runner.Tick();
 	}
 	REQUIRE(Log.Points == 1);
+	CHECK(Runner.Ball().Current().Position.X == Match.Ball().Position.X);
 	REQUIRE_FALSE(Log.Hitters.empty());
 	// GDD 3.2: the server struck it, from the toss, after the bounce.
 	CHECK(Log.Hitters.front() == Match.Score().Snapshot().ServerId);
@@ -230,10 +231,14 @@ TEST_CASE("Ai.Engine: with a human, the runner leaves the human's player alone")
 	CHECK_FALSE(Runner.ChooseGoldenPointReceiver(2));
 	Runner.Tick();
 	const FVec3 Start = Runner.Player(2).GetMotion().GetPosition();
+	// The AI server tosses after its delay: the drawn ball is the toss, not the held one.
+	bool bSawToss = false;
 	for (int Tick = 0; Tick < 240; ++Tick)
 	{
 		Runner.Tick();
+		bSawToss = bSawToss || (Match.Phase() == EMatchPhase::AwaitingServe && Runner.Ball().Current().Position.Z != Match.Ball().Position.Z);
 	}
+	CHECK(bSawToss);
 	// No input: the human's player stands still while the AI serves and plays.
 	const FVec3 End = Runner.Player(2).GetMotion().GetPosition();
 	CHECK(End.X == doctest::Approx(Start.X));
