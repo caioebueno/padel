@@ -22,6 +22,11 @@ enum class EPadelIcon : uint8
 	ShapeCircle,
 	ShapeSquare,
 	ShapeTriangle,
+	// The D-pad with one arm marked (Controls, spec 7.6): a plain cross, our own drawing.
+	DPadUp,
+	DPadDown,
+	DPadLeft,
+	DPadRight,
 };
 
 /**

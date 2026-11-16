@@ -109,6 +109,29 @@ namespace
 		case EPadelIcon::ShapeTriangle:
 			Out.Add({{16, 8}, {24, 22}, {8, 22}, {16, 8}});
 			break;
+		case EPadelIcon::DPadUp:
+		case EPadelIcon::DPadDown:
+		case EPadelIcon::DPadLeft:
+		case EPadelIcon::DPadRight:
+		{
+			// The cross's outline, then a triangle in the pressed arm.
+			Out.Add({{12, 4}, {20, 4}, {20, 12}, {28, 12}, {28, 20}, {20, 20}, {20, 28}, {12, 28}, {12, 20}, {4, 20}, {4, 12},
+				{12, 12}, {12, 4}});
+			const float Turn = Icon == EPadelIcon::DPadUp ? 0.0f
+				: Icon == EPadelIcon::DPadRight ? 90.0f
+				: Icon == EPadelIcon::DPadDown ? 180.0f
+				: 270.0f;
+			const float Radians = FMath::DegreesToRadians(Turn);
+			auto Rotate = [Radians](float X, float Y)
+			{
+				const float DX = X - 16.0f;
+				const float DY = Y - 16.0f;
+				return FVector2f(16.0f + DX * FMath::Cos(Radians) - DY * FMath::Sin(Radians),
+					16.0f + DX * FMath::Sin(Radians) + DY * FMath::Cos(Radians));
+			};
+			Out.Add({Rotate(16, 6.5f), Rotate(18.5f, 10), Rotate(13.5f, 10), Rotate(16, 6.5f)});
+			break;
+		}
 		case EPadelIcon::None:
 			break;
 		}

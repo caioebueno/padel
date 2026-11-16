@@ -25,6 +25,13 @@ class PADEL_API UPadelButtonGlyph : public UPadelWidgetBase
 
 public:
 	void SetInput(Padel::Ui::EUiInput InInput);
+	/**
+	 * Show one pad key instead of a menu input (the Controls screen, spec 7.6), e.g.
+	 * "Gamepad_RightTrigger". Labelled for the family; a keyboard family shows Xbox labels.
+	 */
+	void SetPadKey(FName InKeyName);
+	/** Show a keyboard key cap with this text instead (the Controls keyboard tab). */
+	void SetKeyCap(const FText& InText);
 	void SetFamily(Padel::Ui::EPadFamily InFamily);
 	/** 40 for the hint bar, 32 inline. */
 	void SetDiameter(float InDiameter);
@@ -41,7 +48,17 @@ protected:
 private:
 	void Refresh();
 
+	enum class EGlyphSource : uint8
+	{
+		Input,
+		PadKey,
+		KeyCap,
+	};
+
 	Padel::Ui::EUiInput Input = Padel::Ui::EUiInput::Confirm;
+	EGlyphSource Source = EGlyphSource::Input;
+	FName PadKey;
+	FText KeyCapText;
 	Padel::Ui::EPadFamily Family = Padel::Ui::EPadFamily::Xbox;
 	float Diameter = 40.0f;
 	float FlashTimer = 0.0f;

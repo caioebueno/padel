@@ -39,11 +39,68 @@ namespace
 	{
 		return Input == EUiInput::TabLeft || Input == EUiInput::TabRight;
 	}
+
+	EPadelIcon PlayStationShapeForKey(const std::string& Key)
+	{
+		if (Key == "Gamepad_FaceButton_Bottom")
+		{
+			return EPadelIcon::ShapeCross;
+		}
+		if (Key == "Gamepad_FaceButton_Right")
+		{
+			return EPadelIcon::ShapeCircle;
+		}
+		if (Key == "Gamepad_FaceButton_Left")
+		{
+			return EPadelIcon::ShapeSquare;
+		}
+		if (Key == "Gamepad_FaceButton_Top")
+		{
+			return EPadelIcon::ShapeTriangle;
+		}
+		return EPadelIcon::None;
+	}
+
+	EPadelIcon DPadIconForKey(const std::string& Key)
+	{
+		if (Key == "Gamepad_DPad_Up")
+		{
+			return EPadelIcon::DPadUp;
+		}
+		if (Key == "Gamepad_DPad_Down")
+		{
+			return EPadelIcon::DPadDown;
+		}
+		if (Key == "Gamepad_DPad_Left")
+		{
+			return EPadelIcon::DPadLeft;
+		}
+		if (Key == "Gamepad_DPad_Right")
+		{
+			return EPadelIcon::DPadRight;
+		}
+		return EPadelIcon::None;
+	}
 }
 
 void UPadelButtonGlyph::SetInput(EUiInput InInput)
 {
 	Input = InInput;
+	Source = EGlyphSource::Input;
+	Refresh();
+}
+
+void UPadelButtonGlyph::SetPadKey(FName InKeyName)
+{
+	PadKey = InKeyName;
+	Source = EGlyphSource::PadKey;
+	Refresh();
+}
+
+void UPadelButtonGlyph::SetKeyCap(const FText& InText)
+{
+	KeyCapText = InText;
+	Source = EGlyphSource::KeyCap;
 	Refresh();
 }
 
@@ -67,6 +124,20 @@ void UPadelButtonGlyph::Flash()
 
 FString UPadelButtonGlyph::GetGlyphText() const
 {
+	if (Source == EGlyphSource::KeyCap)
+	{
+		return KeyCapText.ToString();
+	}
+	if (Source == EGlyphSource::PadKey)
+	{
+		const std::string Key = PadelUiStyle::ToUtf8(PadKey.ToString());
+		const EPadFamily PadFamily = Family == EPadFamily::KeyboardMouse ? EPadFamily::Xbox : Family;
+		if (PadFamily == EPadFamily::PlayStation && PlayStationShapeForKey(Key) != EPadelIcon::None)
+		{
+			return FString();
+		}
+		return PadelUiStyle::ToFString(Padel::Ui::PadKeyGlyphText(Key, PadFamily));
+	}
 	if (Family == EPadFamily::KeyboardMouse)
 	{
 		return UTF8_TO_TCHAR(Padel::Ui::KeyboardHintLabel(Input));
@@ -124,9 +195,26 @@ void UPadelButtonGlyph::Refresh()
 	}
 	const bool bFlash = FlashTimer > 0.0f;
 	const FString Text = GetGlyphText();
-	const EPadelIcon Icon = Family == EPadFamily::PlayStation ? PlayStationShape(Input) : EPadelIcon::None;
-	const bool bKey = Family == EPadFamily::KeyboardMouse;
-	const bool bShoulder = !bKey && IsShoulder(Input);
+	EPadelIcon Icon = Family == EPadFamily::PlayStation ? PlayStationShape(Input) : EPadelIcon::None;
+	bool bKey = Family == EPadFamily::KeyboardMouse;
+	bool bShoulder = !bKey && IsShoulder(Input);
+	if (Source == EGlyphSource::KeyCap)
+	{
+		Icon = EPadelIcon::None;
+		bKey = true;
+		bShoulder = false;
+	}
+	else if (Source == EGlyphSource::PadKey)
+	{
+		// Pad keys keep their pad shape whatever device was used last (spec 7.6's Gamepad tab).
+		const std::string Key = PadelUiStyle::ToUtf8(PadKey.ToString());
+		const Padel::Ui::EGlyphShape Shape = Padel::Ui::PadKeyShape(Key);
+		Icon = Shape == Padel::Ui::EGlyphShape::DPad ? DPadIconForKey(Key)
+			: (Family == EPadFamily::PlayStation ? PlayStationShapeForKey(Key) : EPadelIcon::None);
+		// Caps (shoulders, triggers, Menu) grow to fit their label, like a key cap.
+		bKey = Shape == Padel::Ui::EGlyphShape::Cap;
+		bShoulder = false;
+	}
 
 	// A key cap and the shoulder buttons are rounded rectangles; face buttons are circles.
 	const float Height = Diameter;
