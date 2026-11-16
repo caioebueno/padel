@@ -113,7 +113,7 @@ namespace Padel::Shots
 	{
 		// The flatter of the two gravity-only arcs at this speed, as FPracticeBall launches
 		// it; spin and drag in the match only make a drive cross higher.
-		const double D = std::hypot(Target.X - Origin.X, Target.Y - Origin.Y);
+		const double D = LengthXY(Sub(Target, Origin));
 		if (D < 1e-6 || SpeedMps <= 0.0 || (Origin.X > 0.0) == (Target.X > 0.0))
 		{
 			return Origin.Z;
@@ -144,9 +144,9 @@ namespace Padel::Shots
 		// The slowest ball that still reaches the target leaves at about 45 degrees and
 		// crosses highest; between it and the asked speed, the arcs flatten as the speed
 		// grows, so the fastest one that clears is a bisection away.
-		const double D = std::hypot(Target.X - Origin.X, Target.Y - Origin.Y);
+		const double D = LengthXY(Sub(Target, Origin));
 		const double Drop = Target.Z - Origin.Z;
-		double Lo = std::sqrt(Gravity * (Drop + std::hypot(D, Drop))) * (1.0 + 1e-9);
+		double Lo = std::sqrt(Gravity * (Drop + std::sqrt(D * D + Drop * Drop))) * (1.0 + 1e-9);
 		double Hi = SpeedMps;
 		if (Lo >= Hi || NetCrossingHeight(Origin, Target, Lo, Gravity) < Need)
 		{
