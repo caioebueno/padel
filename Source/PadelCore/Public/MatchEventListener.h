@@ -1,5 +1,5 @@
 // The GDD 3.4 referee events, as a plain C++ interface. UPadelMatchEvents (in Padel)
-// implements it and rebroadcasts each call as its On* multicast delegate, so the UI,
+// attaches a listener that rebroadcasts each call as its On* multicast delegate, so the UI,
 // audio, replays and stats never touch the simulation. Every method has an empty
 // default so a listener overrides only what it needs.
 
