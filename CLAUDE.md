@@ -33,6 +33,7 @@ Source/
     AI/            prediction, pair tactics, shot choice, difficulty
     UI/            HUD, menus, stats screen (UMG + CommonUI, logic in C++)
     Presentation/  camera (APadelBroadcastCamera), audio, replays, the UPadelMatchEvents subsystem and its listeners
+    Animation/     the player anim instance and component; Model/ holds the engine-free animation model (docs/decisions/0005-player-animation.md)
     Data/          USTRUCT row types for the data tables (FShotRow, FPlayerRow, FDifficultyRow...)
   Padel.Target.cs, PadelEditor.Target.cs
 Content/Padel/     Maps/, Court/, Equipment/, Characters/, Materials/, Animations/, UI/, Audio/, Data/ (imported DataTables)

@@ -10,6 +10,8 @@
 class UCapsuleComponent;
 class UEnhancedInputComponent;
 class UPadelInputConfig;
+class UPadelPlayerAnimComponent;
+class USkeletalMeshComponent;
 class UStaticMeshComponent;
 
 /**
@@ -18,8 +20,10 @@ class UStaticMeshComponent;
  * simulation rate by whoever owns the ball (APadelPracticeDirector in practice, the
  * match later). This actor only samples input and shows the result.
  *
- * The body is placeholder engine shapes until the character art and animation land;
- * the animation agent reads GetShotController()->GetPhase()/GetCharge() (docs/decisions/0004-shot-system.md).
+ * The body is placeholder engine shapes until the character art and animation land.
+ * UPadelPlayerAnimComponent (docs/decisions/0005-player-animation.md) swaps in the
+ * skeletal body once it and ABP_PadelPlayer are imported, and swings the placeholder
+ * racket in time with the ball until then.
  */
 UCLASS()
 class PADEL_API APadelPlayerPawn : public APawn
@@ -39,8 +43,13 @@ public:
 
 	Padel::Shots::FPlayerShotController* GetShotController() const { return ShotController.Get(); }
 
-	/** Moves the placeholder body to the simulated position. */
+	/** Moves the body to the simulated position and presents the latest animation frame. */
 	void SyncFromSimulation();
+
+	/** Steps the animation; call once per fixed step, right after the shot controller's Tick. */
+	void StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
+
+	UPadelPlayerAnimComponent* GetAnimation() const { return Animation; }
 
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
@@ -52,6 +61,13 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Player")
 	TObjectPtr<UStaticMeshComponent> Body;
+
+	/** Skeletal body, hidden until its mesh and AnimBP are imported. */
+	UPROPERTY(VisibleAnywhere, Category = "Player")
+	TObjectPtr<USkeletalMeshComponent> Character;
+
+	UPROPERTY(VisibleAnywhere, Category = "Player")
+	TObjectPtr<UPadelPlayerAnimComponent> Animation;
 
 	/** Placeholder racket, on the forehand side. */
 	UPROPERTY(VisibleAnywhere, Category = "Player")
