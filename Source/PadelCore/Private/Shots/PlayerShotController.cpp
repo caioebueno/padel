@@ -161,6 +161,15 @@ namespace Padel::Shots
 		AiOffsetS = TimingOffsetS;
 	}
 
+	double FPlayerShotController::AiSwingLeadS(double InCharge, double TimingOffsetS) const
+	{
+		const FShotModel& M = Library->Model;
+		// A smash needs the full charge (GDD 4), and the predicted moment can drift
+		// earlier during the windup, so a full-charge swing starts with some lead.
+		const double LeadS = InCharge >= M.SmashMinCharge ? M.AiChargeLeadS : 0.0;
+		return Clamp(InCharge, 0.0, 1.0) * M.ChargeTimeS + LeadS - TimingOffsetS;
+	}
+
 	bool FPlayerShotController::NotifyOpponentContact()
 	{
 		return Motion.NotifyOpponentContact();
@@ -221,7 +230,7 @@ namespace Padel::Shots
 		if (Phase == ESwingPhase::Idle && bAiPending && bHasIdeal)
 		{
 			// Start early enough that the backswing reaches the requested charge at release.
-			const double StartAt = IdealTimeS + AiOffsetS - AiCharge * M.ChargeTimeS;
+			const double StartAt = IdealTimeS - AiSwingLeadS(AiCharge, AiOffsetS);
 			if (NowS >= StartAt)
 			{
 				const FAiButton B = ButtonFor(AiShotType);
@@ -255,7 +264,7 @@ namespace Padel::Shots
 		{
 		case ESwingPhase::Windup:
 		{
-			Charge = Clamp((NowS - PressTimeS) / M.ChargeTimeS, 0.0, 1.0);
+			Charge = Clamp((NowS - PressTimeS) / M.ChargeTimeS, 0.0, bAiSwinging ? AiCharge : 1.0);
 			bool bReleased = false;
 			if (bAiSwinging)
 			{

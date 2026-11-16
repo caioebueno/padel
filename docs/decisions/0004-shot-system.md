@@ -4,7 +4,7 @@
 
 ## Where things live
 
-- **Engine-free logic in `PadelCore/Shots/`** (namespace `Padel::Shots`): the selector (GDD 4), timing grader (5.1), aim mapper (7), resolver (5.2, 5.3), player movement (6.1, 6.3) and the swing controller that ties them together. The AI (Agent 4) drives the same `FPlayerShotController` through `RequestAiShot`, so AI errors come from the same model as a human's.
+- **Engine-free logic in `PadelCore/Shots/`** (namespace `Padel::Shots`): the selector (GDD 4), timing grader (5.1), aim mapper (7), resolver (5.2, 5.3), player movement (6.1, 6.3) and the swing controller that ties them together. The AI (Agent 4) drives the same `FPlayerShotController` through `RequestAiShot`, so AI errors come from the same model as a human's. A request must arrive at least `AiSwingLeadS(charge, offset)` before the ideal moment, or it releases with less charge than it asked for. Full-charge requests get `AiChargeLeadS` of extra lead, so a requested smash still has its full charge when the predicted moment drifts during the windup.
 - **Tuning in `Data/`**: `Shots.json` (one row per shot, named by `ShotTypeName()`), `ShotModel.json` (the shared contact model), `Movement.json`, `Players.json` (one practice player for now; the slice roster is Agent 7's), `BallMachine.json` and `PracticeBall.json`. The native tests read these same files, so CI checks the real numbers.
 - **Unreal side in `Padel/`**: row structs in `Data/` (same field names), `APadelPlayerPawn` (Enhanced Input to an `FPlayerInputFrame`), `APadelPracticeDirector` (fixed-step practice loop), `APadelPracticeGameMode` and the `APadelShotDebugHUD` overlay.
 

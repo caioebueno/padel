@@ -66,6 +66,10 @@ namespace Padel::Shots
 
 		// GDD 4 overhead selection: below this charge (or not set) a Y press is a bandeja.
 		double SmashMinCharge = 0.0;
+		// Full-charge AI swings start this much earlier than the charge needs, and every AI
+		// swing holds at the charge it asked for: the predicted contact moment can drift
+		// earlier during the windup, which left smash requests short of SmashMinCharge.
+		double AiChargeLeadS = 0.0;
 		// "Set under the ball": slower than this...
 		double SetMaxSpeedMps = 0.0;
 		// ...and the ball no further behind the player than this (m, negative = behind).

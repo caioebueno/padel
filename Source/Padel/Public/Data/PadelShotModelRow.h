@@ -50,6 +50,7 @@ struct PADEL_API FPadelShotModelRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Tuning") double StaminaFullAbove = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double StaminaFactorAtZero = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double SmashMinCharge = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double AiChargeLeadS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double SetMaxSpeedMps = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double SetMinAheadM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double UnsetFullChargeErrorMult = 0.0;
