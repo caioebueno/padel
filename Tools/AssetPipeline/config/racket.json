@@ -1,0 +1,232 @@
+{
+  "_doc": "The match racket, an original design: the invented Ostrel Keystone, a diamond-shaped power racket (GDD 2: solid, perforated face, at most 455 mm long and 260 mm wide; GDD 10: rackets of invented designs). Metres in the racket's own axes: X across the face, Z along the racket from the butt (-0.075) to the tip, Y through the face, grip centre on the origin (Tools/AssetPipeline/README.md). Read by asset_lib/racket_layout.py, asset_lib/racket_textures.py and blender/build_racket.py; colours are in palette.json 'racket'. See docs/decisions/0008-racket.md.",
+  "seed": 20261117,
+  "brand": {
+    "_doc": "Invented brand and model, searched before use (no padel brand, racket line or product with either name). The wordmark is drawn from the stroke letters in racket_textures.py, no font files.",
+    "name": "OSTREL",
+    "model": "KEYSTONE",
+    "tag": "CARBON 18K"
+  },
+  "frame": {
+    "_doc": "thickness_m is the regulation maximum of 38 mm. edge_radius_m rounds every edge of the frame, the heart and the throat (Blender curve bevel). The outline is the right half (x >= 0) from the tip down to the neck, in metres, smoothed by a Catmull-Rom spline and mirrored; it is the finished edge, and the builder insets it by edge_radius_m before bevelling. The widest point sits at about two thirds of the head's height, which is what makes it a diamond (head-heavy, power) rather than a round (control) or teardrop. The tip sits bumper.proud_m below 0.38 so that, with the bumper on, the racket is exactly 455 mm long.",
+    "thickness_m": 0.038,
+    "edge_radius_m": 0.006,
+    "butt_z_m": -0.075,
+    "neck_z_m": 0.06,
+    "outline_half": [
+      [
+        0.0,
+        0.3788
+      ],
+      [
+        0.038,
+        0.3763
+      ],
+      [
+        0.072,
+        0.3695
+      ],
+      [
+        0.0995,
+        0.3555
+      ],
+      [
+        0.1185,
+        0.3365
+      ],
+      [
+        0.1285,
+        0.3165
+      ],
+      [
+        0.13,
+        0.303
+      ],
+      [
+        0.1265,
+        0.2855
+      ],
+      [
+        0.1155,
+        0.257
+      ],
+      [
+        0.0985,
+        0.2255
+      ],
+      [
+        0.0765,
+        0.1945
+      ],
+      [
+        0.0535,
+        0.1655
+      ],
+      [
+        0.0355,
+        0.1345
+      ],
+      [
+        0.0235,
+        0.1055
+      ],
+      [
+        0.0178,
+        0.0885
+      ],
+      [
+        0.0166,
+        0.075
+      ],
+      [
+        0.0165,
+        0.06
+      ]
+    ],
+    "face_margin_m": 0.018,
+    "_face_margin": "How far in from the edge the hitting face starts: the frame's own width as seen on the face. No holes in it.",
+    "_neck": "The frame runs on into the handle down to neck_z_m, hidden under the grip, so the grip's finishing tape always covers where they meet."
+  },
+  "heart": {
+    "_doc": "An open heart: two windows either side of a central bridge, between the throat arms and the bottom of the face. arm_width_m is each arm's width across, bridge_width_m the bridge's; top_z_m is the window top on the centre line, top_rise the slope it rises by towards the arms. Every window corner is rounded to about corner_radius_m. The bridge must stay wider than twice frame.edge_radius_m, or the two windows' bevels would meet inside it.",
+    "arm_width_m": 0.0155,
+    "bridge_width_m": 0.0135,
+    "bottom_z_m": 0.112,
+    "top_z_m": 0.168,
+    "top_rise": 0.35,
+    "corner_radius_m": 0.0035
+  },
+  "holes": {
+    "_doc": "Through-holes in the face (regulation diameter 9 to 13 mm). The pattern is original: an outer ring that follows the face's own diamond outline, ring_insets_m in from the face edge and spaced pitch_m apart, then a staggered grid (grid_pitch_m, rows from grid_top_z_m down) filling the middle. Always left-right symmetric, never closer than min_gap_m edge to edge, and none where the wordmark panel is (keep_clear_z_m). Holes also stay graphic_clear_m above the paint panel's edge, so the wordmark panel stays whole; the keystone is printed and drilled through, like most real face graphics.",
+    "diameter_m": 0.011,
+    "ring_insets_m": [
+      0.01
+    ],
+    "pitch_m": 0.0245,
+    "keep_clear_z_m": [
+      0.172,
+      0.214
+    ],
+    "min_gap_m": 0.0075,
+    "lod_segments": [
+      16,
+      8,
+      0
+    ],
+    "_lod_segments": "Segments per hole at LOD0, LOD1 and LOD2. 0: no geometry; the face material darkens the hole from T_Racket_Masks.A instead, which from the broadcast camera reads the same.",
+    "grid_pitch_m": 0.0235,
+    "grid_top_z_m": 0.344,
+    "graphic_clear_m": 0.0025
+  },
+  "bumper": {
+    "_doc": "Rubber protector over the top of the frame, from the tip down to start_deg either side (0 is the tip), proud of the frame by proud_m and wrapping onto the faces by wrap_m.",
+    "start_deg": 58.0,
+    "proud_m": 0.0012,
+    "wrap_m": 0.004
+  },
+  "weights": {
+    "_doc": "The adjustable-weight look: an alloy cartridge set into the bridge on both faces, with two hex screws, and an alloy port in each shoulder of the frame at the widest point. Cosmetic only: the racket's mass and balance live in Data/ with the shot model.",
+    "plate_size_m": [
+      0.0085,
+      0.026
+    ],
+    "plate_centre_z_m": 0.139,
+    "plate_proud_m": 0.0006,
+    "screw_radius_m": 0.0019,
+    "screw_offset_m": 0.0078,
+    "port_radius_m": 0.0058,
+    "port_ring_m": 0.0012,
+    "port_z_m": 0.301
+  },
+  "grip": {
+    "_doc": "Elliptical handle under a white overgrip. semi_axes_m is (across X, through Y): about 118 mm round with the overgrip, a mid-size padel grip, and just larger than the frame's neck (33 x 38 mm) that runs inside it. The wrap is a helix of overlapping bands (pitch_m apart, raised by step_m at each overlap). The finishing tape sits at the top of the wrap, the butt cap at the bottom.",
+    "semi_axes_m": [
+      0.0175,
+      0.02
+    ],
+    "wrap_bottom_z_m": -0.063,
+    "wrap_top_z_m": 0.066,
+    "tape_top_z_m": 0.076,
+    "pitch_m": 0.026,
+    "step_m": 0.0009,
+    "cap_semi_axes_m": [
+      0.0205,
+      0.0228
+    ],
+    "lod_segments": [
+      [
+        32,
+        96
+      ],
+      [
+        14,
+        8
+      ],
+      [
+        8,
+        2
+      ]
+    ],
+    "_lod_segments": "Around x along the wrap. LOD0 carries the helix; the lower LODs are plain ellipses."
+  },
+  "outline_lod_points": [
+    180,
+    80,
+    36
+  ],
+  "edge_lod_resolution": [
+    3,
+    1,
+    0
+  ],
+  "textures": {
+    "_doc": "T_Racket_Masks covers a square of the face, size_m on a side, centred on X = 0 with its top edge at the tip: R paint, G accent, B ink (the wordmark and the fine print), A holes (so LOD2 shows them without geometry). T_CarbonWeave_Mask is one tile of 2x2 twill carbon, tiled every weave_tile_m. T_RacketGrit_N is one tile of the raised sand finish that gives the face its grip on the ball (the '3D' texture), tiled every grit_tile_m.",
+    "masks_px": 1024,
+    "size_m": 0.305,
+    "weave_px": 256,
+    "weave_tile_m": 0.012,
+    "weave_tows": 4,
+    "grit_px": 256,
+    "grit_tile_m": 0.014,
+    "grit_grains": 520,
+    "grit_radius_px": [
+      2.5,
+      6.0
+    ]
+  },
+  "graphics": {
+    "_doc": "The original face graphic, in face metres. A keystone (the wedge-shaped top stone of an arch) outlined in the accent colour round the sweet spot; a paint panel across the lower head, cut by a rising diagonal, carrying the wordmark; an accent pinstripe pinstripe_inset_m inside the edge. Text heights are cap heights.",
+    "keystone": {
+      "top_z_m": 0.352,
+      "bottom_z_m": 0.236,
+      "top_half_m": 0.074,
+      "bottom_half_m": 0.042,
+      "stroke_m": 0.0022
+    },
+    "panel": {
+      "bottom_z_m": 0.08,
+      "left_top_z_m": 0.198,
+      "right_top_z_m": 0.232
+    },
+    "pinstripe_inset_m": 0.0075,
+    "pinstripe_m": 0.0016,
+    "wordmark": {
+      "centre_z_m": 0.2035,
+      "cap_m": 0.0125,
+      "stroke_m": 0.0024,
+      "tracking": 0.32
+    },
+    "model": {
+      "centre_z_m": 0.1865,
+      "cap_m": 0.0048,
+      "stroke_m": 0.0009,
+      "tracking": 0.5
+    },
+    "tag": {
+      "centre_z_m": 0.367,
+      "cap_m": 0.0042,
+      "stroke_m": 0.0008,
+      "tracking": 0.45
+    }
+  }
+}
