@@ -50,6 +50,12 @@ public:
 
 	/** One menu input. bRepeat for held-direction repeats. True if the screen used it. */
 	bool HandleMenuInput(Padel::Ui::EUiInput Input, bool bRepeat);
+	/**
+	 * Every key-down the root hears, by Unreal key name, before it becomes a menu input
+	 * (never repeats). For screens that take any key (Title, spec 7.1). True if used, so
+	 * the root doesn't also map it. Respects the entry lock.
+	 */
+	bool HandleAnyKey(const FString& KeyName);
 
 	FName GetFocusedId() const { return FocusedId; }
 	UPadelFocusableWidget* GetFocusedElement() const;
@@ -101,6 +107,8 @@ protected:
 	virtual bool OnBack();
 	/** X, Y, LB, RB, Start: anything the focus logic didn't use. True if handled. */
 	virtual bool OnScreenInput(Padel::Ui::EUiInput Input, bool bRepeat) { return false; }
+	/** Any key-down by Unreal key name (see HandleAnyKey). Most screens ignore it. */
+	virtual bool OnAnyKey(const FString& KeyName) { return false; }
 
 	/** Header text: the Display title and the optional breadcrumb above it. */
 	void SetHeader(const FText& Title, const FText& Breadcrumb = FText::GetEmpty());

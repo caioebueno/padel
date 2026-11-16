@@ -39,11 +39,41 @@ namespace
 	{
 		return Input == EUiInput::TabLeft || Input == EUiInput::TabRight;
 	}
+
+	EPadelIcon DPadIcon(const FString& PadKey)
+	{
+		if (PadKey == TEXT("Gamepad_DPad_Up"))
+		{
+			return EPadelIcon::DPadUp;
+		}
+		if (PadKey == TEXT("Gamepad_DPad_Down"))
+		{
+			return EPadelIcon::DPadDown;
+		}
+		if (PadKey == TEXT("Gamepad_DPad_Left"))
+		{
+			return EPadelIcon::DPadLeft;
+		}
+		if (PadKey == TEXT("Gamepad_DPad_Right"))
+		{
+			return EPadelIcon::DPadRight;
+		}
+		return EPadelIcon::None;
+	}
 }
 
 void UPadelButtonGlyph::SetInput(EUiInput InInput)
 {
 	Input = InInput;
+	bRawKey = false;
+	Refresh();
+}
+
+void UPadelButtonGlyph::SetKey(const FString& InPadKey, const FText& InKeyCap)
+{
+	bRawKey = true;
+	PadKey = InPadKey;
+	KeyCap = InKeyCap;
 	Refresh();
 }
 
@@ -67,6 +97,15 @@ void UPadelButtonGlyph::Flash()
 
 FString UPadelButtonGlyph::GetGlyphText() const
 {
+	if (bRawKey)
+	{
+		if (Family == EPadFamily::KeyboardMouse)
+		{
+			return KeyCap.ToString();
+		}
+		return DPadIcon(PadKey) != EPadelIcon::None ? FString()
+			: PadelUiStyle::ToFString(Padel::Ui::GamepadKeyLabel(PadelUiStyle::ToUtf8(PadKey), Family));
+	}
 	if (Family == EPadFamily::KeyboardMouse)
 	{
 		return UTF8_TO_TCHAR(Padel::Ui::KeyboardHintLabel(Input));
@@ -124,15 +163,22 @@ void UPadelButtonGlyph::Refresh()
 	}
 	const bool bFlash = FlashTimer > 0.0f;
 	const FString Text = GetGlyphText();
-	const EPadelIcon Icon = Family == EPadFamily::PlayStation ? PlayStationShape(Input) : EPadelIcon::None;
 	const bool bKey = Family == EPadFamily::KeyboardMouse;
-	const bool bShoulder = !bKey && IsShoulder(Input);
+	EPadelIcon Icon = Family == EPadFamily::PlayStation ? PlayStationShape(Input) : EPadelIcon::None;
+	bool bShoulder = !bKey && IsShoulder(Input);
+	if (bRawKey)
+	{
+		Icon = bKey ? EPadelIcon::None : DPadIcon(PadKey);
+		// A named pad button ("Menu", "Options") gets a cap like a key; a letter keeps the circle.
+		bShoulder = false;
+	}
+	const bool bWideCap = bKey || (bRawKey && Icon == EPadelIcon::None && Text.Len() > 2);
 
 	// A key cap and the shoulder buttons are rounded rectangles; face buttons are circles.
 	const float Height = Diameter;
 	const float Width = bShoulder ? Diameter * 1.5f : Diameter;
 	Box->SetHeightOverride(Height);
-	if (bKey)
+	if (bWideCap)
 	{
 		Box->ClearWidthOverride();
 		Box->SetMinDesiredWidth(Diameter);
@@ -141,7 +187,7 @@ void UPadelButtonGlyph::Refresh()
 	{
 		Box->SetWidthOverride(Width);
 	}
-	const float Radius = (bKey || bShoulder) ? PadelUi::Theme().Layout.RadiusControl : Diameter * 0.5f;
+	const float Radius = (bWideCap || bShoulder) ? PadelUi::Theme().Layout.RadiusControl : Diameter * 0.5f;
 	const FLinearColor Fill = PadelUi::Colour(bFlash ? EUiColour::Accent : EUiColour::SurfaceCharcoal);
 	Cap->SetBrush(PadelUiPaint::Rounded(Fill, Radius, PadelUi::Colour(EUiColour::GlassEdge), 2.0f));
 
@@ -151,12 +197,14 @@ void UPadelButtonGlyph::Refresh()
 	// A key cap grows to fit its key name, with room either side.
 	if (UOverlaySlot* LabelSlot = Cast<UOverlaySlot>(Label->Slot))
 	{
-		LabelSlot->SetPadding(FMargin(bKey ? 10.0f : 0.0f, 0.0f));
+		LabelSlot->SetPadding(FMargin(bWideCap ? 10.0f : 0.0f, 0.0f));
 	}
 
 	Shape->SetIcon(Icon);
 	Shape->SetTint(PadelUi::Colour(bFlash ? EUiColour::OnAccent : EUiColour::TextPrimary));
-	ShapeBox->SetWidthOverride(Diameter * 0.6f);
-	ShapeBox->SetHeightOverride(Diameter * 0.6f);
+	// The D-pad cross fills more of the circle than a face-button shape.
+	const float ShapeSize = Diameter * (bRawKey ? 0.8f : 0.6f);
+	ShapeBox->SetWidthOverride(ShapeSize);
+	ShapeBox->SetHeightOverride(ShapeSize);
 	ShapeBox->SetVisibility(Icon == EPadelIcon::None ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 }

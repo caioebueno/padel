@@ -293,6 +293,11 @@ bool UPadelScreenWidget::HandleMenuInput(EUiInput Input, bool bRepeat)
 	}
 }
 
+bool UPadelScreenWidget::HandleAnyKey(const FString& KeyName)
+{
+	return InputLock.AcceptsInput() && OnAnyKey(KeyName);
+}
+
 bool UPadelScreenWidget::OnBack()
 {
 	return MenuRoot && MenuRoot->DefaultBack(FocusedId);

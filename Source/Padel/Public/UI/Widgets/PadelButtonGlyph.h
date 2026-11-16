@@ -25,6 +25,12 @@ class PADEL_API UPadelButtonGlyph : public UPadelWidgetBase
 
 public:
 	void SetInput(Padel::Ui::EUiInput InInput);
+	/**
+	 * Show a game key instead of a menu input (the practice controls, spec 7.9): PadKey is
+	 * an Unreal gamepad key name ("Gamepad_DPad_Left"), KeyCap the keyboard key's text.
+	 * The D-pad draws as a cross with its arm marked; other pad keys use GamepadKeyLabel.
+	 */
+	void SetKey(const FString& InPadKey, const FText& InKeyCap);
 	void SetFamily(Padel::Ui::EPadFamily InFamily);
 	/** 40 for the hint bar, 32 inline. */
 	void SetDiameter(float InDiameter);
@@ -42,6 +48,10 @@ private:
 	void Refresh();
 
 	Padel::Ui::EUiInput Input = Padel::Ui::EUiInput::Confirm;
+	/** Set by SetKey: a game key rather than a menu input. */
+	bool bRawKey = false;
+	FString PadKey;
+	FText KeyCap;
 	Padel::Ui::EPadFamily Family = Padel::Ui::EPadFamily::Xbox;
 	float Diameter = 40.0f;
 	float FlashTimer = 0.0f;
