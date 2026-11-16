@@ -1,0 +1,22 @@
+{
+	"Reaction": {
+		"_comment": "How the net cloth gives way when the ball hits it (cosmetic; the bounce itself is BallSim's). Metres and seconds. Read by UPadelNetReactionSubsystem and copied into MPC_NetReaction; the formula is in Source/Padel/Public/Presentation/Model/PadelNetReaction.h and Tools/AssetPipeline/unreal/NetReaction.hlsl.",
+		"DisplacementPerMps": 0.006,
+		"MaxDisplacementM": 0.16,
+		"MinSpeedMps": 1.5,
+		"TapeClipScale": 0.35,
+		"BulgeRadiusM": 0.22,
+		"WaveSpeedMps": 7.0,
+		"WaveRadiusM": 0.30,
+		"RippleShare": 0.45,
+		"FrequencyHz": 3.0,
+		"DampingPerSecond": 2.8,
+		"DurationSeconds": 2.2,
+		"TapeShare": 0.30,
+		"PostInsetM": 0.11,
+		"PostFadeM": 0.35,
+		"GroundFadeM": 0.12,
+		"CableFadeM": 0.15,
+		"DefaultSpeedMps": 12.0
+	}
+}

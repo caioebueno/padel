@@ -1,5 +1,6 @@
 """Builds the indoor slice court (GDD 2, GDD 10) from CourtSpec.h measurements.
-The floor, lines and run-off are SM_CourtSurface (build_court_surface.py).
+The net is its own asset (build_net.py). The floor, lines and run-off are SM_CourtSurface
+(build_court_surface.py).
 
 Run by pipeline.py. Job keys: id, part ("solid" or "glass"), spec (CourtSpec.h
 constants in metres), palette, budget_tris, out (FBX path), report.
@@ -25,20 +26,14 @@ GLASS_THICKNESS = 0.012   # tempered panels are 10-12 mm
 PANEL_GAP = 0.008         # joint between glass panels
 POST_SIZE = 0.08          # square aluminium post
 RAIL_RADIUS = 0.025
-NET_POST_SIZE = 0.08
-NET_TAPE = 0.05
 LIGHT_HEIGHT = 7.6
-
-
-def net_height_at(spec: dict, y: float) -> float:
-    t = min(max(abs(y) / spec["HalfWidth"], 0.0), 1.0)
-    return spec["NetHeightCentre"] + (spec["NetHeightPosts"] - spec["NetHeightCentre"]) * t * t
 
 
 def build(job: dict) -> list:
     spec, pal = job["spec"], job["palette"]["court"]
-    # The floor, lines and run-off are SM_CourtSurface (build_court_surface.py).
-    names = ["Frame", "Mesh", "Net", "NetTape", "LightPanel", "Glass"]
+    # The net is SM_CourtNet (build_net.py); the floor, lines and run-off are SM_CourtSurface
+    # (build_court_surface.py).
+    names = ["Frame", "Mesh", "LightPanel", "Glass"]
     mats = [bc.material(f"MI_Court_{n}", pal[n]) for n in names]
     idx = {n: i for i, n in enumerate(names)}
     hl, hw = spec["HalfLength"], spec["HalfWidth"]
@@ -98,24 +93,8 @@ def build(job: dict) -> list:
                 bc.add_quad(solid, [(sx * x0, y, z0), (sx * x1, y, z0), (sx * x1, y, z1), (sx * x0, y, z1)],
                             idx["Mesh"], tile)
 
-    # --- Net: sagging mesh, tape and posts (GDD 2: 0.88 centre, 0.92 posts) ---
-    net_tile = job["palette"]["court"]["Net"].get("tiling_m", 0.045)
-    steps = 40
-    for i in range(steps):
-        y0 = -hw + spec["Width"] * i / steps
-        y1 = -hw + spec["Width"] * (i + 1) / steps
-        h0, h1 = net_height_at(spec, y0) - NET_TAPE, net_height_at(spec, y1) - NET_TAPE
-        bc.add_quad(solid, [(0, y0, 0), (0, y1, 0), (0, y1, h1), (0, y0, h0)], idx["Net"], net_tile)
-        top0, top1 = net_height_at(spec, y0), net_height_at(spec, y1)
-        verts = [solid.verts.new(v) for v in ((0.006, y0, top0 - NET_TAPE), (0.006, y1, top1 - NET_TAPE),
-                                              (0.006, y1, top1), (0.006, y0, top0))]
-        solid.faces.new(verts).material_index = idx["NetTape"]
-        verts = [solid.verts.new(v) for v in ((-0.006, y0, top0), (-0.006, y1, top1),
-                                              (-0.006, y1, top1 - NET_TAPE), (-0.006, y0, top0 - NET_TAPE))]
-        solid.faces.new(verts).material_index = idx["NetTape"]
-    for sy in (-1, 1):
-        bc.add_box(solid, (0, sy * (hw - NET_POST_SIZE / 2), spec["NetPostHeight"] / 2),
-                   (NET_POST_SIZE, NET_POST_SIZE, spec["NetPostHeight"]), idx["Frame"])
+    # The net, its tape and posts are SM_CourtNet (build_net.py), so the hit reaction
+    # can move them with their own materials.
 
     # --- Arena light panels over the court ---
     for x in (-6.0, -2.0, 2.0, 6.0):
