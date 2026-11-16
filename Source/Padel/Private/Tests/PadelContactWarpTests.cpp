@@ -79,7 +79,8 @@ namespace PadelContactWarpTests
 		}
 		const FTransform Frame = Driver->GetComponentTransform();
 		const FVector Forward = Frame.TransformVectorNoScale(FVector(0.0, 1.0, 0.0)).GetSafeNormal2D();
-		const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+		// Sides are the racket hand's: a left-hander's forehand is on the left (Players.json Handedness).
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward) * (Pawn->GetAnimation()->IsLeftHanded() ? -1.0 : 1.0);
 		const FVector Ground = Frame.GetLocation();
 
 		Padel::Animation::FAnimClip Clip;
@@ -174,7 +175,9 @@ bool FPadelContactWarpTest::RunTest(const FString& Parameters)
 		{
 			continue;
 		}
-		const TCHAR* BodyName = Pawn->GetAnimation()->GetMetaHuman() ? TEXT("MetaHuman") : TEXT("placeholder");
+		const TCHAR* BodyName = Pawn->GetAnimation()->GetMetaHuman()
+			? (Pawn->GetAnimation()->IsLeftHanded() ? TEXT("MetaHuman, left-handed") : TEXT("MetaHuman"))
+			: (Pawn->GetAnimation()->IsLeftHanded() ? TEXT("placeholder, left-handed") : TEXT("placeholder"));
 		FString Report;
 		const double ArmMiss = WorstMiss(*this, Pawn, ArmBand, false, Report);
 		if (ArmMiss < 0.0)
@@ -192,6 +195,132 @@ bool FPadelContactWarpTest::RunTest(const FString& Parameters)
 	if (Checked == 0)
 	{
 		AddInfo(TEXT("No skeletal bodies with SM_Racket on this machine; skipped."));
+	}
+	Director->CloseMatch();
+	return true;
+}
+
+// Movement plan N4: the MetaHuman's arms. A left-hander's racket and reach are on the left
+// arm; the forearm twist bones share the hand's roll (no candy-wrap); and the hand still
+// meets the ball at the broadcast camera's LOD.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelMetaHumanArmsTest, "Padel.Animation.MetaHumanArms",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPadelMetaHumanArmsTest::RunTest(const FString& Parameters)
+{
+	using namespace PadelContactWarpTests;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld=*/false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	ON_SCOPE_EXIT
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
+	APadelMatchDirector* Director = World->SpawnActor<APadelMatchDirector>();
+	Padel::Ui::FMatchSetup Setup;
+	Setup.SetsToWin = 1;
+	Setup.HumanPlayerId = -1;
+	if (!TestNotNull(TEXT("Director"), Director) || !TestTrue(TEXT("Match started"), Director->StartMatch(Setup)))
+	{
+		return false;
+	}
+	for (int32 Tick = 0; Tick < 10; ++Tick)
+	{
+		Director->Tick(1.0f / 60.0f);
+	}
+
+	int32 LeftHanders = 0;
+	int32 MetaHumans = 0;
+	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
+	{
+		APadelPlayerPawn* Pawn = Director->GetPawn(Id);
+		if (!Pawn || !Pawn->GetAnimation()->HasSkeletalBody())
+		{
+			continue;
+		}
+		UStaticMeshComponent* Racket = FindRacket(Pawn);
+		if (!Racket)
+		{
+			continue;
+		}
+		const bool bLeft = Pawn->GetAnimation()->IsLeftHanded();
+		const FName Socket = Racket->GetAttachSocketName();
+		TestEqual(FString::Printf(TEXT("Pawn %d: racket in the %s hand"), Id, bLeft ? TEXT("left") : TEXT("right")),
+			Socket, FName(bLeft ? TEXT("hand_l") : TEXT("hand_r")));
+		LeftHanders += bLeft ? 1 : 0;
+
+		USkeletalMeshComponent* Shown = Cast<USkeletalMeshComponent>(Racket->GetAttachParent());
+		if (!Pawn->GetAnimation()->GetMetaHuman() || !Shown)
+		{
+			continue;
+		}
+		++MetaHumans;
+		// An overhead on the forehand side rolls the racket hand: the twist bones must follow.
+		FString Report;
+		const TArray<FTarget> Overhead = { { 0.35, 0.25, 2.3 } };
+		WorstMiss(*this, Pawn, Overhead, false, Report);
+		const FReferenceSkeleton& Ref = Shown->GetSkeletalMeshAsset()->GetRefSkeleton();
+		const TCHAR* Suffix = bLeft ? TEXT("_l") : TEXT("_r");
+		const int32 HandIndex = Ref.FindBoneIndex(FName(FString(TEXT("hand")) + Suffix));
+		const TArray<FTransform>& Local = Shown->GetBoneSpaceTransforms();
+		if (HandIndex != INDEX_NONE && Local.IsValidIndex(HandIndex))
+		{
+			const FVector Axis = Ref.GetRefBonePose()[HandIndex].GetLocation().GetSafeNormal();
+			auto Roll = [&](int32 Bone)
+			{
+				FQuat Swing, Twist;
+				(Local[Bone].GetRotation() * Ref.GetRefBonePose()[Bone].GetRotation().Inverse()).ToSwingTwist(Axis, Swing, Twist);
+				return Twist.GetTwistAngle(Axis);
+			};
+			const double HandRoll = Roll(HandIndex);
+			for (const TCHAR* Name : { TEXT("lowerarm_twist_01"), TEXT("lowerarm_twist_02") })
+			{
+				const int32 Bone = Ref.FindBoneIndex(FName(FString(Name) + Suffix));
+				if (Bone == INDEX_NONE || !Local.IsValidIndex(Bone))
+				{
+					continue;
+				}
+				const FVector Forearm = Ref.GetRefBonePose()[HandIndex].GetLocation();
+				const double Share = FMath::Clamp(FVector::DotProduct(Ref.GetRefBonePose()[Bone].GetLocation(), Forearm) / Forearm.SizeSquared(), 0.0, 1.0);
+				const double Got = Roll(Bone);
+				AddInfo(FString::Printf(TEXT("Pawn %d %s%s: hand roll %.1f deg, twist %.1f deg (%.0f%% of the way to the wrist)%s"), Id, Name, Suffix,
+					FMath::RadiansToDegrees(HandRoll), FMath::RadiansToDegrees(Got), Share * 100.0,
+					Shown->GetPostProcessInstance() ? TEXT(", MetaHuman post-process") : TEXT("")));
+				// No candy-wrap: each twist bone turns with the hand, the more the nearer the wrist, and
+				// never past it. The MetaHuman's post-process correctives may weight them differently
+				// from our even spread, so this checks the shape, not exact shares.
+				const double Fraction = FMath::Abs(HandRoll) > FMath::DegreesToRadians(10.0) ? Got / HandRoll : Share;
+				TestTrue(FString::Printf(TEXT("Pawn %d: %s%s turns with the hand (%.2f of its roll, %.2f of the way along)"), Id, Name, Suffix, Fraction, Share),
+					Fraction >= Share * 0.5 && Fraction <= 1.05);
+			}
+		}
+
+		// The broadcast camera sees the MetaHumans at LOD 1 to 2: the racket still meets the ball.
+		AActor* MetaHuman = Pawn->GetAnimation()->GetMetaHuman();
+		for (const int32 Lod : { 1, 2 })
+		{
+			TInlineComponentArray<USkeletalMeshComponent*> Parts(MetaHuman);
+			for (USkeletalMeshComponent* Part : Parts)
+			{
+				Part->SetForcedLOD(Lod + 1);
+			}
+			Report.Reset();
+			const TArray<FTarget> Band = { { 0.55, 0.35, 0.9 }, { 0.55, 0.35, 1.5 }, { -0.45, 0.35, 1.2 } };
+			const double Miss = WorstMiss(*this, Pawn, Band, false, Report);
+			AddInfo(FString::Printf(TEXT("Pawn %d at LOD %d:%s"), Id, Lod, *Report));
+			TestTrue(FString::Printf(TEXT("Pawn %d: face within %.0f cm at LOD %d (worst %.1f)"), Id, ToleranceUnits, Lod, Miss), Miss >= 0.0 && Miss <= ToleranceUnits);
+		}
+		TInlineComponentArray<USkeletalMeshComponent*> Parts(MetaHuman);
+		for (USkeletalMeshComponent* Part : Parts)
+		{
+			Part->SetForcedLOD(0);
+		}
+	}
+	TestTrue(TEXT("The match has its left-hander (Ruben, Players.json)"), LeftHanders > 0);
+	if (MetaHumans == 0)
+	{
+		AddInfo(TEXT("No MetaHuman assembled on this machine: twist and LOD checks skipped."));
 	}
 	Director->CloseMatch();
 	return true;

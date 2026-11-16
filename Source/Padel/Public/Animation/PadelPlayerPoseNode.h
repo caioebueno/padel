@@ -83,6 +83,7 @@ private:
 	FVector RacketTargetComponent = FVector::ZeroVector;
 	FVector FaceInHand = FVector::ZeroVector;
 	FPadelWarpTuning WarpTuning;
+	bool bLeftHanded = false;
 
 	// Advanced in Update.
 	double CyclePhase = 0.0;
@@ -90,5 +91,5 @@ private:
 
 	// Bone setup, from CacheBones: per compact bone 1 above spine_01, else 0.
 	TArray<float> UpperBodyMask;
-	FPadelWarpBones WarpBones;
+	mutable FPadelWarpBones WarpBones;
 };
