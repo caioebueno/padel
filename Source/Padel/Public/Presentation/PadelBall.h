@@ -49,6 +49,10 @@ public:
 	UStaticMeshComponent* GetBallMesh() const { return BallMesh; }
 	UStaticMeshComponent* GetTrailMesh() const { return TrailMesh; }
 	const Padel::Presentation::FBallVisual& GetVisual() const { return Visual; }
+	/** The last shown state in simulation units, for the broadcast camera's tracking (GDD 9). */
+	bool IsShown() const { return bShown; }
+	const Padel::FVec3& GetPresentedPositionM() const { return Visual.GetPosition(); }
+	const Padel::FVec3& GetPresentedVelocityMps() const { return PresentedVelocityMps; }
 	/** True when the imported SM_Ball is shown, false on the engine-sphere fallback. */
 	bool IsShowingImportedBall() const { return bImportedBall; }
 
@@ -70,6 +74,7 @@ private:
 	TObjectPtr<UStaticMeshComponent> TrailMesh;
 
 	Padel::Presentation::FBallVisual Visual;
+	Padel::FVec3 PresentedVelocityMps;
 	double LastPresentTime = -1.0;
 	bool bShown = false;
 	bool bImportedBall = false;

@@ -1,13 +1,26 @@
 {
 	"Broadcast": {
-		"_comment": "GDD 9 broadcast end camera. Metres and seconds. 7-9 m high, 6-8 m behind the human team's back glass, tracking capped at 1.5 m.",
-		"HeightM": 8.0,
-		"BehindGlassM": 7.0,
-		"LookAtPastNetM": 2.0,
-		"FieldOfViewDeg": 50.0,
+		"_comment": "GDD 9 broadcast end camera, matched to a long-lens televised frame (camera spec): 7.25 m high, 14 m behind the human team's back glass, aimed at the foot of the net, 26 degree vertical field of view held for every screen shape (floored at 40 degrees across). Tracks the ball sideways only: nothing while it is within the dead zone, at most 1 m, eased by a critically damped spring and capped in speed. Metres, seconds, degrees.",
+		"HeightM": 7.25,
+		"BehindGlassM": 14.0,
+		"LookAtPastNetM": 0.0,
+		"VerticalFieldOfViewDeg": 26.0,
+		"MinHorizontalFieldOfViewDeg": 40.0,
+		"TrackingDeadzoneM": 1.0,
 		"TrackingStrength": 0.3,
-		"MaxTrackingM": 1.5,
-		"TrackingResponse": 2.5,
-		"EndTransitionSeconds": 1.6
+		"MaxTrackingM": 1.0,
+		"TrackingLeadSeconds": 0.25,
+		"TrackingHalfLifeSeconds": 0.5,
+		"MaxTrackingSpeedMps": 1.2,
+		"RecentreDelaySeconds": 0.6,
+		"RecentreSeconds": 1.0,
+		"EndCutawaySeconds": 2.5
+	},
+	"EndCutaway": {
+		"_comment": "The change-of-ends transition shot (GDD 9): the net-side camera position (arena spec 7), looking across the court, panning slowly. The camera cuts here, then cuts to the other end.",
+		"PositionM": [0.0, 9.8, 2.2],
+		"LookAtM": [0.0, -2.0, 1.0],
+		"VerticalFieldOfViewDeg": 30.0,
+		"PanDeg": 2.0
 	}
 }

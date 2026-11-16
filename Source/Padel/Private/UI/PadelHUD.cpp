@@ -311,12 +311,22 @@ void APadelHUD::CloseMatch()
 void APadelHUD::OnServeStarted(int ServerId)
 {
 	Stats.OnServeStarted();
+	// GDD 9: every serve starts from the same centred frame.
+	if (APadelBroadcastCamera* Camera = FindCamera())
+	{
+		Camera->OnServeCalled();
+	}
 	HudWidget->ShowMessage(EPadelHudMessage::Callout,
 		FText::Format(LOCTEXT("ToServe", "{0} to serve"), Txt(Padel::Ui::Surname(ServerId))), PadelUiStyle::Text, CalloutSeconds);
 }
 
 void APadelHUD::OnServeFault(std::string_view Fault)
 {
+	// The second serve starts centred too.
+	if (APadelBroadcastCamera* Camera = FindCamera())
+	{
+		Camera->OnServeCalled();
+	}
 	HudWidget->ShowMessage(EPadelHudMessage::Callout, Txt(Padel::Ui::ServeFaultLabel(Fault)), PadelUiStyle::Accent, CalloutSeconds);
 	if (MatchAudio)
 	{
@@ -326,12 +336,21 @@ void APadelHUD::OnServeFault(std::string_view Fault)
 
 void APadelHUD::OnServeLet()
 {
+	if (APadelBroadcastCamera* Camera = FindCamera())
+	{
+		Camera->OnServeCalled();
+	}
 	HudWidget->ShowMessage(EPadelHudMessage::Callout, LOCTEXT("Let", "Let"), PadelUiStyle::Accent, CalloutSeconds);
 }
 
 void APadelHUD::OnBallHit(int PlayerId, std::string_view ShotType, std::string_view TimingGrade, double SpeedMps)
 {
 	Stats.OnBallHit(PlayerId, ShotType, TimingGrade);
+	// The serve strike starts the camera's tracking (GDD 9).
+	if (APadelBroadcastCamera* Camera = FindCamera())
+	{
+		Camera->OnBallStruck();
+	}
 	if (MatchAudio)
 	{
 		MatchAudio->Play(EPadelMatchSound::RacketHit, FVector::ZeroVector, false);
@@ -348,10 +367,6 @@ void APadelHUD::OnBallBounced(std::string_view Surface, int Half, const Padel::U
 {
 	Stats.OnBallBounced(Surface);
 	const FVector Metres(PositionM.X, PositionM.Y, PositionM.Z);
-	if (APadelBroadcastCamera* Camera = FindCamera())
-	{
-		Camera->SetBallPositionMetres(Metres);
-	}
 	if (MatchAudio)
 	{
 		MatchAudio->Play(UPadelMatchAudio::SoundForSurface(PadelUiStyle::ToFString(std::string(Surface))), Padel::MetresToWorld(Metres));
@@ -365,6 +380,10 @@ void APadelHUD::OnBallLeftCourt(const Padel::Ui::FUiVec3& PositionM)
 void APadelHUD::OnPointEnded(int WinningTeam, std::string_view Reason, int LastHitterId)
 {
 	Stats.OnPointEnded(WinningTeam, Reason);
+	if (APadelBroadcastCamera* Camera = FindCamera())
+	{
+		Camera->OnPointEnded();
+	}
 	HudWidget->CloseGoldenPrompt();
 	HudWidget->ShowMessage(EPadelHudMessage::Callout,
 		FText::Format(LOCTEXT("PointEnded", "{0}  -  {1}"), Txt(Padel::Ui::ReasonLabel(Reason)), Txt(Padel::Ui::TeamName(WinningTeam))),
@@ -417,7 +436,7 @@ void APadelHUD::OnMatchWon(int Team)
 
 void APadelHUD::OnChangeOfEnds()
 {
-	// Keep a game/set title if there is one; the camera moves on the next score (GDD 9).
+	// Keep a game/set title if there is one; the camera cuts to the other end on the next score (GDD 9).
 	if (PendingCardTitle.IsEmpty())
 	{
 		PendingCardTitle = LOCTEXT("ChangeOfEnds", "CHANGE OF ENDS");
