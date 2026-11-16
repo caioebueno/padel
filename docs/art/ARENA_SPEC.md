@@ -155,13 +155,15 @@ The lighting thread ("Build realistic court lighting and venue") owns the fixtur
 | Area | Target | Colour temperature |
 |---|---|---|
 | Court, horizontal | ≥ 1,000 lux average, uniformity (min/avg) ≥ 0.7 | 5,600 K |
-| Court, vertical toward each broadcast camera at 1.0 m | ≥ 750 lux | 5,600 K |
+| Court, vertical toward each broadcast camera at 1.0 m | ≥ 0.3 × the horizontal average (about 350 lux at 1,150 horizontal) | 5,600 K |
 | Apron | ≥ 700 lux, falling off smoothly to the boards | 5,600 K |
 | Stands (house lights) | 150 to 250 lux on the seats, front rows brighter than back | 3,500 K, slightly warm |
 | Circulation and back-of-house | 50 to 100 lux | 4,000 K |
 | Video walls and LED boards | Emissive only, not light sources (section 8) | |
 
 The ratio between court and stands (about 5:1) is what makes it look like television: a bright court in a darker room.
+
+Why the vertical target is only 0.3 × horizontal: the camera sits at rig height and the fixtures sit only on the long sides (6.1), so a surface facing the camera is lit at a grazing angle. A real broadcast would add end fill, but here the exposure is locked to the court (the lighting thread's grade), so players and kits still read. The floor keeps faces and kits from going muddy. If playtests show the players look flat from the camera, the fix is a low-intensity fill on the end trusses aimed at least 60° below horizontal and outside the 15° camera cone. That would be a change to 6.1, made in this spec first.
 
 ### 6.3 Glare
 
