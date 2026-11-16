@@ -1,8 +1,7 @@
-// GDD 9 broadcast camera maths and the demo match that drives the UI before the referee lands.
+// The demo match that drives the UI before the referee lands. The camera maths is in CameraRigTests.cpp.
 #include "doctest.h"
 
 #include "CourtSpec.h"
-#include "Presentation/Model/PadelCameraRig.h"
 #include "UI/Model/PadelUiCodes.h"
 #include "UI/Model/PadelUiDemoMatch.h"
 #include "UI/Model/PadelUiEventSink.h"
@@ -12,17 +11,11 @@
 #include <string>
 #include <vector>
 
-using namespace Padel::Presentation;
 using namespace Padel::Ui;
 using doctest::Approx;
 
 namespace
 {
-	double Length2D(double X, double Y)
-	{
-		return std::sqrt(X * X + Y * Y);
-	}
-
 	// Collects events in order and keeps stats, as the HUD would.
 	class FRecordingSink final : public IUiEventSink
 	{
@@ -59,83 +52,6 @@ namespace
 		void OnChangeOfEnds() override { Events.push_back("ends"); }
 		void OnGoldenPointStarted(int) override { ++GoldenPoints; }
 	};
-}
-
-TEST_CASE("Presentation.Camera: behind and above the human team's glass (GDD 9)")
-{
-	const FCameraSettings Settings;
-	const FCameraPose Pose = EndPose(Settings, 1, 0.0);
-	CHECK(Pose.Location.Z >= 7.0);
-	CHECK(Pose.Location.Z <= 9.0);
-	const double Behind = Pose.Location.X - Padel::Court::HalfLength;
-	CHECK(Behind >= 6.0);
-	CHECK(Behind <= 8.0);
-	// Looking down the court toward the far half.
-	CHECK(Pose.LookAt.X < 0.0);
-	CHECK(Pose.LookAt.Z == Approx(0.0));
-
-	const FCameraPose Other = EndPose(Settings, -1, 0.0);
-	CHECK(Other.Location.X == Approx(-Pose.Location.X));
-	CHECK(Other.LookAt.X > 0.0);
-}
-
-TEST_CASE("Presentation.Camera: tracking is gentle, capped at 1.5 m and never turns the camera")
-{
-	FCameraSettings Settings;
-	CHECK(TrackingTarget(Settings, 0.0) == Approx(0.0));
-	CHECK(TrackingTarget(Settings, 5.0) <= Settings.MaxTrackingM);
-	CHECK(TrackingTarget(Settings, 100.0) == Approx(1.5));
-	CHECK(TrackingTarget(Settings, -100.0) == Approx(-1.5));
-
-	FCameraRig Rig(Settings, 1);
-	const FCameraPose Start = Rig.CurrentPose();
-	Rig.SetBallY(5.0);
-	FCameraPose Pose = Rig.Step(0.1);
-	// Eases toward the target rather than jumping.
-	CHECK(Rig.GetTrackY() > 0.0);
-	CHECK(Rig.GetTrackY() < TrackingTarget(Settings, 5.0));
-	for (int Frame = 0; Frame < 600; ++Frame)
-	{
-		Pose = Rig.Step(1.0 / 60.0);
-	}
-	CHECK(Rig.GetTrackY() == Approx(TrackingTarget(Settings, 5.0)).epsilon(0.01));
-	// Same view direction as the start: it moved sideways, it didn't rotate.
-	const double DirStartX = Start.LookAt.X - Start.Location.X;
-	const double DirStartY = Start.LookAt.Y - Start.Location.Y;
-	const double DirNowX = Pose.LookAt.X - Pose.Location.X;
-	const double DirNowY = Pose.LookAt.Y - Pose.Location.Y;
-	CHECK(DirNowX == Approx(DirStartX));
-	CHECK(DirNowY == Approx(DirStartY));
-	CHECK(std::abs(Pose.Location.Y) <= Settings.MaxTrackingM + 1e-9);
-}
-
-TEST_CASE("Presentation.Camera: a change of ends orbits to the other end (GDD 9)")
-{
-	FCameraSettings Settings;
-	FCameraRig Rig(Settings, 1);
-	const double Radius = Length2D(Rig.CurrentPose().Location.X, Rig.CurrentPose().Location.Y);
-
-	Rig.SetEnd(-1);
-	CHECK(Rig.IsChangingEnds());
-	const FCameraPose Middle = [&]
-	{
-		Rig.Step(Settings.EndTransitionSeconds / 2.0);
-		return Rig.CurrentPose();
-	}();
-	// Halfway round: off to the side of the court, same distance from the centre.
-	CHECK(std::abs(Middle.Location.X) < 1e-6);
-	CHECK(Length2D(Middle.Location.X, Middle.Location.Y) == Approx(Radius));
-	CHECK(Middle.Location.Z == Approx(Settings.HeightM));
-
-	Rig.Step(Settings.EndTransitionSeconds);
-	CHECK_FALSE(Rig.IsChangingEnds());
-	const FCameraPose End = Rig.CurrentPose();
-	CHECK(End.Location.X == Approx(-(Padel::Court::HalfLength + Settings.BehindGlassM)));
-	CHECK(End.LookAt.X > 0.0);
-
-	// Setting the same end again does nothing.
-	Rig.SetEnd(-1);
-	CHECK_FALSE(Rig.IsChangingEnds());
 }
 
 TEST_CASE("UI.Demo: plays a best-of-3 to the end, the same way for a seed")

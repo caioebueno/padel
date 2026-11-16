@@ -55,6 +55,8 @@ namespace Padel::AI
 
 		// Home positions for both slots, from the formation, the ball and any commands.
 		std::array<FAiVec2, 2> HomePositions(const FAiVec2& BallLocal) const;
+		// Side-to-side distance between the partners for a ball at this local X.
+		double SpacingFor(double BallLocalX) const;
 
 		// GDD 8: the player whose side the ball is on takes it; down the middle the
 		// forehand of the left-side player by default, unless the partner is clearly

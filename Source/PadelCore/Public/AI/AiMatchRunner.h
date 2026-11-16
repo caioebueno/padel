@@ -96,7 +96,8 @@ namespace Padel::AI
 		FMatchSimulation& Match;
 		const Shots::FShotLibrary& Library;
 		const Shots::FMovementTuning& Movement;
-		const FAiTactics& Tactics;
+		// A copy, with the stand points read from the shot library (GDD 5.2).
+		FAiTactics Tactics;
 		FAiMatchSetup Setup;
 		FAiEngineBallModel Model;
 		FAiMatchBallPort Port;

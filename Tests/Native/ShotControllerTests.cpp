@@ -96,8 +96,7 @@ namespace
 					if (Plan.bChase && !bPressed)
 					{
 						// Stand so the ideal ball position is at the ideal contact point.
-						const FVec3 Want = Sub(P.GetIdealBallPosition(), Add(Scale(RightAxis(P.GetTeamSign()), Plan.Side * Lib.Model.IdealContactSideM),
-							Scale(ForwardAxis(P.GetTeamSign()), Lib.Model.IdealContactForwardM)));
+						const FVec3 Want = Sub(P.GetIdealBallPosition(), Sub(P.IdealContactPoint(P.ContactShot(), Plan.Side, 0.0), P.GetMotion().GetPosition()));
 						const FVec3 To = Sub(Want, P.GetMotion().GetPosition());
 						const double D = LengthXY(To);
 						if (D > 0.05)
@@ -217,7 +216,11 @@ TEST_CASE("Shots.Controller: every slice shot can be played on purpose")
 	Vibora.Button = EShotButton::Overhead;
 	Vibora.bAttack = true;
 	const std::vector<FCase> Cases = {
-		{ "drive", "deep_middle", Vec(8.5, 0.0, 0.0), Drive, EShotType::Drive },
+		// Starts on the forehand stand point. Since #45 this feed's drive is struck at about
+		// 0.4 m and clears the tape by millimetres, so it nets whenever the bot arrives a little
+		// off its spot (on main too, from 1.5 m across); M2's slower sideways shuffle leaves the
+		// 2 m chase from the middle short. This case is about playing the shot, not the chase.
+		{ "drive", "deep_middle", Vec(8.5, 2.0, 0.0), Drive, EShotType::Drive },
 		{ "volley", "volley_body", Vec(3.0, 0.0, 0.0), Volley, EShotType::Volley },
 		{ "lob", "deep_middle", Vec(8.5, 0.0, 0.0), Lob, EShotType::Lob },
 		// Half a metre deeper than before M1: with the softer start and braking the scripted

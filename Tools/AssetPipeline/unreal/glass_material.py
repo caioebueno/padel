@@ -141,7 +141,10 @@ def build(mat: unreal.Material, load_texture, linear) -> None:
     # UVs are metres on the panel face plus a per-panel offset (blender/build_court_glass.py).
     uv = g.node(unreal.MaterialExpressionTextureCoordinate, -1100, coordinate_index=0)
     M = unreal.MaterialExpressionMultiply
-    grey = unreal.MaterialSamplerType.SAMPLERTYPE_GRAYSCALE
+    # The masks import as TC_GRAYSCALE with sRGB off (import_assets.py), which needs the *linear*
+    # grayscale sampler. Plain Grayscale fails to compile and the engine draws its default
+    # checkerboard material in place of the glass.
+    grey = unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE
     smudge_tex = g.texture("SmudgeMask", load_texture(glass.SMUDGE_TEXTURE), grey, g.op(M, uv, s["SmudgeTiling"]), BLACK)
     mark_tex = g.texture("BallMarkMask", load_texture(glass.BALL_MARK_TEXTURE), grey, g.op(M, uv, s["BallMarkTiling"]), BLACK)
     wave_tex = g.texture("RollerWave", load_texture(glass.ROLLER_WAVE_TEXTURE),

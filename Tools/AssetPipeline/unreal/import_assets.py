@@ -46,6 +46,10 @@ MEL = unreal.MaterialEditingLibrary
 ASSETS = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 WHITE = "/Engine/EngineResources/WhiteSquareTexture"
+# A linear grayscale texture for the masked masters' Mask default (see _mask_sampler).
+DEFAULT_MASK = "T_NetGrid_Mask"
+# Masters whose instances go on Nanite meshes (assets.json "nanite": true): they need the usage flag.
+NANITE_MASTERS = ("M_PadelOpaque", "M_PadelTurf", "M_PadelMetal", "M_PadelEmissive")
 FLAT_NORMAL = "/Engine/EngineMaterials/FlatNormal"
 NET_MPC = "MPC_NetReaction"
 # Vector parameters of MPC_NetReaction, in the order the HLSL takes them (see NetReaction.hlsl).
@@ -237,6 +241,36 @@ def _net_reaction(mat, mpc) -> None:
     MEL.connect_material_property(to_world, "", P.MP_WORLD_POSITION_OFFSET)
 
 
+def _mask_sampler(mat):
+    """The Mask parameter of the masked masters. Masks import as TC_GRAYSCALE with sRGB off,
+    which needs the Linear Grayscale sampler, and the default texture must be one too: a
+    colour default (the engine's white square) or the plain Grayscale sampler fails to
+    compile, and the engine draws its default checkerboard material instead."""
+    mask = _param(mat, unreal.MaterialExpressionTextureSampleParameter2D, "Mask", -700, 0)
+    mask.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+    default = unreal.load_asset(f"{MATERIAL_DIR}/{DEFAULT_MASK}")
+    if default is None:
+        fail(f"{mat.get_name()}: default mask {DEFAULT_MASK} not imported")
+    mask.set_editor_property("texture", default)
+    return mask
+
+
+def enable_nanite_usage() -> None:
+    """Opaque masters drawn on Nanite meshes (the frame, the surface, the venue) need the
+    Nanite usage flag; without it the engine draws its default material in game."""
+    for name in NANITE_MASTERS:
+        mat = unreal.load_asset(f"{MATERIAL_DIR}/{name}")
+        if mat is None:
+            fail(f"{name}: not built, so no Nanite usage flag")
+            continue
+        if not set_first(mat, ["used_with_nanite", "b_used_with_nanite"], True):
+            fail(f"{name}: no Nanite usage flag in this engine")
+            continue
+        MEL.recompile_material(mat)
+        ASSETS.save_asset(f"{MATERIAL_DIR}/{name}", only_if_is_dirty=False)
+    log("Nanite usage set on the opaque masters")
+
+
 def build_masters() -> None:
     P = unreal.MaterialProperty
     standard = {"Roughness": P.MP_ROUGHNESS, "Metallic": P.MP_METALLIC, "Specular": P.MP_SPECULAR}
@@ -282,9 +316,7 @@ def build_masters() -> None:
     mat.set_editor_property("two_sided", True)
     color, mul = _base_color(mat)
     MEL.connect_material_property(mul, "", P.MP_BASE_COLOR)
-    mask = _param(mat, unreal.MaterialExpressionTextureSampleParameter2D, "Mask", -700, 0)
-    mask.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_GRAYSCALE)
-    mask.set_editor_property("texture", unreal.load_asset(WHITE))
+    mask = _mask_sampler(mat)
     MEL.connect_material_property(mask, "R", P.MP_OPACITY_MASK)
     _scalars(mat, {"Roughness": 0.5, "Metallic": 1.0}, standard, 200)
     MEL.recompile_material(mat)
@@ -297,9 +329,7 @@ def build_masters() -> None:
     mat.set_editor_property("two_sided", True)
     color, mul = _base_color(mat)
     MEL.connect_material_property(mul, "", P.MP_BASE_COLOR)
-    mask = _param(mat, unreal.MaterialExpressionTextureSampleParameter2D, "Mask", -700, 0)
-    mask.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_GRAYSCALE)
-    mask.set_editor_property("texture", unreal.load_asset(WHITE))
+    mask = _mask_sampler(mat)
     MEL.connect_material_property(mask, "R", P.MP_OPACITY_MASK)
     normal = _param(mat, unreal.MaterialExpressionTextureSampleParameter2D, "NormalMap", -700, 450)
     normal.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
@@ -540,6 +570,7 @@ def main() -> None:
     import_textures()
     build_masters()
     metal_materials.build_masters(log, fail)
+    enable_nanite_usage()
     build_instances(palette)
     metal_materials.apply_instance_params(palette, catalogue.material_name, fail)
     for asset in cat.assets:

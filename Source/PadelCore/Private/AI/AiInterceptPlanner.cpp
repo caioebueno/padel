@@ -13,14 +13,16 @@ namespace
 	// The player stands so the ball meets them at the shot model's ideal contact point
 	// (GDD 5.2): beside them, on the side it is already on (the forehand when it comes
 	// straight at them), and a little in front. Never inside a wall or past the net.
-	FAiVec StandPointFor(const FAiVec& Ball, const FInterceptQuery& Query, const FAiPlayerProfile& Profile, const FAiTactics& T)
+	FAiVec StandPointFor(const FAiVec& Ball, EContactKind Kind, const FInterceptQuery& Query, const FAiPlayerProfile& Profile, const FAiTactics& T)
 	{
 		const FAiVec2 BallLocal = TeamFrame::ToLocal(Query.HalfSign, Ball);
 		const FAiVec2 PlayerLocal = TeamFrame::ToLocal(Query.HalfSign, Query.PlayerPosition);
 		const double Across = BallLocal.X - PlayerLocal.X;
-		const double Side = std::abs(Across) > T.ContactSideM * 0.25 ? SignOf(Across) : Profile.ForehandSign();
+		const double Side = std::abs(Across) > T.ContactSideFor(Kind, true) * 0.25 ? SignOf(Across) : Profile.ForehandSign();
+		// GDD 5.2: the shot's own point, the backhand one on the backhand side.
+		const bool bForehand = Side * Profile.ForehandSign() > 0.0;
 		// Local Y is depth: the player stands deeper than the ball by the forward offset.
-		const FAiVec2 StandLocal = { BallLocal.X - Side * T.ContactSideM, BallLocal.Y + T.ContactForwardM };
+		const FAiVec2 StandLocal = { BallLocal.X - Side * T.ContactSideFor(Kind, bForehand), BallLocal.Y + T.ContactForwardFor(Kind, bForehand) };
 		FAiVec Stand = TeamFrame::ToCourt(Query.HalfSign, StandLocal);
 		const double MaxY = Court::HalfWidth - T.CourtMarginM;
 		Stand.Y = ClampD(Stand.Y, -MaxY, MaxY);
@@ -76,7 +78,7 @@ std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples
 		Candidate.Sample = S;
 		Candidate.Kind = Height >= T.OverheadMinHeightM ? EContactKind::Overhead
 			: (S.GroundBounces == 0 ? EContactKind::Volley : EContactKind::Groundstroke);
-		Candidate.StandPoint = StandPointFor(S.Position, Query, Profile, T);
+		Candidate.StandPoint = StandPointFor(S.Position, Candidate.Kind, Query, Profile, T);
 		FAiVec ToStand = Candidate.StandPoint - Query.PlayerPosition;
 		ToStand.Z = 0.0;
 		double Distance = ToStand.Length2D();

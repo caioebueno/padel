@@ -52,7 +52,8 @@ TEST_CASE("Ai.Pair: the pair shifts toward the ball together, never splits on it
 		{
 			Pair.SetFormation(F);
 			const auto Homes = Pair.HomePositions({ BallX, 6.0 });
-			CHECK(Homes[RightSlot].Y == Approx(Homes[LeftSlot].Y));
+			// The stagger is the only depth difference a pair takes on its own.
+			CHECK(std::abs(Homes[RightSlot].Y - Homes[LeftSlot].Y) <= T.NetStaggerM + 1e-9);
 			const double Centre = (Homes[RightSlot].X + Homes[LeftSlot].X) * 0.5;
 			if (BallX != 0.0)
 			{
@@ -61,6 +62,96 @@ TEST_CASE("Ai.Pair: the pair shifts toward the ball together, never splits on it
 			CHECK(std::abs(Centre) <= T.MaxLateralShiftM + 1e-9);
 		}
 	}
+}
+
+TEST_CASE("Ai.Pair: net depth leaves room against the lob (movement doc 5.4)")
+{
+	const FAiTactics& T = TestData::Tactics();
+	CHECK(T.NetDepthM == Approx(3.0));
+	FAiPairTactics Pair(T);
+	Pair.SetFormation(EFormation::BothNet);
+	const auto Homes = Pair.HomePositions({ 0.0, 5.0 });
+	CHECK(Homes[RightSlot].Y == Approx(3.0));
+	CHECK(Homes[LeftSlot].Y == Approx(3.0));
+}
+
+TEST_CASE("Ai.Pair: at the net the partner away from the ball stands deeper (GDD 8 stagger)")
+{
+	const FAiTactics& T = TestData::Tactics();
+	REQUIRE(T.NetStaggerM > 0.0);
+	FAiPairTactics Pair(T);
+	Pair.SetFormation(EFormation::BothNet);
+	const double Half = T.NetStaggerM * 0.5;
+	// Ball on the right: the left player is the far one. The ball-side player steps in
+	// to volley and the far one drops back, the pair centred on the net depth.
+	auto Homes = Pair.HomePositions({ 3.0, 5.0 });
+	CHECK(Homes[LeftSlot].Y - Homes[RightSlot].Y == Approx(T.NetStaggerM));
+	CHECK(Homes[RightSlot].Y == Approx(T.NetDepthM - Half));
+	CHECK(Homes[LeftSlot].Y == Approx(T.NetDepthM + Half));
+	// Ball on the left: the right player drops back.
+	Homes = Pair.HomePositions({ -3.0, 5.0 });
+	CHECK(Homes[RightSlot].Y - Homes[LeftSlot].Y == Approx(T.NetStaggerM));
+	CHECK(Homes[LeftSlot].Y == Approx(T.NetDepthM - Half));
+	// Dead centre: level. Inside the middle band the stagger builds up, so the pair
+	// doesn't swap depths in one step as the ball crosses the centre.
+	Homes = Pair.HomePositions({ 0.0, 5.0 });
+	CHECK(Homes[LeftSlot].Y == Approx(Homes[RightSlot].Y));
+	Homes = Pair.HomePositions({ T.MiddleBandM * 0.5, 5.0 });
+	CHECK(Homes[LeftSlot].Y - Homes[RightSlot].Y == Approx(T.NetStaggerM * 0.5));
+	const auto JustRight = Pair.HomePositions({ 0.01, 5.0 });
+	const auto JustLeft = Pair.HomePositions({ -0.01, 5.0 });
+	CHECK(std::abs(JustRight[LeftSlot].Y - JustLeft[LeftSlot].Y) < 0.05);
+	// Both back: no stagger.
+	Pair.SetFormation(EFormation::BothBack);
+	Homes = Pair.HomePositions({ 3.0, 5.0 });
+	CHECK(Homes[LeftSlot].Y == Approx(T.BackDepthM));
+	CHECK(Homes[RightSlot].Y == Approx(T.BackDepthM));
+}
+
+TEST_CASE("Ai.Pair: spacing widens linearly from the middle to the side glass (movement doc 2.12)")
+{
+	const FAiTactics& T = TestData::Tactics();
+	REQUIRE(T.PartnerSpacingMaxM > T.PartnerSpacingMinM);
+	FAiPairTactics Pair(T);
+	const double HalfWidth = Padel::Court::HalfWidth;
+	CHECK(Pair.SpacingFor(0.0) == Approx(T.PartnerSpacingMinM));
+	CHECK(Pair.SpacingFor(HalfWidth) == Approx(T.PartnerSpacingMaxM));
+	CHECK(Pair.SpacingFor(-HalfWidth) == Approx(T.PartnerSpacingMaxM));
+	CHECK(Pair.SpacingFor(HalfWidth * 0.5) == Approx(0.5 * (T.PartnerSpacingMinM + T.PartnerSpacingMaxM)));
+	CHECK(Pair.SpacingFor(HalfWidth + 2.0) == Approx(T.PartnerSpacingMaxM));  // past the glass: capped
+	for (EFormation F : { EFormation::BothBack, EFormation::BothNet })
+	{
+		Pair.SetFormation(F);
+		for (double BallX : { 0.0, 1.0, -2.0, 3.0 })
+		{
+			const auto Homes = Pair.HomePositions({ BallX, 6.0 });
+			CHECK(Homes[RightSlot].X - Homes[LeftSlot].X == Approx(Pair.SpacingFor(BallX)));
+		}
+	}
+}
+
+TEST_CASE("Ai.Commands: commands still override the stagger and the spacing")
+{
+	const FAiTactics& T = TestData::Tactics();
+	FAiPairTactics Pair(T);
+	Pair.SetFormation(EFormation::BothNet);
+	// The far player told to go to the net stands at the net depth, not staggered back.
+	Pair.SetCommand(LeftSlot, EPartnerCommand::GoNet);
+	auto Homes = Pair.HomePositions({ 3.0, 5.0 });
+	CHECK(Homes[LeftSlot].Y == Approx(T.NetDepthM));
+	CHECK(Homes[RightSlot].Y == Approx(T.NetDepthM - T.NetStaggerM * 0.5));
+	// Stay back beats the formation and the stagger.
+	Pair.SetCommand(LeftSlot, EPartnerCommand::StayBack);
+	Homes = Pair.HomePositions({ 3.0, 5.0 });
+	CHECK(Homes[LeftSlot].Y == Approx(T.BackDepthM));
+	CHECK(Homes[RightSlot].Y < T.NetDepthM);
+	// Take the middle still pulls the player in from the wide spacing.
+	Pair.ClearCommands();
+	const auto Before = Pair.HomePositions({ 4.0, 5.0 });
+	Pair.SetCommand(LeftSlot, EPartnerCommand::TakeMiddle);
+	Homes = Pair.HomePositions({ 4.0, 5.0 });
+	CHECK(Homes[LeftSlot].X - Before[LeftSlot].X == Approx(T.TakeMiddleShiftM));
+	CHECK(Homes[LeftSlot].Y == Approx(Before[LeftSlot].Y));
 }
 
 TEST_CASE("Ai.Pair: formation follows the shots (GDD 8)")

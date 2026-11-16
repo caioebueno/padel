@@ -38,18 +38,18 @@ TEST_CASE("Contracts.Realism: a speed fraction left out of Movement.json is caug
 	CHECK_FALSE(M.Validate().empty());
 }
 
-TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral (GDD 8)")
+TEST_CASE("Contracts.Realism: AiTactics.json's new fields are neutral, or set by their lane (GDD 8)")
 {
 	const Padel::AI::FAiTactics& T = Padel::AI::TestData::Tactics();
-	CHECK(T.NetStaggerM == Approx(0.0));
-	// One spacing until the AI widens it with the ball: today's 4.5 m.
-	CHECK(T.PartnerSpacingMinM == Approx(4.5));
-	CHECK(T.PartnerSpacingMaxM == Approx(4.5));
+	// A2 (movement doc 5.4): the stagger and the spacing by ball width.
+	CHECK(T.NetStaggerM == Approx(0.75));
+	CHECK(T.PartnerSpacingMinM == Approx(3.5));
+	CHECK(T.PartnerSpacingMaxM == Approx(5.0));
 	CHECK(T.SideSwitchMinLobDepthM == Approx(0.0));
 	CHECK(T.FirstStepExtraS == Approx(0.0));
 }
 
-TEST_CASE("Contracts.Realism: Shots.json's new fields are neutral on every row (GDD 5.1, 5.2)")
+TEST_CASE("Contracts.Realism: Shots.json's forward swing is still neutral (GDD 5.1)")
 {
 	using namespace Padel::Shots;
 	const FShotLibrary Lib = ShotTestData::LoadLibrary();
@@ -61,15 +61,8 @@ TEST_CASE("Contracts.Realism: Shots.json's new fields are neutral on every row (
 		{
 			continue;
 		}
-		const FShotParams& P = Lib.Get(Type);
 		CAPTURE(Padel::ShotTypeName(Type));
-		// Today's single contact point, from ShotModel.json, on both sides.
-		CHECK(P.IdealContactSideM == Approx(Lib.Model.IdealContactSideM));
-		CHECK(P.IdealContactForwardM == Approx(Lib.Model.IdealContactForwardM));
-		CHECK(P.IdealContactSideBackM == Approx(Lib.Model.IdealContactSideM));
-		CHECK(P.IdealContactForwardBackM == Approx(Lib.Model.IdealContactForwardM));
-		CHECK(P.ContactHeightPerBodyHeight == Approx(0.0));
-		CHECK(P.ForwardS == Approx(0.0));
+		CHECK(Lib.Get(Type).ForwardS == Approx(0.0));
 	}
 }
 

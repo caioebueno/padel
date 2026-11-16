@@ -133,6 +133,7 @@ void APadelBall::Present(const Padel::FVec3& PositionM, const Padel::FVec3& Velo
 	const double Dt = FMath::Max(0.0, Now - LastPresentTime);
 	LastPresentTime = Now;
 	Visual.Update(PositionM, VelocityMps, SpinRadPerS, Dt);
+	PresentedVelocityMps = VelocityMps;
 
 	SetActorLocation(Padel::ToWorld(PositionM));
 	BallMesh->SetRelativeRotation(PadelBallDetail::ToQuat(Visual.GetOrientation()));

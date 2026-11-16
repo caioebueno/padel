@@ -87,8 +87,7 @@ namespace
 				{
 					if (!bServe && !bPressed)
 					{
-						const FVec3 Want = Sub(P.GetIdealBallPosition(), Add(Scale(RightAxis(P.GetTeamSign()), Plan.Side * Lib.Model.IdealContactSideM),
-							Scale(ForwardAxis(P.GetTeamSign()), Lib.Model.IdealContactForwardM)));
+						const FVec3 Want = Sub(P.GetIdealBallPosition(), Sub(P.IdealContactPoint(P.ContactShot(), Plan.Side, 0.0), P.GetMotion().GetPosition()));
 						const FVec3 To = Sub(Want, P.GetMotion().GetPosition());
 						const double D = LengthXY(To);
 						if (D > 0.05)
@@ -529,8 +528,7 @@ TEST_CASE("Anim.Contact: an AI swing lines up the same way")
 			FPlayerInputFrame In;
 			if (P.HasIdealMoment() && Rig.ContactTick < 0)
 			{
-				const FVec3 Want = Sub(P.GetIdealBallPosition(), Add(Scale(RightAxis(1.0), Rig.Lib.Model.IdealContactSideM),
-					Scale(ForwardAxis(1.0), Rig.Lib.Model.IdealContactForwardM)));
+				const FVec3 Want = Sub(P.GetIdealBallPosition(), Sub(P.IdealContactPoint(P.ContactShot(), 1.0, 0.0), P.GetMotion().GetPosition()));
 				const FVec3 To = Sub(Want, P.GetMotion().GetPosition());
 				const double D = LengthXY(To);
 				if (D > 0.05)

@@ -74,13 +74,27 @@ void FAiPairTactics::ConsumeYours()
 	}
 }
 
+double FAiPairTactics::SpacingFor(double BallLocalX) const
+{
+	// Movement doc 2.12, 5.4: narrow with the ball in the middle, wide with it at the
+	// side glass, so the line and the middle both stay covered.
+	const double Width = ClampD(std::abs(BallLocalX) / Court::HalfWidth, 0.0, 1.0);
+	return Tactics.PartnerSpacingMinM + (Tactics.PartnerSpacingMaxM - Tactics.PartnerSpacingMinM) * Width;
+}
+
 std::array<FAiVec2, 2> FAiPairTactics::HomePositions(const FAiVec2& BallLocal) const
 {
 	const double BaseDepth = Formation == EFormation::BothNet ? Tactics.NetDepthM : Tactics.BackDepthM;
 	const double Centre = ClampD(BallLocal.X * Tactics.BallShiftFactor, -Tactics.MaxLateralShiftM, Tactics.MaxLateralShiftM);
-	// The ball-central spacing; widening toward PartnerSpacingMaxM is the AI lane's (GDD 8).
-	const double HalfSpacing = Tactics.PartnerSpacingMinM * 0.5;
+	const double HalfSpacing = SpacingFor(BallLocal.X) * 0.5;
 	const double MaxX = Court::HalfWidth - Tactics.CourtMarginM;
+	// GDD 8 stagger: at the net the partner away from the ball drops back to cover the
+	// lob and the middle. It builds up across the middle band so the pair doesn't swap
+	// depths in one step when the ball crosses the centre line.
+	const double StaggerWeight = Tactics.MiddleBandM > 0.0
+		? ClampD(std::abs(BallLocal.X) / Tactics.MiddleBandM, 0.0, 1.0)
+		: (BallLocal.X != 0.0 ? 1.0 : 0.0);
+	const int FarSlot = BallLocal.X >= 0.0 ? LeftSlot : RightSlot;
 
 	std::array<FAiVec2, 2> Homes;
 	for (int Slot = 0; Slot < 2; ++Slot)
@@ -88,6 +102,13 @@ std::array<FAiVec2, 2> FAiPairTactics::HomePositions(const FAiVec2& BallLocal) c
 		const double SideSign = Slot == RightSlot ? 1.0 : -1.0;
 		double X = Centre + SideSign * HalfSpacing;
 		double Depth = BaseDepth;
+		if (Formation == EFormation::BothNet)
+		{
+			// Movement doc 5.4: the ball-side player steps in to volley and the far one
+			// drops back, so the pair stays centred on NetDepthM.
+			Depth += (Slot == FarSlot ? 0.5 : -0.5) * Tactics.NetStaggerM * StaggerWeight;
+		}
+		// A command overrides the formation's depth, stagger included (GDD 7).
 		switch (Commands[Slot])
 		{
 		case EPartnerCommand::GoNet:
