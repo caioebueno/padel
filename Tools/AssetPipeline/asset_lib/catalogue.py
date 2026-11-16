@@ -17,7 +17,7 @@ PALETTE_PATH = CONFIG_DIR / "palette.json"
 CATEGORIES = ("Court", "Equipment", "Characters")
 KINDS = ("static", "skeletal")
 SOURCES = ("procedural", "ai", "external")
-BUILDERS = ("court", "ball", "racket", "character", "net")
+BUILDERS = ("court", "court_glass", "ball", "racket", "character", "net")
 PROVIDERS = ("meshy", "tripo")
 MASTERS = ("Opaque", "Turf", "Glass", "Masked", "Emissive", "Net", "NetSolid")
 # Epic naming: SM_ static mesh, SK_ skeletal mesh.

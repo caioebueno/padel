@@ -53,7 +53,7 @@ class CatalogueTest(unittest.TestCase):
     def test_shipped_catalogue_is_valid(self) -> None:
         cat = catalogue.load()
         ids = [a.id for a in cat.assets]
-        for required in ("CourtIndoor", "CourtIndoorGlass", "Ball", "RacketPlaceholder",
+        for required in ("CourtIndoor", "CourtGlass", "Ball", "RacketPlaceholder",
                          "PlayerPlaceholderA", "PlayerPlaceholderB"):
             self.assertIn(required, ids)
 

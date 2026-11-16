@@ -21,6 +21,7 @@ from mathutils import Euler, Vector  # noqa: E402
 import bl_common as bc  # noqa: E402
 import build_character  # noqa: E402
 import build_court  # noqa: E402
+import build_court_glass  # noqa: E402
 import build_equipment  # noqa: E402
 import build_net  # noqa: E402
 
@@ -42,6 +43,8 @@ def main() -> None:
     for entry in entries.values():
         if entry["builder"] == "court":
             objects += build_court.build(_job(entry, job))
+        elif entry["builder"] == "court_glass":
+            objects += build_court_glass.build(_job(entry, job))
         elif entry["builder"] == "net":
             objects += build_net.build(_job(entry, job))
 

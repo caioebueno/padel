@@ -8,7 +8,8 @@ config/palette.json and the FBX/PNG files), like the input actions in
 PadelInputConfig.cpp, so never edit these assets by hand: change the config and
 run it again.
 
-  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid)
+  /Game/Padel/Materials/M_Padel<Master>     master materials (Opaque, Turf, Glass, Masked, Emissive, Net, NetSolid);
+                                            M_PadelGlass is built by glass_material.py
   /Game/Padel/Materials/MPC_NetReaction     the net hit reaction's parameters (written by UPadelNetReactionSubsystem)
   /Game/Padel/Materials/MI_<Group>_<Name>   one instance per palette entry
   /Game/Padel/Materials/T_*                 textures
@@ -27,8 +28,10 @@ import unreal
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
 
 from asset_lib import SOURCE_ART_DIR, catalogue  # noqa: E402
+import glass_material  # noqa: E402
 
 MATERIAL_DIR = "/Game/Padel/Materials"
 MEL = unreal.MaterialEditingLibrary
@@ -98,7 +101,7 @@ def import_textures() -> None:
         if png.stem.endswith("_Mask"):
             tex.set_editor_property("srgb", False)
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_GRAYSCALE)
-        elif png.stem.endswith("_Normal"):
+        elif png.stem.endswith(("_N", "_Normal")):
             tex.set_editor_property("srgb", False)
             tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
         ASSETS.save_loaded_asset(tex)
@@ -245,25 +248,15 @@ def build_masters() -> None:
     _scalars(mat, {"Roughness": 0.9, "Specular": 0.3}, standard, 400)
     MEL.recompile_material(mat)
 
-    # Glass: translucent, with a Fresnel edge highlight so panels read without hiding the ball.
-    mat = _material("M_PadelGlass")
-    mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
-    set_first(mat, ["translucency_lighting_mode"], unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
-    color = _param(mat, unreal.MaterialExpressionVectorParameter, "BaseColor", -700, -300, unreal.LinearColor(0.9, 0.95, 1, 1))
-    edge = _param(mat, unreal.MaterialExpressionVectorParameter, "EdgeTint", -700, -150, unreal.LinearColor(0.2, 0.45, 0.4, 1))
-    fresnel = _node(mat, unreal.MaterialExpressionFresnel, -700, 0)
-    tint = _node(mat, unreal.MaterialExpressionLinearInterpolate, -350, -250)
-    MEL.connect_material_expressions(color, "", tint, "A")
-    MEL.connect_material_expressions(edge, "", tint, "B")
-    MEL.connect_material_expressions(fresnel, "", tint, "Alpha")
-    MEL.connect_material_property(tint, "", P.MP_BASE_COLOR)
-    s = _scalars(mat, {"Opacity": 0.08, "EdgeOpacity": 0.45, "Roughness": 0.02, "Specular": 0.6}, standard, 150)
-    opacity = _node(mat, unreal.MaterialExpressionLinearInterpolate, -350, 150)
-    MEL.connect_material_expressions(s["Opacity"], "", opacity, "A")
-    MEL.connect_material_expressions(s["EdgeOpacity"], "", opacity, "B")
-    MEL.connect_material_expressions(fresnel, "", opacity, "Alpha")
-    MEL.connect_material_property(opacity, "", P.MP_OPACITY)
-    MEL.recompile_material(mat)
+    # Glass: translucent tempered glass with reflections, edge tint and dirt (unreal/glass_material.py).
+    def glass_texture(name: str):
+        path = f"{MATERIAL_DIR}/{name}"
+        if not ASSETS.does_asset_exist(path):
+            fail(f"M_PadelGlass: texture {name} not imported")
+            return None
+        return unreal.load_asset(path)
+
+    glass_material.build(_material("M_PadelGlass"), glass_texture, linear)
 
     # Masked: welded mesh and the net, cut out by a mask texture. UVs are in
     # metres divided by the cell size (Blender sets them), so one tile = one cell.
@@ -350,6 +343,8 @@ def build_instances(palette: dict) -> None:
                 MEL.set_material_instance_vector_parameter_value(mi, "SandColor", linear(settings["sand_color"]))
             if "edge_tint" in settings:
                 MEL.set_material_instance_vector_parameter_value(mi, "EdgeTint", linear(settings["edge_tint"]))
+            if settings["master"] == "Glass":
+                glass_material.apply_instance(mi, settings, linear)
             for key, param in (("mask", "Mask"), ("texture", "BaseTexture"), ("normal", "NormalMap")):
                 if key in settings:
                     tex = unreal.load_asset(f"{MATERIAL_DIR}/{settings[key]}")
