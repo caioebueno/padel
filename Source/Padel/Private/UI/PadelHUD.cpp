@@ -17,6 +17,7 @@
 #include "UI/Model/PadelUiGlyphs.h"
 #include "UI/Model/PadelUiRoster.h"
 #include "UI/PadelHudWidget.h"
+#include "UI/PadelSettings.h"
 #include "UI/Screens/PadelMenuRoot.h"
 #include "UI/PadelUiStyle.h"
 
@@ -67,6 +68,14 @@ void APadelHUD::BeginPlay()
 	{
 		return;
 	}
+	// Spec 11.3: the saved settings apply before the first screen builds, and Quick Match
+	// opens on the last setup played.
+	if (UPadelSettings* Saved = UPadelSettings::Get())
+	{
+		Saved->ApplyMenuOptions();
+		Saved->LoadMatchSetup(Setup);
+	}
+
 	HudWidget = CreateWidget<UPadelHudWidget>(PC, UPadelHudWidget::StaticClass());
 	MenuRoot = CreateWidget<UPadelMenuRoot>(PC, UPadelMenuRoot::StaticClass());
 	if (!HudWidget || !MenuRoot)
@@ -182,6 +191,12 @@ void APadelHUD::SetMenuInput(bool bMenu)
 
 void APadelHUD::MenuStartMatch()
 {
+	// Spec 11.3: remember the setup for the next run.
+	if (UPadelSettings* Saved = UPadelSettings::Get())
+	{
+		Saved->StoreMatchSetup(Setup);
+		Saved->SaveMenuSettings();
+	}
 	StartMatch();
 }
 
