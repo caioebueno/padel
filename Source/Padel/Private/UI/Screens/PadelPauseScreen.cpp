@@ -1,6 +1,7 @@
 #include "UI/Screens/PadelPauseScreen.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/SizeBox.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"

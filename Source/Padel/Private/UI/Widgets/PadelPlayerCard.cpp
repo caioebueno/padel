@@ -302,8 +302,13 @@ UWidget* UPadelPlayerCard::MakeOverallBand(float Radius)
 
 	UTextBlock* Label = MakeTokenText(LOCTEXT("Card.Overall", "Overall"), EUiType::Body, EUiColour::TextSecondary);
 	Row->AddChildToHorizontalBox(Label)->SetVerticalAlignment(VAlign_Center);
+	// MakeMeter takes raw pointers; TObjectPtr members can't bind to UImage*&.
+	UImage* Fill = nullptr;
+	USpacer* Rest = nullptr;
 	UHorizontalBoxSlot* BarSlot = Row->AddChildToHorizontalBox(
-		MakeMeter(PlayerCardOverallBar, PadelUi::TeamColour(Card.Team), OverallFill, OverallRest));
+		MakeMeter(PlayerCardOverallBar, PadelUi::TeamColour(Card.Team), Fill, Rest));
+	OverallFill = Fill;
+	OverallRest = Rest;
 	BarSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	BarSlot->SetVerticalAlignment(VAlign_Center);
 	BarSlot->SetPadding(FMargin(Theme.Space(2), 0.0f));

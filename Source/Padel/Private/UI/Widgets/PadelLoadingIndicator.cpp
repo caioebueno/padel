@@ -1,6 +1,7 @@
 #include "UI/Widgets/PadelLoadingIndicator.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/SizeBox.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"

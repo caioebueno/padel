@@ -1,6 +1,7 @@
 #include "UI/Screens/PadelPracticeScreen.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Overlay.h"
 #include "Components/HorizontalBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"

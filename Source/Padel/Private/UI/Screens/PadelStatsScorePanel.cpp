@@ -1,6 +1,7 @@
 #include "UI/Screens/PadelStatsScorePanel.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Overlay.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"

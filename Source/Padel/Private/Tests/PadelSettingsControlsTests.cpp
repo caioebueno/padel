@@ -22,18 +22,18 @@ using Padel::Ui::EUiInput;
 
 namespace PadelSettingsControlsTests
 {
-	struct FTestWorld
+	struct FSettingsTestWorld
 	{
 		UWorld* World = nullptr;
 
-		FTestWorld()
+		FSettingsTestWorld()
 		{
 			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld=*/false);
 			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 			Context.SetCurrentWorld(World);
 		}
 
-		~FTestWorld()
+		~FSettingsTestWorld()
 		{
 			GEngine->DestroyWorldContext(World);
 			World->DestroyWorld(false);
@@ -118,7 +118,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelSettingsTabsTest, "Padel.UI.Settings.Tabs
 bool FPadelSettingsTabsTest::RunTest(const FString& Parameters)
 {
 	using namespace PadelSettingsControlsTests;
-	FTestWorld Test;
+	FSettingsTestWorld Test;
 	FRestoreSettings Restore;
 	UPadelMenuRoot* Root = MakeRoot(Test.World);
 	if (!TestNotNull(TEXT("Menu root created"), Root))
@@ -162,7 +162,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelSettingsResetTest, "Padel.UI.Settings.Res
 bool FPadelSettingsResetTest::RunTest(const FString& Parameters)
 {
 	using namespace PadelSettingsControlsTests;
-	FTestWorld Test;
+	FSettingsTestWorld Test;
 	FRestoreSettings Restore;
 	UPadelMenuRoot* Root = MakeRoot(Test.World);
 	if (!TestNotNull(TEXT("Menu root created"), Root))
@@ -209,7 +209,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelSettingsAccessRebuildTest, "Padel.UI.Sett
 bool FPadelSettingsAccessRebuildTest::RunTest(const FString& Parameters)
 {
 	using namespace PadelSettingsControlsTests;
-	FTestWorld Test;
+	FSettingsTestWorld Test;
 	FRestoreSettings Restore;
 	UPadelMenuRoot* Root = MakeRoot(Test.World);
 	if (!TestNotNull(TEXT("Menu root created"), Root))
@@ -251,7 +251,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelSettingsSliderTest, "Padel.UI.Settings.Sl
 bool FPadelSettingsSliderTest::RunTest(const FString& Parameters)
 {
 	using namespace PadelSettingsControlsTests;
-	FTestWorld Test;
+	FSettingsTestWorld Test;
 	FRestoreSettings Restore;
 	UPadelMenuRoot* Root = MakeRoot(Test.World);
 	if (!TestNotNull(TEXT("Menu root created"), Root))
@@ -332,7 +332,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelControlsTabsTest, "Padel.UI.Controls.Tabs
 bool FPadelControlsTabsTest::RunTest(const FString& Parameters)
 {
 	using namespace PadelSettingsControlsTests;
-	FTestWorld Test;
+	FSettingsTestWorld Test;
 	UPadelMenuRoot* Root = MakeRoot(Test.World);
 	if (!TestNotNull(TEXT("Menu root created"), Root))
 	{
@@ -371,7 +371,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelControlsPracticeTest, "Padel.UI.Controls.
 bool FPadelControlsPracticeTest::RunTest(const FString& Parameters)
 {
 	using namespace PadelSettingsControlsTests;
-	FTestWorld Test;
+	FSettingsTestWorld Test;
 	UPadelMenuRoot* Root = MakeRoot(Test.World);
 	if (!TestNotNull(TEXT("Menu root created"), Root))
 	{

@@ -1,6 +1,7 @@
 #include "UI/Screens/PadelSetupScreen.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Overlay.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/ScaleBox.h"

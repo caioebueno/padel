@@ -227,11 +227,11 @@ void UPadelButtonGlyph::Refresh()
 	{
 		// Pad keys keep their pad shape whatever device was used last (spec 7.6's Gamepad tab).
 		const std::string Key = PadelUiStyle::ToUtf8(PadKey.ToString());
-		const Padel::Ui::EGlyphShape Shape = Padel::Ui::PadKeyShape(Key);
-		Icon = Shape == Padel::Ui::EGlyphShape::DPad ? DPadIconForKey(Key)
+		const Padel::Ui::EGlyphShape KeyShape = Padel::Ui::PadKeyShape(Key);
+		Icon = KeyShape == Padel::Ui::EGlyphShape::DPad ? DPadIconForKey(Key)
 			: (Family == EPadFamily::PlayStation ? PlayStationShapeForKey(Key) : EPadelIcon::None);
 		// Caps (shoulders, triggers, Menu) grow to fit their label, like a key cap.
-		bKey = Shape == Padel::Ui::EGlyphShape::Cap;
+		bKey = KeyShape == Padel::Ui::EGlyphShape::Cap;
 		bShoulder = false;
 	}
 
