@@ -4,7 +4,6 @@
 
 #include <cctype>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
 
 namespace Padel::Ui
@@ -133,13 +132,6 @@ namespace Padel::Ui
 			return std::string();
 		}
 		return PlayerCardLower(Player->First) + "_" + PlayerCardLower(Player->Last);
-	}
-
-	std::string FormatHeight(double HeightM)
-	{
-		char Buffer[16];
-		std::snprintf(Buffer, sizeof(Buffer), "%.2f m", HeightM);
-		return Buffer;
 	}
 
 	float MeterFill(int Value)

@@ -92,7 +92,7 @@ TEST_CASE("UI.PlayerCard: profile line and names come from the roster and the ra
 	CHECK(Ventara.bHasRatings);
 	CHECK(Ventara.bLeftSide);
 	CHECK_FALSE(Ventara.bLeftHanded);
-	CHECK(FormatHeight(Ventara.HeightM) == "1.86 m");
+	CHECK(Ventara.HeightM == doctest::Approx(1.86));
 	CHECK(Ventara.Style == EPlayStyle::Power);
 
 	const FPlayerCardView Halvaro = QuickMatchCard(3);

@@ -77,9 +77,6 @@ namespace Padel::Ui
 	// the same rows APadelMatchDirector::PlayerRows names. Empty for an unknown id.
 	std::string PlayerRowName(int Id);
 
-	// "1.86 m".
-	std::string FormatHeight(double HeightM);
-
 	// How full a 1-99 meter is: Value / 99, clamped; 0 for an unknown stat.
 	float MeterFill(int Value);
 }
