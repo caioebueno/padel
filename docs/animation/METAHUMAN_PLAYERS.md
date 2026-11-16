@@ -43,7 +43,7 @@ All four are invented. Ratings and heights are from `Data/Players.json`; sides a
 |---|---|---|---|
 | **Selva Arunde** (`SelvaArunde`) | A (red), right side, wall defender, right-handed | 1.78 m, lean and wiry, an endurance build | Late twenties. Medium tan skin, dark brown eyes. Short dark curly hair, close-trimmed full beard. Calm, focused face. |
 | **Mikko Ventara** (`MikkoVentara`) | A (red), left side, power player, right-handed | 1.86 m, the tallest: broad shoulders, heavier upper body | Early thirties. Fair skin with freckles, grey-blue eyes. Light brown hair in a short buzz cut, clean-shaven, square jaw. |
-| **Ilan Corvisa** (`IlanCorvisa`) | B (purple), right side, all-rounder, right-handed | 1.81 m, balanced athletic build | Mid twenties. Deep brown skin, dark eyes. Short twists on top with a low fade, thin moustache. Open, friendly face. |
+| **Ilan Corvisa** (`IlanCorvisa`), the star | B (purple), right side, all-rounder and the flashy one, right-handed | 1.81 m, light and springy, the most athletic of the four | Early twenties, the youngest. Warm light-brown skin, dark brown eyes. Dark curly hair worn fairly long on top, short at the sides, no facial hair. A bright, cocky grin. Build him from the Creator's presets; he is invented, not modelled on any real player. |
 | **Ruben Halvaro** (`RubenHalvaro`) | B (purple), left side, touch player, left-handed | 1.79 m, slim | Mid thirties, the oldest. Light olive skin, hazel eyes. Longer dark hair swept back with grey at the temples, a sweatband, short stubble. |
 
 Change any look you like: only the asset names have to match `Data/PlayerBodies.json`.
