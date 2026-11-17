@@ -32,6 +32,14 @@ namespace Padel::AI
 		std::array<FAiVec, 2> OpponentPositions;
 	};
 
+	// GDD 4: the player is set to take the incoming ball after it comes off the glass.
+	// Read-only, for animation (N-series) to turn the player side-on to that wall.
+	struct FAiGlassRead
+	{
+		bool bPlayingOffGlass = false;
+		EGlassWall Wall = EGlassWall::None;
+	};
+
 	struct FAiTeamSetup
 	{
 		int HalfSign = 1;
@@ -61,6 +69,8 @@ namespace Padel::AI
 		// The slot planned to take the incoming ball, or -1.
 		int GetTaker() const { return Taker; }
 		const std::optional<FInterceptPlan>& GetPlan(int Slot) const { return Plans[Slot]; }
+		// Set while Slot is the taker and its plan meets the ball after a wall.
+		FAiGlassRead GetGlassRead(int Slot) const;
 
 		// --- Events from the match ---
 		void OnPointStarted(bool bServing);

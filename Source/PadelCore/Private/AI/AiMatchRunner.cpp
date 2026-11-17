@@ -68,6 +68,16 @@ int FAiMatchRunner::SlotOf(int PlayerId) const
 	return RightPlayer[TeamIndex(TeamOfPlayer(PlayerId))] == PlayerId ? RightSlot : LeftSlot;
 }
 
+FAiGlassRead FAiMatchRunner::GlassRead(int PlayerId) const
+{
+	if (!IsValidPlayer(PlayerId))
+	{
+		return {};
+	}
+	const std::optional<FAiTeamController>& Team = Teams[TeamIndex(TeamOfPlayer(PlayerId))];
+	return Team ? Team->GetGlassRead(SlotOf(PlayerId)) : FAiGlassRead{};
+}
+
 void FAiMatchRunner::BuildControllers(const std::array<FVec3, 4>& Positions)
 {
 	for (int Id = 0; Id < NumPlayers; ++Id)

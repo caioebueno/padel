@@ -148,6 +148,18 @@ bool FAiTeamController::GiveCommand(EPartnerCommand Command)
 	return true;
 }
 
+FAiGlassRead FAiTeamController::GetGlassRead(int Slot) const
+{
+	FAiGlassRead Out;
+	if (Slot < 0 || Slot > 1 || !IsAi(Slot) || Taker != Slot || !Plans[Slot] || !Plans[Slot]->bReachable || !Plans[Slot]->Sample.bOffGlass)
+	{
+		return Out;
+	}
+	Out.bPlayingOffGlass = true;
+	Out.Wall = Plans[Slot]->Sample.GlassWall;
+	return Out;
+}
+
 int FAiTeamController::ChooseGoldenPointReceiver() const
 {
 	return Profiles[LeftSlot].ReturnSkill > Profiles[RightSlot].ReturnSkill ? LeftSlot : RightSlot;

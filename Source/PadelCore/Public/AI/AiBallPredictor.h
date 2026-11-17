@@ -8,6 +8,7 @@
 #include "AI/AiBallModel.h"
 #include "AI/AiRandom.h"
 #include "AI/AiTuning.h"
+#include "PadelTypes.h"
 
 #include <vector>
 
@@ -25,6 +26,8 @@ namespace Padel::AI
 		int GroundBounces = 0;
 		// The ball hit a wall on this half after bouncing there (GDD 4: off the glass).
 		bool bOffGlass = false;
+		// The last wall it hit on this half after bouncing there; None unless bOffGlass.
+		EGlassWall GlassWall = EGlassWall::None;
 		// A contact happened in the step that produced this sample.
 		bool bContact = false;
 	};
