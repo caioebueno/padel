@@ -70,6 +70,8 @@ namespace Padel::AI
 		bool HasPendingShot(int PlayerId) const { return Pending[PlayerId].has_value(); }
 		const FAiTeamController& Team(ETeam Team) const { return *Teams[TeamIndex(Team)]; }
 		int SlotOf(int PlayerId) const;
+		// GDD 4: whether this AI player is set to play the ball off the glass, and which wall.
+		FAiGlassRead GlassRead(int PlayerId) const;
 		bool IsAi(int PlayerId) const { return PlayerId != Setup.HumanPlayerId; }
 
 		// IMatchEventListener

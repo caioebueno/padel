@@ -5,6 +5,21 @@
 
 namespace Padel::AI
 {
+namespace
+{
+	// The wall nearest the contact: a corner ball counts for the wall it is closer to.
+	EGlassWall WallAt(const FAiVec& Position)
+	{
+		const double ToBack = Court::HalfLength - std::abs(Position.X);
+		const double ToSide = Court::HalfWidth - std::abs(Position.Y);
+		if (ToBack <= ToSide)
+		{
+			return EGlassWall::Back;
+		}
+		return Position.Y > 0.0 ? EGlassWall::SidePlusY : EGlassWall::SideMinusY;
+	}
+}
+
 FAiBallPredictor::FAiBallPredictor(const IAiBallModel& InModel, const FAiTactics& InTactics)
 	: Model(InModel)
 	, Tactics(InTactics)
@@ -26,6 +41,7 @@ std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, d
 	int Half = static_cast<int>(Court::HalfOf(Ball.Position.X));
 	int Bounces = 0;
 	bool bOffGlass = false;
+	EGlassWall GlassWall = EGlassWall::None;
 	bool bNoiseDrawn = false;
 	FAiVec Offset;
 	Samples.reserve(static_cast<size_t>(Steps / Every + 8));
@@ -39,6 +55,7 @@ std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, d
 			Half = NewHalf;
 			Bounces = 0;
 			bOffGlass = false;
+			GlassWall = EGlassWall::None;
 		}
 		for (const FAiContact& Contact : Contacts)
 		{
@@ -58,6 +75,7 @@ std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, d
 				if (Bounces >= 1)
 				{
 					bOffGlass = true;
+					GlassWall = WallAt(Contact.Position);
 				}
 			}
 		}
@@ -71,6 +89,7 @@ std::vector<FTrajectorySample> FAiBallPredictor::Predict(const FAiBall& Start, d
 			Sample.Half = Half;
 			Sample.GroundBounces = Bounces;
 			Sample.bOffGlass = bOffGlass;
+			Sample.GlassWall = GlassWall;
 			Sample.bContact = !Contacts.empty();
 			Samples.push_back(Sample);
 		}

@@ -126,6 +126,19 @@ namespace Padel
 		return Shot == EShotType::ServeFlat || Shot == EShotType::ServeKick;
 	}
 
+	// The wall a ball is played off (GDD 4 off the glass), in court axes, read by animation
+	// to turn the player side-on to it (BIOMECHANICS_MOVEMENT 2.10). Shared contract: K-series.
+	enum class EGlassWall : std::uint8_t
+	{
+		None,
+		// The back wall behind the player's half.
+		Back,
+		// The side wall at +Y.
+		SidePlusY,
+		// The side wall at -Y.
+		SideMinusY,
+	};
+
 	// How a player is moving (GDD 6.3, BIOMECHANICS_MOVEMENT 2.3, 2.4, 5.2), read by
 	// animation to pick the gait. Set by FPlayerMotion every step.
 	enum class EMovementMode : std::uint8_t
