@@ -25,7 +25,7 @@
 namespace PadelContactWarpTests
 {
 	constexpr double ToleranceUnits = 5.0; // done-when: within 5 cm of the ball
-	constexpr double FaceCentreUnits = 26.0; // Data/Racket.json FaceCentreM
+	constexpr double FaceCentreUnits = 27.0; // Data/Racket.json FaceCentreM
 
 	struct FTarget
 	{
