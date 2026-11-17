@@ -74,6 +74,9 @@ namespace Padel::AI
 		double AtNetDepthM = 0.0;          // an opponent closer than this is "at the net"
 		double HomeErrorMaxM = 0.0;        // home position error at Positioning 1
 		double CourtMarginM = 0.0;         // players keep this far from the walls
+		// A3: stand points sit this much further in, so they are never exactly on
+		// FPlayerMotion's wall margin, where a slow arrival trips the hard clamp.
+		double StandPointInsetM = 0.0;
 		double MinPlayerDepthM = 0.0;      // closest a player goes to the net
 
 		// --- Movement and the GDD 6.1 physical ranges (used to plan) ---

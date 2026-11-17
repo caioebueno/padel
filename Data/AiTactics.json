@@ -17,6 +17,7 @@
 		"AtNetDepthM": 4.5,
 		"HomeErrorMaxM": 0.8,
 		"CourtMarginM": 0.3,
+		"StandPointInsetM": 0.02,
 		"MinPlayerDepthM": 0.8,
 		"ArriveRadiusM": 0.15,
 		"SlowRadiusM": 1.0,

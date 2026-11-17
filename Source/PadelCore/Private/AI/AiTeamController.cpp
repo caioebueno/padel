@@ -189,6 +189,7 @@ void FAiTeamController::Read(const FAiWorldView& View)
 		Intercept.HalfSign = HalfSign;
 		Intercept.bMustBounce = View.bMustBounce;
 		Intercept.AccelFalloff = AccelFalloff;
+		Intercept.Motion = View.OwnMotion[Slot];
 		// The split-step landing still to come before this player can push off.
 		Intercept.StartDelayS = FirstStepAt[Slot] >= 0.0 ? std::max(0.0, FirstStepAt[Slot] - View.Time) : 0.0;
 		Plans[Slot] = InterceptPlanner::Plan(Samples, Intercept, Profiles[Slot], Tactics);
@@ -309,7 +310,19 @@ FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& 
 	const FAiPlayerProfile& Profile = Profiles[Slot];
 	const double AccelTime = Profile.AccelTime(Tactics);
 	const double Top = Profile.TopSpeed(Tactics);
-	if (BrakeMult > 0.0 && AccelTime > 0.0 && Top > 0.0)
+	// A3: the gait FPlayerMotion picks follows the distance planned.
+	Intent.PlannedDistanceM = Distance;
+	if (Motion[Slot].IsValid())
+	{
+		// The same arrival the planner timed (AiMotionModel).
+		const double StopFrac = AiMotionModel::StopSpeedFrac(Motion[Slot], Distance);
+		if (StopFrac < Speed)
+		{
+			Speed = StopFrac;
+			Intent.bSprint = false;
+		}
+	}
+	else if (BrakeMult > 0.0 && AccelTime > 0.0 && Top > 0.0)
 	{
 		const double StopFrac = std::sqrt(2.0 * Top / AccelTime * BrakeMult * Distance) / Top;
 		if (StopFrac < Speed)
@@ -328,6 +341,7 @@ std::array<std::optional<FAiIntent>, 2> FAiTeamController::Tick(const FAiWorldVi
 	{
 		Pair.FollowHuman(TeamFrame::Depth(HalfSign, View.OwnPositions[HumanSlot]));
 	}
+	Motion = View.OwnMotion;
 	if (ReadAt >= 0.0 && View.Time >= ReadAt)
 	{
 		Read(View);

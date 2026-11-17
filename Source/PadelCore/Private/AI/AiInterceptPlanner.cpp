@@ -24,9 +24,10 @@ namespace
 		// Local Y is depth: the player stands deeper than the ball by the forward offset.
 		const FAiVec2 StandLocal = { BallLocal.X - Side * T.ContactSideFor(Kind, bForehand), BallLocal.Y + T.ContactForwardFor(Kind, bForehand) };
 		FAiVec Stand = TeamFrame::ToCourt(Query.HalfSign, StandLocal);
-		const double MaxY = Court::HalfWidth - T.CourtMarginM;
+		const double Margin = T.CourtMarginM + T.StandPointInsetM;
+		const double MaxY = Court::HalfWidth - Margin;
 		Stand.Y = ClampD(Stand.Y, -MaxY, MaxY);
-		const double Depth = ClampD(TeamFrame::Depth(Query.HalfSign, Stand), T.MinPlayerDepthM, Court::HalfLength - T.CourtMarginM);
+		const double Depth = ClampD(TeamFrame::Depth(Query.HalfSign, Stand), T.MinPlayerDepthM, Court::HalfLength - Margin);
 		Stand.X = Depth * Query.HalfSign;
 		return Stand;
 	}
@@ -83,7 +84,21 @@ std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples
 		ToStand.Z = 0.0;
 		double Distance = ToStand.Length2D();
 		double Turn = 0.0;
-		if (Distance > 1e-6 && AccelTime > 0.0)
+		if (Query.Motion.IsValid())
+		{
+			// A3: the run the player will make, stepped with their real movement.
+			FAiRunQuery Run;
+			Run.From = Query.PlayerPosition;
+			Run.Velocity = Query.PlayerVelocity;
+			Run.To = Candidate.StandPoint;
+			Run.HalfSign = Query.HalfSign;
+			Run.ArriveRadiusM = T.ArriveRadiusM;
+			Run.bSprint = true;
+			Run.StartDelayS = Query.StartDelayS;
+			Run.MaxTimeS = S.T + T.SlackCapS;
+			Candidate.TimeNeeded = AiMotionModel::ArrivalTime(Query.Motion, Run);
+		}
+		else if (Distance > 1e-6 && AccelTime > 0.0)
 		{
 			// Velocity away from the stand point has to be cancelled first.
 			const double Accel = TopSpeed / AccelTime;
@@ -94,7 +109,10 @@ std::optional<FInterceptPlan> Plan(const std::vector<FTrajectorySample>& Samples
 				Distance += Away * Away / (2.0 * Accel);
 			}
 		}
-		Candidate.TimeNeeded = Query.StartDelayS + Turn + TimeToCover(Distance, TopSpeed, AccelTime, Query.AccelFalloff);
+		if (!Query.Motion.IsValid())
+		{
+			Candidate.TimeNeeded = Query.StartDelayS + Turn + TimeToCover(Distance, TopSpeed, AccelTime, Query.AccelFalloff);
+		}
 		Candidate.Slack = S.T - Candidate.TimeNeeded;
 		Candidate.bReachable = Candidate.Slack >= 0.0;
 

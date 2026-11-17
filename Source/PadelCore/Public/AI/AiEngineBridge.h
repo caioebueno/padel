@@ -64,6 +64,7 @@ namespace Padel::AI::Bridge
 		Shots::FPlayerInputFrame Frame;
 		Frame.Move = { Intent.Move.X, Intent.Move.Y };
 		Frame.bSprint = Intent.bSprint;
+		Frame.PlannedDistanceM = Intent.PlannedDistanceM;
 		return Frame;
 	}
 }

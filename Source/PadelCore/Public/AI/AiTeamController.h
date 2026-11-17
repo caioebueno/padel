@@ -11,6 +11,7 @@
 #include "PadelCoreApi.h"
 
 #include "AI/AiBallPredictor.h"
+#include "AI/AiMotionModel.h"
 #include "AI/AiPairTactics.h"
 #include "AI/AiShotChooser.h"
 
@@ -30,6 +31,8 @@ namespace Padel::AI
 		std::array<FAiVec, 2> OwnPositions;
 		std::array<FAiVec, 2> OwnVelocities;
 		std::array<FAiVec, 2> OpponentPositions;
+		// The players' real movement (A3); empty in tests that only place them.
+		std::array<FAiMotionParams, 2> OwnMotion;
 	};
 
 	// GDD 4: the player is set to take the incoming ball after it comes off the glass.
@@ -130,5 +133,6 @@ namespace Padel::AI
 		int Taker = -1;
 		std::array<std::optional<FInterceptPlan>, 2> Plans;
 		std::array<FAiVec2, 2> HomeError;
+		std::array<FAiMotionParams, 2> Motion;
 	};
 }
