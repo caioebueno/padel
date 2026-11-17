@@ -22,6 +22,23 @@ Padel::Animation::FAnimSettings FPadelAnimSettingsRow::ToCore() const
 	Out.GlassSideTurnDeg = GlassSideTurnDeg;
 	Out.ReadyCrouchAlphaNet = ReadyCrouchAlphaNet;
 	Out.ReadyCrouchAlphaBack = ReadyCrouchAlphaBack;
+	Out.FacingHalfLifeS = FacingHalfLifeS;
+	Out.FacingChestHalfLifeS = FacingChestHalfLifeS;
+	Out.FacingHeadHalfLifeS = FacingHeadHalfLifeS;
+	Out.FacingMaxChestTwistDeg = FacingMaxChestTwistDeg;
+	Out.FacingMaxHeadTwistDeg = FacingMaxHeadTwistDeg;
+	Out.LeanDegPerMps2 = LeanDegPerMps2;
+	Out.LeanMaxDeg = LeanMaxDeg;
+	Out.LeanHalfLifeS = LeanHalfLifeS;
+	Out.PlantDropPerMps2 = PlantDropPerMps2;
+	Out.PlantDropMaxM = PlantDropMaxM;
+	Out.PelvisHalfLifeS = PelvisHalfLifeS;
+	Out.SplitHopHeightM = SplitHopHeightM;
+	Out.SplitLandDropM = SplitLandDropM;
+	Out.SplitLandS = SplitLandS;
+	Out.ReadyBounceM = ReadyBounceM;
+	Out.ReadyBounceHz = ReadyBounceHz;
+	Out.ReadyBounceHalfLifeS = ReadyBounceHalfLifeS;
 	for (const double T : TrajectoryTimesS)
 	{
 		Out.TrajectoryTimesS.push_back(T);

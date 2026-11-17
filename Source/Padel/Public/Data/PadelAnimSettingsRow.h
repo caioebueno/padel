@@ -30,6 +30,24 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	/** N1: ready-stance depth, the crouched clips' weight against the upright ones: at the net, and at the back glass. */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double ReadyCrouchAlphaNet = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double ReadyCrouchAlphaBack = 0.0;
+	/** F1 body dynamics: facing springs, lean, plant drop, split-step hop and ready bounce. Meanings on Padel::Animation::FAnimSettings. */
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingChestHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingHeadHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingMaxChestTwistDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingMaxHeadTwistDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double LeanDegPerMps2 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double LeanMaxDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double LeanHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double PlantDropPerMps2 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double PlantDropMaxM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double PelvisHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double SplitHopHeightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double SplitLandDropM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double SplitLandS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double ReadyBounceM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double ReadyBounceHz = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double ReadyBounceHalfLifeS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Swing") double FullBodyBlendPerS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Swing") double SwingBlendInS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Swing") double ClipCrossfadeS = 0.0;

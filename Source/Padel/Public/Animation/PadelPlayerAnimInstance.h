@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Animation/PadelBodyDynamics.h"
 #include "Animation/PadelContactWarp.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimInstanceProxy.h"
@@ -67,6 +68,9 @@ public:
 
 	/** N1 ready-stance depth: the crouched clips' weight against the upright ones (FPlayerAnimFrame::CrouchAlpha). */
 	float CrouchAlpha = 1.0f;
+
+	/** F1 body dynamics (FPlayerAnimFrame's twist, lean, pelvis and hop fields), in Unreal units. */
+	FPadelBodyDynamics Body;
 
 	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
 	float RawSwingWeight = 0.0f;

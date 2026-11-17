@@ -23,10 +23,10 @@ namespace
 {
 	constexpr double Dt = 1.0 / 120.0;
 
-	// Steps long enough for any turn at the data rate, and returns the facing.
+	// Steps long enough for any turn on the facing spring (F1), and returns the facing.
 	double SettleFacing(FPlayerAnimModel& Model, FPlayerAnimInput& In, const FAnimSettings& Settings)
 	{
-		const int Ticks = static_cast<int>(std::ceil(360.0 / (Settings.FacingTurnRateDegPerS * Dt))) + 2;
+		const int Ticks = static_cast<int>(std::ceil((360.0 / Settings.FacingTurnRateDegPerS + 20.0 * Settings.FacingHalfLifeS) / Dt));
 		for (int I = 0; I < Ticks; ++I)
 		{
 			Model.Step(In, Dt);
@@ -100,9 +100,11 @@ TEST_CASE("Anim.Glass: off the back glass the chest turns toward the ball's side
 		In.GlassWall = EGlassWall::Back;
 		In.bHasIdeal = true;
 		In.IdealBallPosition = Vec(9.2, C.BallY, 0.9);
-		// It turns at the data rate, not in one tick.
+		// It eases into the turn (F1's spring), not in one tick.
 		Model.Step(In, Dt);
-		CHECK(std::fabs(AngleDiff(Model.GetFrame().FacingYawDeg, 180.0)) == Approx(Settings.FacingTurnRateDegPerS * Dt).epsilon(0.01));
+		const double Moved = std::fabs(AngleDiff(Model.GetFrame().FacingYawDeg, 180.0));
+		CHECK(Moved > 0.0);
+		CHECK(Moved < Settings.FacingTurnRateDegPerS * Dt);
 		CHECK(AngleDiff(SettleFacing(Model, In, Settings), C.WantYaw) == Approx(0.0).epsilon(1e-6));
 	}
 }

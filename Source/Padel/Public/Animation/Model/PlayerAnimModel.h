@@ -63,6 +63,8 @@ namespace Padel::Animation
 		FVec3 Velocity;
 		bool bSprinting = false;
 		bool bSplitHopping = false;
+		// Time left in the split-step hop (FPlayerMotion::GetSplitHopLeftS), to shape it.
+		double SplitHopLeftS = 0.0;
 		double TeamSign = 1.0;
 		double ForehandSign = 1.0;
 		// M2: how the player is moving (gait), from FPlayerMotion.
@@ -97,6 +99,22 @@ namespace Padel::Animation
 		// turned toward travel in Crossover, TurnAndRun and Run, at FacingTurnRateDegPerS;
 		// side-on to the glass while reading a ball off it (N1c).
 		double FacingYawDeg = 0.0;
+
+		// F1 body dynamics (docs/animation/MOVEMENT_FLUENCY.md), applied over the clips by the pose.
+		// Facing above is the pelvis; the chest and head turn ahead of it into a turn. Degrees
+		// about the up axis, positive the same way as FacingYawDeg: the chest from the pelvis,
+		// the head from the chest.
+		double ChestTwistDeg = 0.0;
+		double HeadTwistDeg = 0.0;
+		// Lean of the trunk into the acceleration, degrees: forward (positive) or back, and to
+		// the body's right (positive) or left.
+		double LeanForwardDeg = 0.0;
+		double LeanRightDeg = 0.0;
+		// The pelvis lowered by braking, the split-step landing and the ready bounce, metres
+		// (zero or negative); the feet stay planted.
+		double PelvisDropM = 0.0;
+		// The split-step hop: the whole body lifted, feet too, metres (zero or positive).
+		double HopLiftM = 0.0;
 
 		// Swing layer. Clip is the one to show; PrevClip fades out under it.
 		const FAnimClip* Clip = nullptr;
@@ -144,6 +162,9 @@ namespace Padel::Animation
 
 	private:
 		void StepLocomotion(const FPlayerAnimInput& In, double Dt);
+		// F1: facing springs and twists (from the facing target StepLocomotion picked), lean,
+		// pelvis drop, split-step hop and ready bounce.
+		void StepBody(const FPlayerAnimInput& In, double WantYawDeg, double Dt);
 		void StepSwing(const FPlayerAnimInput& In, double Dt);
 		void StepCelebration(const FPlayerAnimInput& In, double Dt);
 		void StepRacket(const FPlayerAnimInput& In);
@@ -179,5 +200,22 @@ namespace Padel::Animation
 		std::string PendingCelebration;
 
 		std::vector<FVec3> History;
+
+		// F1 spring state.
+		double FacingRateDegPerS = 0.0;
+		double ChestYawDeg = 0.0;
+		double ChestRateDegPerS = 0.0;
+		double HeadYawDeg = 0.0;
+		double HeadRateDegPerS = 0.0;
+		FVec3 LastVelocity;
+		FVec3 Accel;
+		FVec3 AccelRate;
+		double PelvisSinkM = 0.0;
+		double PelvisSinkRate = 0.0;
+		double ReadyBounceAmount = 0.0;
+		double ReadyBounceRate = 0.0;
+		double BodyClockS = 0.0;
+		double HopElapsedS = 0.0;
+		double LandLeftS = 0.0;
 	};
 }

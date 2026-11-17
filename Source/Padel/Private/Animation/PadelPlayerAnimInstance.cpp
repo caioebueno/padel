@@ -16,6 +16,12 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	Direction = static_cast<float>(Frame.DirectionDeg);
 	CrouchAlpha = static_cast<float>(Frame.CrouchAlpha);
 	StridePlayRate = static_cast<float>(Frame.StridePlayRate);
+	Body.ChestTwistDeg = static_cast<float>(Frame.ChestTwistDeg);
+	Body.HeadTwistDeg = static_cast<float>(Frame.HeadTwistDeg);
+	Body.LeanForwardDeg = static_cast<float>(Frame.LeanForwardDeg);
+	Body.LeanRightDeg = static_cast<float>(Frame.LeanRightDeg);
+	Body.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.PelvisDropM)).Z);
+	Body.HopLiftUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.HopLiftM)).Z);
 	Trajectory = InTrajectoryWorld;
 
 	SwingSequence = InSwing;

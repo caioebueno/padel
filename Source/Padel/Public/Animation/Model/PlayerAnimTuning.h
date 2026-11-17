@@ -104,6 +104,36 @@ namespace Padel::Animation
 		// (digging balls off the glass).
 		double ReadyCrouchAlphaNet = 0.0;
 		double ReadyCrouchAlphaBack = 0.0;
+		// F1 body dynamics (docs/animation/MOVEMENT_FLUENCY.md). Springs are critically damped
+		// and set by half-life: the time to close half the gap.
+		// Facing: the pelvis follows the facing target on FacingHalfLifeS (at most
+		// FacingTurnRateDegPerS), the chest and head on their own shorter half-lives, so a turn
+		// starts at the eyes and ends at the hips. The twists are capped against the body below.
+		double FacingHalfLifeS = 0.0;
+		double FacingChestHalfLifeS = 0.0;
+		double FacingHeadHalfLifeS = 0.0;
+		double FacingMaxChestTwistDeg = 0.0;
+		double FacingMaxHeadTwistDeg = 0.0;
+		// Lean into the movement's acceleration (forward on a start, back on a brake, into a
+		// turn), degrees per m/s^2 of the acceleration smoothed over LeanHalfLifeS, up to LeanMaxDeg.
+		double LeanDegPerMps2 = 0.0;
+		double LeanMaxDeg = 0.0;
+		double LeanHalfLifeS = 0.0;
+		// Braking sinks the pelvis (knees take the load; feet stay planted): metres per m/s^2
+		// of deceleration, up to PlantDropMaxM, followed on PelvisHalfLifeS.
+		double PlantDropPerMps2 = 0.0;
+		double PlantDropMaxM = 0.0;
+		double PelvisHalfLifeS = 0.0;
+		// The split step shows as a hop this high over FPlayerMotion's hop, then a landing
+		// that loads the legs by SplitLandDropM for SplitLandS.
+		double SplitHopHeightM = 0.0;
+		double SplitLandDropM = 0.0;
+		double SplitLandS = 0.0;
+		// Standing in the ready stance in a rally, a light bounce on the toes: a dip this deep,
+		// this many times a second, faded in and out on ReadyBounceHalfLifeS.
+		double ReadyBounceM = 0.0;
+		double ReadyBounceHz = 0.0;
+		double ReadyBounceHalfLifeS = 0.0;
 		// Motion Matching trajectory sample times (negative = past), seconds.
 		std::vector<double> TrajectoryTimesS;
 		std::vector<std::string> CelebrateAssets;

@@ -1,5 +1,7 @@
 #include "Animation/Model/PlayerAnimTuning.h"
 
+#include <utility>
+
 namespace Padel::Animation
 {
 	namespace PlayerAnimTuningDetail
@@ -52,6 +54,30 @@ namespace Padel::Animation
 		Positive(Out, W, "CelebrationS", CelebrationS);
 		Positive(Out, W, "CelebrationBlendS", CelebrationBlendS);
 		Positive(Out, W, "FacingTurnRateDegPerS", FacingTurnRateDegPerS);
+		for (const auto& [Field, Value] : { std::pair<const char*, double>{ "FacingHalfLifeS", FacingHalfLifeS },
+			{ "FacingChestHalfLifeS", FacingChestHalfLifeS }, { "FacingHeadHalfLifeS", FacingHeadHalfLifeS },
+			{ "LeanHalfLifeS", LeanHalfLifeS }, { "PelvisHalfLifeS", PelvisHalfLifeS }, { "ReadyBounceHalfLifeS", ReadyBounceHalfLifeS } })
+		{
+			Positive(Out, W, Field, Value);
+		}
+		for (const auto& [Field, Value] : { std::pair<const char*, double>{ "FacingMaxChestTwistDeg", FacingMaxChestTwistDeg },
+			{ "FacingMaxHeadTwistDeg", FacingMaxHeadTwistDeg }, { "LeanDegPerMps2", LeanDegPerMps2 }, { "LeanMaxDeg", LeanMaxDeg },
+			{ "PlantDropPerMps2", PlantDropPerMps2 }, { "PlantDropMaxM", PlantDropMaxM }, { "SplitHopHeightM", SplitHopHeightM },
+			{ "SplitLandDropM", SplitLandDropM }, { "SplitLandS", SplitLandS }, { "ReadyBounceM", ReadyBounceM }, { "ReadyBounceHz", ReadyBounceHz } })
+		{
+			if (Value < 0.0)
+			{
+				Out.push_back(W + ": " + Field + " must not be negative");
+			}
+		}
+		if (FacingChestHalfLifeS > FacingHalfLifeS || FacingHeadHalfLifeS > FacingChestHalfLifeS)
+		{
+			Out.push_back(W + ": the head turns first, then the chest, then the pelvis (FacingHeadHalfLifeS <= FacingChestHalfLifeS <= FacingHalfLifeS)");
+		}
+		if (LeanMaxDeg > 30.0 || FacingMaxChestTwistDeg > 60.0 || FacingMaxHeadTwistDeg > 80.0)
+		{
+			Out.push_back(W + ": LeanMaxDeg <= 30, FacingMaxChestTwistDeg <= 60 and FacingMaxHeadTwistDeg <= 80");
+		}
 		if (GlassBackTurnDeg < 0.0 || GlassBackTurnDeg > 180.0 || GlassSideTurnDeg < 0.0 || GlassSideTurnDeg > 180.0)
 		{
 			Out.push_back(W + ": GlassBackTurnDeg and GlassSideTurnDeg must be 0 to 180");

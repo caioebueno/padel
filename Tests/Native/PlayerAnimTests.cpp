@@ -590,21 +590,25 @@ TEST_CASE("Anim.Facing: square to the net by default, toward travel in Crossover
 		In.TeamSign = 1.0;
 		In.bRallyLive = true;
 		In.Position = Vec(6.0, 0.0, 0.0);
-		// Start square to the net, then switch to the mode: the body turns at the data rate.
+		// Start square to the net, then switch to the mode. F1: the body turns on a spring, so
+		// it eases in (the first tick moves less than the cap), never beats
+		// FacingTurnRateDegPerS, and settles on the target.
 		Model.Step(In, Dt);
 		In.Mode = C.Mode;
 		In.Velocity = C.Velocity;
-		const double Turn = std::fabs(C.WantYaw - 180.0) > 180.0 ? 360.0 - std::fabs(C.WantYaw - 180.0) : std::fabs(C.WantYaw - 180.0);
-		const int TicksToTurn = static_cast<int>(std::ceil(Turn / (Settings.FacingTurnRateDegPerS * Dt)));
-		if (TicksToTurn > 1)
+		const double Turn = std::fabs(std::remainder(C.WantYaw - 180.0, 360.0));
+		double Prev = Model.GetFrame().FacingYawDeg;
+		for (int I = 0; I < static_cast<int>(1.5 / Dt); ++I)
 		{
-			const FPlayerAnimFrame& First = Model.Step(In, Dt);
-			const double Moved = std::fabs(std::remainder(First.FacingYawDeg - 180.0, 360.0));
-			CHECK(Moved == Approx(Settings.FacingTurnRateDegPerS * Dt).epsilon(0.01));
-		}
-		for (int I = 0; I < TicksToTurn + 2; ++I)
-		{
-			Model.Step(In, Dt);
+			const FPlayerAnimFrame& Now = Model.Step(In, Dt);
+			const double Moved = std::fabs(std::remainder(Now.FacingYawDeg - Prev, 360.0));
+			CHECK(Moved <= Settings.FacingTurnRateDegPerS * Dt + 1e-9);
+			if (I == 0 && Turn > 1.0)
+			{
+				CHECK(Moved > 0.0);
+				CHECK(Moved < Settings.FacingTurnRateDegPerS * Dt);
+			}
+			Prev = Now.FacingYawDeg;
 		}
 		const FPlayerAnimFrame& F = Model.GetFrame();
 		CHECK(F.Mode == C.Mode);
@@ -625,7 +629,7 @@ TEST_CASE("Anim.Facing: square to the net by default, toward travel in Crossover
 	}
 	CHECK(Model.GetFrame().FacingYawDeg == Approx(90.0));
 	In.Phase = ESwingPhase::Windup;
-	for (int I = 0; I < 60; ++I)
+	for (int I = 0; I < 180; ++I)
 	{
 		In.PhaseTimeS = I * Dt;
 		Model.Step(In, Dt);

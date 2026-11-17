@@ -63,6 +63,8 @@ namespace Padel::Shots
 		bool IsSprinting() const { return bSprinting; }
 		// Split-step hop in progress, for animation.
 		bool IsSplitHopping() const { return SplitHopLeftS > 0.0; }
+		// Time left in the hop, so animation can shape it (read-only, F1 body dynamics).
+		double GetSplitHopLeftS() const { return SplitHopLeftS; }
 		int GetSplitStepCount() const { return SplitStepCount; }
 		// Times the wall or net margin stopped the player dead (a velocity component
 		// zeroed in one tick). Read by the soak's realism metrics; changes nothing.

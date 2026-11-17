@@ -50,6 +50,23 @@ namespace AnimTestData
 		S.GlassSideTurnDeg = Num(R, "GlassSideTurnDeg");
 		S.ReadyCrouchAlphaNet = Num(R, "ReadyCrouchAlphaNet");
 		S.ReadyCrouchAlphaBack = Num(R, "ReadyCrouchAlphaBack");
+		S.FacingHalfLifeS = Num(R, "FacingHalfLifeS");
+		S.FacingChestHalfLifeS = Num(R, "FacingChestHalfLifeS");
+		S.FacingHeadHalfLifeS = Num(R, "FacingHeadHalfLifeS");
+		S.FacingMaxChestTwistDeg = Num(R, "FacingMaxChestTwistDeg");
+		S.FacingMaxHeadTwistDeg = Num(R, "FacingMaxHeadTwistDeg");
+		S.LeanDegPerMps2 = Num(R, "LeanDegPerMps2");
+		S.LeanMaxDeg = Num(R, "LeanMaxDeg");
+		S.LeanHalfLifeS = Num(R, "LeanHalfLifeS");
+		S.PlantDropPerMps2 = Num(R, "PlantDropPerMps2");
+		S.PlantDropMaxM = Num(R, "PlantDropMaxM");
+		S.PelvisHalfLifeS = Num(R, "PelvisHalfLifeS");
+		S.SplitHopHeightM = Num(R, "SplitHopHeightM");
+		S.SplitLandDropM = Num(R, "SplitLandDropM");
+		S.SplitLandS = Num(R, "SplitLandS");
+		S.ReadyBounceM = Num(R, "ReadyBounceM");
+		S.ReadyBounceHz = Num(R, "ReadyBounceHz");
+		S.ReadyBounceHalfLifeS = Num(R, "ReadyBounceHalfLifeS");
 		for (const FValue& T : R["TrajectoryTimesS"].Array)
 		{
 			S.TrajectoryTimesS.push_back(T.Number);
