@@ -138,6 +138,9 @@ namespace Padel::Animation
 		// glass: toward that wall.
 		double GlassBackTurnDeg = 0.0;
 		double GlassSideTurnDeg = 0.0;
+		// P1b: running back with a ball to watch, the body turns side-on (racket shoulder back)
+		// by this much from square to the net, instead of all the way round.
+		double BackRunTurnDeg = 0.0;
 		// P1 stances (movement doc 2.1, the motion catalogue): one pose per EStance. In a rally
 		// the stance is Net up to StanceNetUntilM from the net, Back from StanceBackFromM, and a
 		// blend between; every change is followed on StanceHalfLifeS.

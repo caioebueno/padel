@@ -219,3 +219,34 @@ TEST_CASE("Anim.Stance: the head follows the ball, within what the neck can turn
 	CHECK(Waits.HeadTwistDeg == Approx(0.0));
 	CHECK(Waits.HeadPitchDeg == Approx(0.0));
 }
+
+TEST_CASE("Anim.Stance: running back for a lob turns side-on, racket shoulder back, never the back to the ball (P1b)")
+{
+	const FAnimSettings S = LoadSettings();
+	const FAnimClipLibrary Clips = LoadClips();
+	const FShotLibrary Lib = LoadLibrary();
+	using Padel::EMovementMode;
+	for (const double Handed : { 1.0, -1.0 })
+	{
+		CAPTURE(Handed);
+		FPlayerAnimModel Model(&S, &Clips, &Lib);
+		FPlayerAnimInput In = TeamA(3.0);
+		In.bRallyLive = true;
+		In.ForehandSign = Handed;
+		Settle(Model, In, 0.2);
+		// A lob over the net player: the ball high in front, the player running back (+X for Team A).
+		In.Mode = EMovementMode::TurnAndRun;
+		In.Velocity = Vec(S.RunClipSpeedMps, 0.0, 0.0);
+		In.bBallVisible = true;
+		In.BallPosition = Vec(In.Position.X - 1.0, In.Position.Y, 6.0);
+		const FPlayerAnimFrame& F = Settle(Model, In);
+		// Team A's net is at yaw 180; its right is -Y (yaw -90, i.e. 270). A right-hander turns
+		// toward the right by BackRunTurnDeg, so the right shoulder leads back.
+		const double Want = 180.0 + Handed * S.BackRunTurnDeg;
+		CHECK(std::remainder(F.FacingYawDeg - Want, 360.0) == Approx(0.0).epsilon(1e-6));
+		// The travel is sideways to the body (a crossover), not straight ahead as in a run away.
+		CHECK(std::fabs(F.DirectionDeg) == Approx(180.0 - S.BackRunTurnDeg).epsilon(1e-6));
+		// The head is up on the ball.
+		CHECK(F.HeadPitchDeg > 30.0);
+	}
+}

@@ -56,6 +56,7 @@ namespace AnimTestData
 		S.FacingTurnRateDegPerS = Num(R, "FacingTurnRateDegPerS");
 		S.GlassBackTurnDeg = Num(R, "GlassBackTurnDeg");
 		S.GlassSideTurnDeg = Num(R, "GlassSideTurnDeg");
+		S.BackRunTurnDeg = Num(R, "BackRunTurnDeg");
 		for (const FValue& Row : R["Stances"].Array)
 		{
 			EStance Stance;
