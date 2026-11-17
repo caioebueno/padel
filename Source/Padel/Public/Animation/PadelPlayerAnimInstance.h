@@ -75,6 +75,19 @@ public:
 	/** F1 body dynamics (FPlayerAnimFrame's twist, lean, pelvis and hop fields), in Unreal units. */
 	FPadelBodyDynamics Body;
 
+	/** P1: the stance's trunk tip, knee bend and feet width (StancePose), in Unreal units. */
+	FPadelBodyDynamics Stance;
+
+	/**
+	 * How much of the stance the pose keeps, 0..1: all of it standing, none at the height of a
+	 * swing, so the body rises out of the crouch into the shot and the reach starts from full
+	 * height (the contact warp then bends it as far as the ball needs).
+	 */
+	float StanceKeep() const;
+
+	/** Body plus Stance by StanceKeep: what the pose puts on the bones. */
+	FPadelBodyDynamics PosedBody() const;
+
 	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
 	float RawSwingWeight = 0.0f;
 

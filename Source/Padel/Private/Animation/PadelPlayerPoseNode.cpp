@@ -128,7 +128,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	SpeedMps = Anim->Speed / 100.0;
 	DirectionDeg = Anim->Direction;
 	bReadyStance = Anim->Locomotion == EPadelLocomotionState::Ready || Anim->Locomotion == EPadelLocomotionState::SplitStep;
-	CrouchAlpha = Anim->CrouchAlpha;
+	CrouchAlpha = Anim->CrouchAlpha * Anim->StanceKeep();
 	JogStridePlayRate = Anim->StridePlayRate;
 	Swing = Anim->SwingSequence;
 	SwingTime = Anim->SwingTime;
@@ -149,7 +149,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	FaceInHand = Anim->RacketFaceInHand;
 	WarpTuning = Anim->WarpTuning;
 	bLeftHanded = Anim->bLeftHanded;
-	Body = Anim->Body;
+	Body = Anim->PosedBody();
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);

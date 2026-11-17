@@ -20,11 +20,14 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	Body.ChestTwistDeg = static_cast<float>(Frame.ChestTwistDeg);
 	Body.HeadTwistDeg = static_cast<float>(Frame.HeadTwistDeg);
 	Body.HeadPitchDeg = static_cast<float>(Frame.HeadPitchDeg);
-	// P1: the stance's trunk tip and knee bend sit under the F1 lean and plant drop.
-	Body.LeanForwardDeg = static_cast<float>(Frame.LeanForwardDeg + Frame.StancePose.TrunkDeg);
+	Body.LeanForwardDeg = static_cast<float>(Frame.LeanForwardDeg);
 	Body.LeanRightDeg = static_cast<float>(Frame.LeanRightDeg);
-	Body.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.PelvisDropM - Frame.StancePose.DropM)).Z);
-	Body.FeetWidenUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.StancePose.WidenM)).Z);
+	Body.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.PelvisDropM)).Z);
+	// P1: the stance's trunk tip, knee bend and feet width, kept apart so a swing can rise out of them.
+	Stance = FPadelBodyDynamics();
+	Stance.LeanForwardDeg = static_cast<float>(Frame.StancePose.TrunkDeg);
+	Stance.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, -Frame.StancePose.DropM)).Z);
+	Stance.FeetWidenUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.StancePose.WidenM)).Z);
 	Body.HopLiftUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.HopLiftM)).Z);
 	Trajectory = InTrajectoryWorld;
 
@@ -48,6 +51,21 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	// ContactRightM/ForwardM/UpM); all zero keeps today's arm-only reach.
 	const bool bClipContact = Frame.Clip && Frame.Clip->HasContactPoint();
 	ContactWarpWeight = bClipContact ? static_cast<float>(Frame.SwingWeight) * PadelContactWarp::BodyWeight(Frame.SwingProgress) : 0.0f;
+}
+
+float UPadelPlayerAnimInstance::StanceKeep() const
+{
+	return 1.0f - FMath::Clamp(RawSwingWeight, 0.0f, 1.0f);
+}
+
+FPadelBodyDynamics UPadelPlayerAnimInstance::PosedBody() const
+{
+	FPadelBodyDynamics Out = Body;
+	const float Keep = StanceKeep();
+	Out.LeanForwardDeg += Stance.LeanForwardDeg * Keep;
+	Out.PelvisDropUnits += Stance.PelvisDropUnits * Keep;
+	Out.FeetWidenUnits += Stance.FeetWidenUnits * Keep;
+	return Out;
 }
 
 float UPadelPlayerAnimInstance::WarpArmAlpha() const

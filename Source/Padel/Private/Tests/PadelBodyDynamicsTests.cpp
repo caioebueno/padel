@@ -36,6 +36,7 @@ namespace PadelBodyDynamicsTests
 	FSample Pose(USkeletalMeshComponent* Body, UPadelPlayerAnimInstance* Anim, const FPadelBodyDynamics& Dyn)
 	{
 		Anim->Body = Dyn;
+		Anim->Stance = FPadelBodyDynamics();
 		for (int32 Pass = 0; Pass < 2; ++Pass)
 		{
 			Body->TickAnimation(0.0f, false);
