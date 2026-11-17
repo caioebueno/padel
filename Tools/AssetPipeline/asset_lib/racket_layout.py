@@ -262,8 +262,10 @@ def _bisect(f, lo: float, hi: float, steps: int = 60) -> float:
 
 
 def heart_windows(cfg: dict) -> list[list[Point]]:
-    """The two windows of the open heart, finished size, each a closed CCW polygon:
-    bounded by the bridge, the inner edge of the throat arm and the bottom of the face."""
+    """The open heart, finished size, as closed CCW polygons. With no bridge
+    (bridge_width_m 0) it is one window: the chevron at the bottom of the face on top,
+    the inner edges of the throat arms down the sides and a rounded V at the bottom.
+    With a bridge it is two windows either side of it."""
     h = cfg["heart"]
     b = h["bridge_width_m"] / 2
     arm = h["arm_width_m"]
@@ -274,12 +276,22 @@ def heart_windows(cfg: dict) -> list[list[Point]]:
     def top(x: float) -> float:
         return h["top_z_m"] + h["top_rise"] * x
 
-    # Bottom: where the arm's inner edge meets the bridge, or the configured floor.
-    z_meet = _bisect(lambda z: inner(z) - b, cfg["frame"]["neck_z_m"], h["top_z_m"])
-    zb = max(z_meet, h["bottom_z_m"])
     # Top corner: where the face's bottom edge meets the arm.
     x_top = _bisect(lambda x: inner(top(x)) - x, b, 0.2)
     z_top = top(x_top)
+    if b <= 0.0:
+        # Down the arm to the top of the notch, then in to the bottom of the V.
+        z_side = h["bottom_z_m"] + h["notch_m"]
+        x_side = inner(z_side)
+        right = [(x_top * i / 10, top(x_top * i / 10)) for i in range(11)]
+        right += [(inner(z_top + (z_side - z_top) * i / 16), z_top + (z_side - z_top) * i / 16) for i in range(1, 17)]
+        right += [(x_side * (1 - i / 8), z_side + (h["bottom_z_m"] - z_side) * i / 8) for i in range(1, 9)]
+        left = [(-x, z) for x, z in reversed(right[1:-1])]
+        window = _ccw(fillet_corners(_dedupe(right + left), h["corner_radius_m"]))
+        return [window]
+    # Bottom: where the arm's inner edge meets the bridge, or the configured floor.
+    z_meet = _bisect(lambda z: inner(z) - b, cfg["frame"]["neck_z_m"], h["top_z_m"])
+    zb = max(z_meet, h["bottom_z_m"])
     right = [(b, zb), (b, top(b))]
     right += [(b + (x_top - b) * i / 10, top(b + (x_top - b) * i / 10)) for i in range(1, 11)]
     right += [(inner(z_top + (zb - z_top) * i / 16), z_top + (zb - z_top) * i / 16) for i in range(1, 17)]
@@ -303,9 +315,9 @@ def _dedupe(poly: list[Point]) -> list[Point]:
 
 def hole_centres(cfg: dict) -> list[Point]:
     """Hole centres, left-right symmetric. Rings follow the face outline (outermost first),
-    alternate rings staggered by half a pitch, then the centre column; a hole is dropped
-    if it would sit too close to one already placed, leave the face, or cut into the
-    wordmark panel."""
+    alternate rings staggered by half a pitch, then a staggered grid; a hole is dropped
+    if it would sit too close to one already placed, leave the face, or reach down into
+    the wordmark band."""
     holes = cfg["holes"]
     r = holes["diameter_m"] / 2
     gap = holes["min_gap_m"]
@@ -314,7 +326,7 @@ def hole_centres(cfg: dict) -> list[Point]:
     placed: list[Point] = []
 
     def fits(p: Point) -> bool:
-        if p[1] - r < max(clear_hi, panel_edge(cfg, p[0]) + holes["graphic_clear_m"]):
+        if p[1] - r < clear_hi + holes["graphic_clear_m"]:
             return False
         if not point_in_polygon(p, face) or distance_to_polyline(p, face) < r + 0.002:
             return False
@@ -359,22 +371,36 @@ def hole_centres(cfg: dict) -> list[Point]:
     return placed
 
 
-# --- The graphic (racket_textures.py draws it; the holes keep clear of its lines) -------------
+# --- The graphic (racket_textures.py draws it) -------------------------------------------------
 
-def panel_edge(cfg: dict, x: float) -> float:
-    """Height of the top of the paint panel at x: a straight line rising left to right
-    across the head, a little above the accent line drawn along it."""
-    panel = cfg["graphics"]["panel"]
-    half_w = widest(cfg)[0] + 0.01
-    zl, zr = panel["left_top_z_m"], panel["right_top_z_m"]
-    return zl + (zr - zl) * (x + half_w) / (2 * half_w) + 0.0035
+def arch_stones(cfg: dict) -> list[list[Point]]:
+    """The emblem's stones, each a closed polygon: the voussoirs of a half ring round the
+    sweet spot, left to right, with the keystone (the middle one) raised at its crown,
+    then the two piers the arch stands on."""
+    a = cfg["graphics"]["arch"]
+    zc, r0, r1, n, gap = a["spring_z_m"], a["inner_r_m"], a["outer_r_m"], a["stones"], a["gap_m"]
+    stones = []
+    for k in range(n):
+        lo = math.pi * (1 - (k + 1) / n)
+        hi = math.pi * (1 - k / n)
+        # Keep gap_m between stones along the middle of the ring.
+        trim = gap / 2 / ((r0 + r1) / 2)
+        lo, hi = lo + (trim if k < n - 1 else 0.0), hi - (trim if k > 0 else 0.0)
+        outer = r1 + (a["keystone_lift_m"] if k == n // 2 else 0.0)
+        arc = [lo + (hi - lo) * i / 6 for i in range(7)]
+        stones.append([(r0 * math.cos(t), zc + r0 * math.sin(t)) for t in arc]
+                      + [(outer * math.cos(t), zc + outer * math.sin(t)) for t in reversed(arc)])
+    for side in (-1, 1):
+        x0, x1 = sorted((side * r0, side * r1))
+        stones.append([(x0, a["pier_bottom_z_m"]), (x1, a["pier_bottom_z_m"]), (x1, zc - gap), (x0, zc - gap)])
+    return [_ccw(s) for s in stones]
 
 
-def keystone(cfg: dict) -> list[Point]:
-    """The keystone round the sweet spot, a closed trapezoid, wide edge at the top."""
-    k = cfg["graphics"]["keystone"]
-    return [(-k["top_half_m"], k["top_z_m"]), (k["top_half_m"], k["top_z_m"]),
-            (k["bottom_half_m"], k["bottom_z_m"]), (-k["bottom_half_m"], k["bottom_z_m"])]
+def chevron(cfg: dict) -> list[Point]:
+    """The accent line along the bottom of the face: a shallow V like the heart's top."""
+    c = cfg["graphics"]["chevron"]
+    return [(-c["half_m"], c["centre_z_m"] + c["rise"] * c["half_m"]), (0.0, c["centre_z_m"]),
+            (c["half_m"], c["centre_z_m"] + c["rise"] * c["half_m"])]
 
 
 # --- Texture space ---------------------------------------------------------------------------
@@ -392,3 +418,41 @@ def pixel_to_face(cfg: dict, px: float, py: float) -> Point:
     size = cfg["textures"]["size_m"]
     n = cfg["textures"]["masks_px"]
     return (-size / 2 + (px + 0.5) / n * size, tip_z(cfg) - (py + 0.5) / n * size)
+
+
+# --- The frame's edge ------------------------------------------------------------------------
+
+def edge_param(cfg: dict, count: int = 720) -> tuple[list[Point], list[float]]:
+    """The finished outline starting at the bottom of the neck (inside the grip, where
+    the frame texture's seam hides) and running CCW, with the arc length at each point."""
+    loop = outline(cfg, count)
+    neck = cfg["frame"]["neck_z_m"]
+    start = min(range(len(loop)), key=lambda i: (abs(loop[i][1] - neck) > 1e-4, abs(loop[i][0])))
+    loop = loop[start:] + loop[:start]
+    s = [0.0]
+    for a, b in zip(loop, loop[1:]):
+        s.append(s[-1] + math.dist(a, b))
+    return loop, s
+
+
+def perimeter(cfg: dict) -> float:
+    loop, s = edge_param(cfg)
+    return s[-1] + math.dist(loop[-1], loop[0])
+
+
+def edge_u(cfg: dict, x: float, z: float, param=None) -> float:
+    """0..1 round the frame's edge (racket_layout.edge_param's start and direction) of
+    the edge point nearest (x, z)."""
+    loop, s = param or edge_param(cfg)
+    total = s[-1] + math.dist(loop[-1], loop[0])
+    best, best_u = 1e9, 0.0
+    n = len(loop)
+    for i in range(n):
+        a, b = loop[i], loop[(i + 1) % n]
+        dx, dz = b[0] - a[0], b[1] - a[1]
+        ll = dx * dx + dz * dz
+        f = 0.0 if ll == 0 else max(0.0, min(1.0, ((x - a[0]) * dx + (z - a[1]) * dz) / ll))
+        d = math.hypot(a[0] + dx * f - x, a[1] + dz * f - z)
+        if d < best:
+            best, best_u = d, (s[i] + f * math.sqrt(ll)) / total
+    return best_u

@@ -405,7 +405,7 @@ def build_instances(palette: dict) -> None:
             if settings["master"].startswith("Ball"):
                 ball_material.apply_instance(mi, settings, linear)
             if settings["master"] == "RacketFace":
-                racket_material.apply_instance(mi, settings, linear)
+                racket_material.apply_instance(mi, settings, linear, MATERIAL_DIR, fail)
             for key, param in (("mask", "Mask"), ("texture", "BaseTexture"), ("normal", "NormalMap")):
                 if key in settings:
                     tex = unreal.load_asset(f"{MATERIAL_DIR}/{settings[key]}")

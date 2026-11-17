@@ -293,8 +293,8 @@ def cmd_preview_ball(args: argparse.Namespace) -> None:
 def cmd_preview_racket(args: argparse.Namespace) -> None:
     cat = catalogue.load()
     racket = cat.get("Racket")
-    if not (textures.TEXTURE_DIR / "T_Racket_Masks.png").is_file():
-        racket_textures.generate_all(textures.TEXTURE_DIR)
+    # Cheap, and the preview must show the current config.
+    racket_textures.generate_all(textures.TEXTURE_DIR)
     job = {"racket": racket.raw, "palette": catalogue.load_palette(), "textures_dir": str(textures.TEXTURE_DIR),
            "out": str(Path(args.out).resolve()), "samples": args.samples, "resolution": [1600, 1000],
            "lods": len(racket.lods), "shot": args.shot}

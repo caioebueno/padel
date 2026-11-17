@@ -36,11 +36,16 @@ class RacketLayoutTest(unittest.TestCase):
         self.assertLess(self.cfg["grip"]["wrap_bottom_z_m"], 0.0)
         self.assertGreater(self.cfg["grip"]["wrap_top_z_m"], 0.0)
 
+    def test_the_top_is_broad_like_a_pro_racket(self) -> None:
+        # A rounded, broad top (not a point): about 80 mm across 2 mm below the tip.
+        tip = layout.tip_z(self.cfg)
+        self.assertGreater(2 * layout.half_width_at(self.cfg, tip - 0.002), 0.07)
+
     def test_it_is_a_diamond(self) -> None:
         # Widest point high in the head (about two thirds of the way up the head), the
         # shape of a power racket, not a round one.
         x, z = layout.widest(self.cfg)
-        head_bottom = self.cfg["heart"]["top_z_m"]
+        head_bottom = max(z for x, z in layout.heart_windows(self.cfg)[0])
         share = (z - head_bottom) / (layout.tip_z(self.cfg) - head_bottom)
         self.assertGreater(share, 0.55)
         self.assertLess(share, 0.75)
@@ -57,25 +62,34 @@ class RacketLayoutTest(unittest.TestCase):
             for q in self.holes[i + 1:]:
                 self.assertGreaterEqual(math.dist(p, q), d + gap - 1e-9)
 
-    def test_holes_stay_on_the_face_and_off_the_wordmark_panel(self) -> None:
+    def test_holes_stay_on_the_face_and_off_the_wordmark_band(self) -> None:
         face = layout.face_outline(self.cfg)
         r = self.cfg["holes"]["diameter_m"] / 2
+        band_top = self.cfg["holes"]["keep_clear_z_m"][1]
         for p in self.holes:
             self.assertTrue(layout.point_in_polygon(p, face))
             self.assertGreaterEqual(layout.distance_to_polyline(p, face), r)
-            self.assertGreater(p[1] - r, layout.panel_edge(self.cfg, p[0]))
+            self.assertGreater(p[1] - r, band_top)
+        # A tournament racket's dense pattern, not a sprinkle.
+        self.assertGreaterEqual(len(self.holes), 55)
 
-    def test_heart_windows_leave_arms_and_a_bridge(self) -> None:
+    def test_heart_is_one_window_between_the_arms(self) -> None:
         windows = layout.heart_windows(self.cfg)
-        self.assertEqual(len(windows), 2)
         bridge = self.cfg["heart"]["bridge_width_m"]
-        # The bevel needs the bridge wider than both windows' edge rounding.
-        self.assertGreater(bridge, 2 * self.cfg["frame"]["edge_radius_m"])
+        # One open triangle like a pro racket's; a bridge, if configured, must be wider
+        # than both windows' edge rounding.
+        self.assertEqual(len(windows), 1 if bridge == 0 else 2)
+        if bridge:
+            self.assertGreater(bridge, 2 * self.cfg["frame"]["edge_radius_m"])
+        zs = [z for x, z in windows[0]]
+        self.assertAlmostEqual(min(zs), self.cfg["heart"]["bottom_z_m"], delta=0.004)
+        # Its top is the bottom of the face, below the wordmark.
+        self.assertLess(max(zs), self.cfg["graphics"]["model"]["centre_z_m"] - self.cfg["graphics"]["model"]["cap_m"])
         for window in windows:
             for p in window:
                 self.assertTrue(layout.point_in_polygon(p, self.outline))
                 # Every window point is about an arm's width inside the edge (measured across X, so a slanted arm is a little narrower).
-                self.assertGreater(layout.distance_to_polyline(p, self.outline), self.cfg["heart"]["arm_width_m"] * 0.75)
+                self.assertGreater(layout.distance_to_polyline(p, self.outline), self.cfg["heart"]["arm_width_m"] * 0.7)
                 # ...and clear of the bridge.
                 self.assertGreaterEqual(abs(p[0]), bridge / 2 - 1e-6)
             for x, z in self.holes:
@@ -86,7 +100,7 @@ class RacketLayoutTest(unittest.TestCase):
         # in the middle of the head (above the heart, below the tip).
         data = json.loads((Path(__file__).resolve().parents[3] / "Data" / "Racket.json").read_text())["Racket"]
         self.assertEqual(data["Mesh"], "/Game/Padel/Equipment/SM_Racket.SM_Racket")
-        head_bottom = self.cfg["heart"]["top_z_m"]
+        head_bottom = max(z for x, z in layout.heart_windows(self.cfg)[0])
         self.assertAlmostEqual(data["FaceCentreM"], (head_bottom + layout.tip_z(self.cfg)) / 2, delta=0.01)
 
     def test_offset_moves_edges_by_the_distance(self) -> None:
@@ -115,6 +129,35 @@ class RacketTextureTest(unittest.TestCase):
         u, v = layout.face_uv(self.cfg, x, z)
         return self.canvas.channels[ch][min(n - 1, int(v * n)) * n + min(n - 1, int(u * n))]
 
+    def test_emblem_fits_the_face(self) -> None:
+        face = layout.face_outline(self.cfg)
+        for stone in layout.arch_stones(self.cfg):
+            for p in stone:
+                self.assertTrue(layout.point_in_polygon(p, face), f"emblem point {p} off the face")
+
+    def test_frame_and_grip_print(self) -> None:
+        frame = racket_textures.draw_frame(self.cfg)
+        grip = racket_textures.draw_grip(self.cfg)
+        self.assertGreater(sum(v > 0.5 for v in frame.channels[1]), 500, "no lettering on the frame")
+        self.assertGreater(sum(v > 0.5 for v in grip.channels[1]), 200, "no dots on the grip")
+        # The lettering sits on the flat of the edge, clear of the rounded corners.
+        r = self.cfg["frame"]["edge_radius_m"] / self.cfg["frame"]["thickness_m"]
+        rows = [y for y in range(frame.h) if any(frame.channels[1][y * frame.w + x] > 0.5 for x in range(frame.w))]
+        self.assertGreaterEqual(min(rows) / frame.h, r * 0.5)
+        self.assertLessEqual(max(rows) / frame.h, 1 - r * 0.5)
+
+    def test_edge_u_runs_round_from_the_neck(self) -> None:
+        neck = self.cfg["frame"]["neck_z_m"]
+        tip = layout.tip_z(self.cfg)
+        # The seam is at the neck, so u there is 0 or 1.
+        u = layout.edge_u(self.cfg, 0.0, neck)
+        self.assertLess(min(u, 1.0 - u), 0.02)
+        self.assertAlmostEqual(layout.edge_u(self.cfg, 0.0, tip), 0.5, delta=0.02)
+        z = self.cfg["graphics"]["frame_text"]["centre_z_m"]
+        right = layout.edge_u(self.cfg, layout.half_width_at(self.cfg, z), z)
+        left = layout.edge_u(self.cfg, -layout.half_width_at(self.cfg, z), z)
+        self.assertAlmostEqual(right + left, 1.0, delta=0.01)
+
     def test_brand_text_can_be_drawn(self) -> None:
         for key in ("name", "model", "tag"):
             for char in self.cfg["brand"][key]:
@@ -138,7 +181,6 @@ class RacketTextureTest(unittest.TestCase):
         width = racket_textures.text_width(self.cfg["brand"]["name"], g["cap_m"], g["tracking"])
         half_face = layout.half_width_at(self.cfg, g["centre_z_m"]) - self.cfg["frame"]["face_margin_m"]
         self.assertLess(width / 2, half_face)
-        self.assertGreater(self.channel_at(0, 0.0, g["centre_z_m"]), 0.99)
         ink = sum(self.channel_at(2, -width / 2 + width * i / 200, g["centre_z_m"]) > 0.5 for i in range(200))
         self.assertGreater(ink, 20)
 
@@ -146,7 +188,8 @@ class RacketTextureTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             paths = racket_textures.generate_all(Path(tmp), self.cfg)
             self.assertEqual(sorted(p.name for p in paths),
-                             ["T_CarbonWeave_Mask.png", "T_RacketGrit_N.png", "T_Racket_Masks.png"])
+                             ["T_CarbonWeave_Mask.png", "T_RacketFrame_Masks.png", "T_RacketGrip_Masks.png",
+                              "T_RacketGrit_N.png", "T_Racket_Masks.png"])
             masks = (Path(tmp) / "T_Racket_Masks.png").read_bytes()
             # RGBA (colour type 6), masks_px square.
             self.assertEqual(masks[25], 6)

@@ -28,10 +28,13 @@ import build_racket  # noqa: E402
 from asset_lib import racket_layout as layout  # noqa: E402
 
 
-def face_preview_material(palette: dict, textures: Path, cfg: dict) -> bpy.types.Material:
-    """M_PadelRacketFace (unreal/racket_material.py) in Cycles nodes: the same layering."""
-    face = palette["racket"]["Face"]
-    mat = bpy.data.materials.new("MI_Racket_Face_Preview")
+def face_preview_material(palette: dict, textures: Path, cfg: dict, slot: str = "Face") -> bpy.types.Material:
+    """An instance of M_PadelRacketFace (unreal/racket_material.py) in Cycles nodes: the
+    same layering, with the slot's own masks texture and tiling."""
+    face = {"paint_color": "#000000", "ink_color": "#ffffff", "hole_color": "#000000", "paint_roughness": 0.4,
+            "grit_roughness": 0.58, "grit_amount": 0.55, "grit_normal_strength": 0.8, "weave_contrast": 0.35,
+            **palette["racket"][slot]}
+    mat = bpy.data.materials.new(f"MI_Racket_{slot}_Preview")
     mat.use_nodes = True
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
     bsdf = nodes.get("Principled BSDF")
@@ -74,11 +77,14 @@ def face_preview_material(palette: dict, textures: Path, cfg: dict) -> bpy.types
         return node.outputs[0]
 
     t = cfg["textures"]
-    masks = image("T_Racket_Masks")
+    masks = image(face.get("masks", "T_Racket_Masks"))
+    if "masks" not in face:
+        # Clamped in Unreal too: the face square covers the head once.
+        masks.extension = "EXTEND"
     split = nodes.new("ShaderNodeSeparateColor")
     links.new(masks.outputs["Color"], split.inputs["Color"])
     paint, accent, ink, holes = split.outputs["Red"], split.outputs["Green"], split.outputs["Blue"], masks.outputs["Alpha"]
-    weave = image("T_CarbonWeave_Mask", t["size_m"] / t["weave_tile_m"]).outputs["Color"]
+    weave = image("T_CarbonWeave_Mask", face.get("weave_tiles", t["size_m"] / t["weave_tile_m"])).outputs["Color"]
     # Carbon: the colour scaled by the tow brightness around 1.
     tows = math_node("MULTIPLY_ADD", weave, 2.0 * face["weave_contrast"], 1.0 - face["weave_contrast"])
     carbon = nodes.new("ShaderNodeMix")
@@ -97,7 +103,7 @@ def face_preview_material(palette: dict, textures: Path, cfg: dict) -> bpy.types
     rough = math_node("ADD", math_node("MULTIPLY", rough, 1.0 - face["grit_amount"]), face["grit_roughness"] * face["grit_amount"])
     links.new(rough, bsdf.inputs["Roughness"])
     # The sand finish, stored DirectX: flip green for Blender.
-    grit = image("T_RacketGrit_N", t["size_m"] / t["grit_tile_m"])
+    grit = image("T_RacketGrit_N", face.get("grit_tiles", t["size_m"] / t["grit_tile_m"]))
     flip = nodes.new("ShaderNodeSeparateColor")
     links.new(grit.outputs["Color"], flip.inputs["Color"])
     gl = nodes.new("ShaderNodeCombineColor")
@@ -137,7 +143,8 @@ def main() -> None:
     bc.reset_scene()
     cfg = layout.load_config()
     entry = dict(job["racket"], id="Racket", palette=job["palette"], palette_group=job["racket"]["palette"])
-    face_mat = face_preview_material(job["palette"], Path(job["textures_dir"]), cfg)
+    printed = {f"MI_Racket_{slot}": face_preview_material(job["palette"], Path(job["textures_dir"]), cfg, slot)
+               for slot, entry in job["palette"]["racket"].items() if entry.get("master") == "RacketFace"}
     shot = job.get("shot", "hero")
     mats = build_racket._materials(entry)
 
@@ -162,8 +169,8 @@ def main() -> None:
         target, cam_loc, lens = Vector((0.02, 0.05, 0.36)), Vector((0.1, -1.45, 0.62)), 55.0
     for obj in rackets:
         for slot in obj.material_slots:
-            if slot.material and slot.material.name == "MI_Racket_Face":
-                slot.material = face_mat
+            if slot.material and slot.material.name in printed:
+                slot.material = printed[slot.material.name]
     # Stand the rackets on the floor (the butt rests on it) and aim at what's there.
     bpy.context.view_layer.update()
     for obj in rackets:

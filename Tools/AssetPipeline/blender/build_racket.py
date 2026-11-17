@@ -1,7 +1,8 @@
 """Builds the match racket, the invented Ostrel Keystone (docs/decisions/0008-racket.md):
-a diamond-shaped power racket with a carbon face, a raised sand finish, a drilled hole
-pattern, an open heart with a bridge, an alloy weight cartridge and shoulder ports, a
-rubber bumper and an overgrip-wrapped handle. Layout from asset_lib/racket_layout.py
+a pro-style diamond power racket with a carbon face, a raised sand finish, a drilled
+hole pattern, one open triangular heart, a protector band with an alloy weight slot at
+the tip, a lettered frame, an overgrip-wrapped handle with a ribbed collar, and a wrist
+strap. Layout from asset_lib/racket_layout.py
 and config/racket.json; colours from palette.json 'racket'.
 
 Job keys: id, size, palette, palette_group, budget_tris, lods, out, lod_outs, report.
@@ -9,9 +10,14 @@ Job keys: id, size, palette, palette_group, budget_tris, lods, out, lod_outs, re
 Orientation (Unreal axes, metres): grip centre on the origin, head up +Z, the faces look
 along -Y and +Y, X across the face, so a hand socket holds it without extra offsets.
 
-LODs are built, not decimated, so the face UVs stay exact: LOD0 for close-ups and replays
-(bevelled edges, every hole drilled, the overgrip's helix, the hardware), LOD1 for the
-near player, LOD2 for the broadcast camera (no holes: T_Racket_Masks.A draws them).
+LODs are built, not decimated, so the UVs stay exact: LOD0 for close-ups and replays
+(bevelled edges, every hole drilled, the overgrip's helix, the collar's ribs, the
+hardware), LOD1 for the near player, LOD2 for the broadcast camera (no holes:
+T_Racket_Masks.A draws them; no strap).
+
+UV0: the face square of racket_layout.face_uv on the faces; the edge unrolled
+(racket_layout.edge_u, V across the thickness) on the frame; the wrap unrolled (U
+round, V along) on the overgrip.
 """
 
 from __future__ import annotations
@@ -31,8 +37,8 @@ import bl_common as bc  # noqa: E402
 from asset_lib import racket_layout as layout  # noqa: E402
 
 # Material slots, in order. MI_Racket_<Name> in Unreal.
-SLOTS = ("Face", "Frame", "Core", "Bumper", "Metal", "Accent", "Grip", "Cap")
-FACE, FRAME, CORE, BUMPER, METAL, ACCENT, GRIP, CAP = range(len(SLOTS))
+SLOTS = ("Face", "Frame", "Core", "Bumper", "Metal", "Accent", "Grip", "Cap", "Strap")
+FACE, FRAME, CORE, BUMPER, METAL, ACCENT, GRIP, CAP, STRAP = range(len(SLOTS))
 
 
 def _materials(job: dict) -> list:
@@ -104,7 +110,9 @@ def _paint_body(body: bpy.types.Object, cfg: dict, mats: list) -> None:
     """Material slots and UVs. The two flat faces take the face material and the face
     UVs (U mirrored on +Y so the wordmark reads from both sides), and so does the front
     of every rounded edge, where the face skin wraps over the frame; the walls of the
-    drilled holes show the foam core; everything else is frame."""
+    drilled holes show the foam core; everything else is frame, which takes the edge
+    unrolled (U round the outline from the neck, V across the thickness) for its
+    lettering."""
     # The curve leaves an empty slot behind; start from none so the indices match SLOTS.
     body.data.materials.clear()
     for mat in mats:
@@ -115,6 +123,8 @@ def _paint_body(body: bpy.types.Object, cfg: dict, mats: list) -> None:
     bm = bmesh.new()
     bm.from_mesh(body.data)
     uv = bm.loops.layers.uv.verify()
+    param = layout.edge_param(cfg)
+    edge_u: dict[int, float] = {}
     for f in bm.faces:
         c = f.calc_center_median()
         n = f.normal
@@ -128,6 +138,20 @@ def _paint_body(body: bpy.types.Object, cfg: dict, mats: list) -> None:
         else:
             f.material_index = FRAME
             f.smooth = True
+        if f.material_index == FRAME:
+            us = []
+            for loop in f.loops:
+                i = loop.vert.index
+                if i not in edge_u:
+                    edge_u[i] = layout.edge_u(cfg, loop.vert.co.x, loop.vert.co.z, param)
+                us.append(edge_u[i])
+            # A face across the seam (inside the grip) takes the far side's U past 1.
+            if max(us) - min(us) > 0.5:
+                us = [u + 1.0 if u < 0.5 else u for u in us]
+            for loop, u in zip(f.loops, us):
+                v = (loop.vert.co.y + half_t) / (2 * half_t)
+                loop[uv].uv = (u, 1.0 - v)
+            continue
         mirror = c.y > 0
         for loop in f.loops:
             u, v = layout.face_uv(cfg, loop.vert.co.x, loop.vert.co.z)
@@ -201,28 +225,87 @@ def _rounded_rect(bm, centre, half_x, half_z, y0, y1, mat, corner_steps=4) -> No
         f.smooth = True
 
 
+def _top_edge_z(cfg: dict, x: float) -> float:
+    """Height of the finished edge at x across the top of the head."""
+    right = layout.outline_half(cfg)
+    for a, b in zip(right, right[1:]):
+        if (a[0] - abs(x)) * (b[0] - abs(x)) <= 0 and a[0] != b[0]:
+            return a[1] + (b[1] - a[1]) * (abs(x) - a[0]) / (b[0] - a[0])
+    return layout.tip_z(cfg)
+
+
 def _hardware(bm: bmesh.types.BMesh, cfg: dict, lod: int) -> None:
-    """The weight cartridge on the bridge (both faces, two hex screws each) and an alloy
-    port with an accent ring in each shoulder of the frame."""
+    """The weight slot at the tip: a rounded alloy plate across the edge, following its
+    curve, set a fraction of a millimetre into the protector, with two screws."""
     w = cfg["weights"]
-    half_t = cfg["frame"]["thickness_m"] / 2
-    hx, hz = w["plate_size_m"][0] / 2, w["plate_size_m"][1] / 2
-    zc = w["plate_centre_z_m"]
-    for side in (-1, 1):
-        y0, y1 = side * (half_t - 0.0003), side * (half_t + w["plate_proud_m"])
-        _rounded_rect(bm, (0.0, zc), hx, hz, y0, y1, METAL, 4 if lod == 0 else 2)
-        if lod == 0:
-            for dz in (-w["screw_offset_m"], w["screw_offset_m"]):
-                bc.add_cylinder(bm, (0.0, y1 - side * 0.0002, zc + dz), (0.0, y1 + side * 0.0005, zc + dz),
-                                w["screw_radius_m"], 6, CAP)
-    outline = layout.outline(cfg, 720)
-    for side in (-1, 1):
-        i = min(range(len(outline)), key=lambda k: math.hypot(outline[k][0] - side * 0.2, outline[k][1] - w["port_z_m"]))
-        p, n = _edge_frame(cfg, i, outline)
-        segments = 16 if lod == 0 else 8
-        # Set into the edge, never proud of it: the regulation width is measured over them.
-        bc.add_cylinder(bm, p - n * 0.003, p - n * 0.00005, w["port_radius_m"] + w["port_ring_m"], segments, ACCENT)
-        bc.add_cylinder(bm, p - n * 0.002, p, w["port_radius_m"], segments, METAL)
+    proud = cfg["bumper"]["proud_m"]
+    hx, hy = w["slot_size_m"][0] / 2, w["slot_size_m"][1] / 2
+    r = w["slot_corner_m"]
+    steps = 4 if lod == 0 else 2
+    pts = []
+    for cx, cy, start in ((hx - r, hy - r, 0), (-(hx - r), hy - r, 90), (-(hx - r), -(hy - r), 180), (hx - r, -(hy - r), 270)):
+        for k in range(steps + 1):
+            a = math.radians(start + 90 * k / steps)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    top = [bm.verts.new((x, y, _top_edge_z(cfg, x) + proud * 0.6)) for x, y in pts]
+    low = [bm.verts.new((x, y, _top_edge_z(cfg, x) - w["slot_depth_m"])) for x, y in pts]
+    n = len(pts)
+    f = bm.faces.new(top)
+    f.material_index = METAL
+    f = bm.faces.new(list(reversed(low)))
+    f.material_index = METAL
+    for i in range(n):
+        j = (i + 1) % n
+        f = bm.faces.new((low[i], low[j], top[j], top[i]))
+        f.material_index = METAL
+        f.smooth = True
+    if lod == 0:
+        for dx in (-w["screw_offset_m"], w["screw_offset_m"]):
+            z = _top_edge_z(cfg, dx) + proud * 0.6
+            bc.add_cylinder(bm, (dx, 0.0, z - 0.0003), (dx, 0.0, z + 0.0004), w["screw_radius_m"], 6, CAP)
+
+
+def _strap(bm: bmesh.types.BMesh, cfg: dict, lod: int) -> None:
+    """The wrist strap: a flat cord (width through Y) from the butt cap down through a
+    slider into a narrow loop and back, swept along a closed path in the X-Z plane, so it
+    is a closed solid. Its two ends meet inside the cap."""
+    st = cfg["strap"]
+    steps = st["lod_steps"][lod]
+    if steps <= 0:
+        return
+    butt = cfg["frame"]["butt_z_m"]
+    gap = st["thickness_m"] * 1.2
+    z_slider = butt - st["slider_z_m"]
+    bottom = butt - st["loop_length_m"]
+    half = st["loop_width_m"] / 2
+    # Right half of the loop below the slider: out, down and round the bottom.
+    side = []
+    for k in range(steps + 1):
+        t = k / steps
+        z = z_slider + (bottom + half - z_slider) * t
+        side.append((gap / 2 + (half - gap / 2) * math.sin(math.pi / 2 * min(1.0, t * 1.6)), z))
+    arc = [(half * math.cos(a), bottom + half + half * math.sin(a))
+           for a in (-math.pi * k / (steps // 2 + 2) for k in range(1, steps // 2 + 2))]
+    right = [(gap / 2, butt + 0.004), (gap / 2, z_slider)] + side + arc
+    left = [(-x, z) for x, z in reversed(right[:-len(arc)])]
+    path = right + left
+    w2, t2 = st["width_m"] / 2, st["thickness_m"] / 2
+    rings = []
+    n = len(path)
+    for i, (x, z) in enumerate(path):
+        a, b = path[i - 1], path[(i + 1) % n]
+        tx, tz = b[0] - a[0], b[1] - a[1]
+        length = math.hypot(tx, tz) or 1.0
+        nx, nz = tz / length, -tx / length
+        rings.append([bm.verts.new((x + nx * dn, dy, z + nz * dn)) for dn, dy in ((-t2, -w2), (t2, -w2), (t2, w2), (-t2, w2))])
+    for i in range(n):
+        r0, r1 = rings[i], rings[(i + 1) % n]
+        for k in range(4):
+            f = bm.faces.new((r0[k], r0[(k + 1) % 4], r1[(k + 1) % 4], r1[k]))
+            f.material_index = STRAP
+            f.smooth = False
+    if lod == 0:
+        bc.add_cylinder(bm, (0.0, 0.0, z_slider - 0.006), (0.0, 0.0, z_slider + 0.006), 0.0055, 10, STRAP)
 
 
 def _ellipse_ring(bm, z: float, ax: float, ay: float, segments: int, bump=None) -> list:
@@ -234,22 +317,31 @@ def _ellipse_ring(bm, z: float, ax: float, ay: float, segments: int, bump=None) 
     return ring
 
 
-def _bridge_rings(bm, rings: list, mat: int, smooth: bool = True) -> None:
-    for r0, r1 in zip(rings, rings[1:]):
+def _bridge_rings(bm, rings: list, mat: int, smooth: bool = True, vs: list | None = None) -> None:
+    """Quads between consecutive rings. With vs (one V per ring) the faces get UVs: U
+    round the ring (0..1, the last quad ending at 1), V as given."""
+    # Named like the body's layer, so the join keeps one UV0 (a bare verify() on a new
+    # BMesh makes a generic float2 attribute instead).
+    uv = (bm.loops.layers.uv.get("UVMap") or bm.loops.layers.uv.new("UVMap")) if vs is not None else None
+    for i, (r0, r1) in enumerate(zip(rings, rings[1:])):
         n = len(r0)
         for k in range(n):
             f = bm.faces.new((r0[k], r0[(k + 1) % n], r1[(k + 1) % n], r1[k]))
             f.material_index = mat
             f.smooth = smooth
+            if uv is not None:
+                for loop, (du, dv) in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+                    loop[uv].uv = ((k + du) / n, vs[i + dv])
 
 
 def _grip(bm: bmesh.types.BMesh, cfg: dict, lod: int) -> None:
-    """Overgrip, finishing tape and butt cap. At LOD0 the overgrip is a helix of
-    overlapping bands: each turn rises step_m over the one below it."""
+    """Overgrip, ribbed collar and butt cap. At LOD0 the overgrip is a helix of
+    overlapping bands (each turn rises step_m over the one below it) and the collar has
+    its ribs. The overgrip carries the unrolled UVs its dots are printed in."""
     g = cfg["grip"]
     ax, ay = g["semi_axes_m"]
     around, along = g["lod_segments"][lod]
-    z0, z1, z2 = g["wrap_bottom_z_m"], g["wrap_top_z_m"], g["tape_top_z_m"]
+    z0, z1 = g["wrap_bottom_z_m"], g["wrap_top_z_m"]
     butt = cfg["frame"]["butt_z_m"]
 
     def helix(a: float, z: float) -> float:
@@ -259,15 +351,25 @@ def _grip(bm: bmesh.types.BMesh, cfg: dict, lod: int) -> None:
         # A ramp up to the next band's edge, eased over the last tenth: the overlap step.
         return g["step_m"] * (phase if phase < 0.9 else (1.0 - phase) * 9.0)
 
-    wrap = [_ellipse_ring(bm, z0 + (z1 - z0) * i / along, ax, ay, around, helix) for i in range(along + 1)]
-    _bridge_rings(bm, wrap, GRIP)
-    # Finishing tape: a band a little proud of the wrap, chamfered into it.
-    tape_ax, tape_ay = ax + g["step_m"] + 0.0006, ay + g["step_m"] + 0.0006
-    tape = [_ellipse_ring(bm, z1 - 0.002, ax, ay, around),
-            _ellipse_ring(bm, z1, tape_ax, tape_ay, around),
-            _ellipse_ring(bm, z2 - 0.0015, tape_ax, tape_ay, around),
-            _ellipse_ring(bm, z2, tape_ax - 0.0012, tape_ay - 0.0012, around)]
-    _bridge_rings(bm, tape, ACCENT)
+    zs = [z0 + (z1 - z0) * i / along for i in range(along + 1)]
+    wrap = [_ellipse_ring(bm, z, ax, ay, around, helix) for z in zs]
+    _bridge_rings(bm, wrap, GRIP, vs=[1.0 - (z - z0) / (z1 - z0) for z in zs])
+    # Collar: a moulded sleeve over the top of the wrap and the bottom of the throat,
+    # ribbed round at LOD0.
+    cax, cay = g["collar_semi_axes_m"]
+    top = g["collar_top_z_m"]
+    profile = [(z1 - 0.003, ax, ay), (z1, cax, cay)]
+    ribs = g["collar_ribs"] if lod == 0 else 0
+    if ribs:
+        pitch = (top - 0.002 - z1) / ribs
+        for k in range(ribs):
+            zb = z1 + k * pitch
+            profile += [(zb + pitch * 0.3, cax + g["collar_rib_m"], cay + g["collar_rib_m"]),
+                        (zb + pitch * 0.7, cax + g["collar_rib_m"], cay + g["collar_rib_m"]),
+                        (zb + pitch, cax, cay)]
+    profile += [(top - 0.002, cax, cay), (top, cax - 0.0015, cay - 0.0015)]
+    collar = [_ellipse_ring(bm, z, rx, ry, around) for z, rx, ry in profile]
+    _bridge_rings(bm, collar, CAP)
     # Butt cap: flares out from the wrap, a rounded bottom, an accent ring at its top.
     cx, cy = g["cap_semi_axes_m"]
     cap_profile = [(z0 + 0.003, ax, ay, ACCENT), (z0 - 0.001, cx, cy, ACCENT), (z0 - 0.003, cx, cy, CAP),
@@ -318,6 +420,13 @@ def build_lod(job: dict, cfg: dict, lod: int, mats: list, name: str) -> bpy.type
     _grip(bm, cfg, lod)
     _face_away_from(bm, lambda c: Vector((0.0, 0.0, c.z)))
     parts.append(bc.mesh_object("RacketGrip", bm, mats))
+    bm = bmesh.new()
+    _strap(bm, cfg, lod)
+    if bm.faces:
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        parts.append(bc.mesh_object("RacketStrap", bm, mats))
+    else:
+        bm.free()
     bc.select_only([body] + parts)
     bpy.ops.object.join()
     body.name = name
@@ -338,16 +447,24 @@ def inward_faces(obj: bpy.types.Object, cfg: dict) -> int:
     each one is a hole in the shell (the butt cap was inside out once)."""
     names = [m.name if m else "" for m in obj.data.materials]
     centre = Vector((0.0, 0.0, layout.widest(cfg)[1] - 0.04))
-    handle_top = cfg["grip"]["tape_top_z_m"] + 0.002
+    handle_top = cfg["grip"]["collar_top_z_m"] + 0.002
     count = 0
     for p in obj.data.polygons:
         name, c, n = names[p.material_index], p.center, p.normal
         if name == "MI_Racket_Bumper":
             count += n.dot(c - centre) < -1e-6
-        elif name in ("MI_Racket_Grip", "MI_Racket_Cap", "MI_Racket_Accent") and c.z < handle_top:
+        elif name in ("MI_Racket_Grip", "MI_Racket_Cap", "MI_Racket_Accent") and cfg["frame"]["butt_z_m"] - 1e-4 < c.z < handle_top:
             radial = Vector((c.x, c.y, 0.0))
             count += (n.z > 0.0) if radial.length < 0.01 and abs(n.z) > 0.95 else n.dot(radial) < -1e-6
     return count
+
+
+def racket_bounds(obj: bpy.types.Object) -> tuple[list[float], list[float]]:
+    """Bounds of everything but the strap: the regulation size is the racket's."""
+    names = [m.name if m else "" for m in obj.data.materials]
+    used = {v for p in obj.data.polygons if names[p.material_index] != "MI_Racket_Strap" for v in p.vertices}
+    cos = [obj.data.vertices[i].co for i in used]
+    return [min(c[k] for c in cos) for k in range(3)], [max(c[k] for c in cos) for k in range(3)]
 
 
 def main() -> None:
@@ -357,7 +474,8 @@ def main() -> None:
     cfg = layout.load_config()
     bc.write_report(job, objects, {"lod_triangles": [bc.triangle_count(o) for o in lods],
                                    "holes": len(layout.hole_centres(cfg)),
-                                   "inward_faces": [inward_faces(o, cfg) for o in objects + lods]})
+                                   "inward_faces": [inward_faces(o, cfg) for o in objects + lods],
+                                   "racket_bounds_m": [racket_bounds(o) for o in objects + lods]})
     bc.export_fbx(objects, Path(job["out"]))
     for obj, out in zip(lods, job.get("lod_outs", [])):
         bc.export_fbx([obj], Path(out))

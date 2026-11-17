@@ -36,9 +36,11 @@ SourceArt/Equipment/SM_Ball_LOD1.fbx,procedural: Tools/AssetPipeline/blender/bui
 SourceArt/Equipment/SM_Ball_LOD2.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),LOD2 of SM_Ball
 SourceArt/Equipment/SM_BallTrail.fbx,procedural: Tools/AssetPipeline/blender/build_equipment.py,original (this repo),"static mesh, 240 tris; Unreal: /Game/Padel/Equipment/SM_BallTrail"
 SourceArt/Textures/T_Racket_Masks.png,procedural: Tools/AssetPipeline/asset_lib/racket_textures.py (config/racket.json),original (this repo),texture
+SourceArt/Textures/T_RacketFrame_Masks.png,procedural: Tools/AssetPipeline/asset_lib/racket_textures.py (config/racket.json),original (this repo),texture
+SourceArt/Textures/T_RacketGrip_Masks.png,procedural: Tools/AssetPipeline/asset_lib/racket_textures.py (config/racket.json),original (this repo),texture
 SourceArt/Textures/T_CarbonWeave_Mask.png,procedural: Tools/AssetPipeline/asset_lib/racket_textures.py (config/racket.json),original (this repo),texture
 SourceArt/Textures/T_RacketGrit_N.png,procedural: Tools/AssetPipeline/asset_lib/racket_textures.py (config/racket.json),original (this repo),texture
-SourceArt/Equipment/SM_Racket.fbx,procedural: Tools/AssetPipeline/blender/build_racket.py,original (this repo),"static mesh, 19984 tris, LODs [5142, 714]; Unreal: /Game/Padel/Equipment/SM_Racket"
+SourceArt/Equipment/SM_Racket.fbx,procedural: Tools/AssetPipeline/blender/build_racket.py,original (this repo),"static mesh, 22452 tris, LODs [6242, 582]; Unreal: /Game/Padel/Equipment/SM_Racket"
 SourceArt/Equipment/SM_Racket_LOD1.fbx,procedural: Tools/AssetPipeline/blender/build_racket.py,original (this repo),LOD1 of SM_Racket
 SourceArt/Equipment/SM_Racket_LOD2.fbx,procedural: Tools/AssetPipeline/blender/build_racket.py,original (this repo),LOD2 of SM_Racket
 SourceArt/Fonts/Barlow-Medium.ttf,"Barlow by Jeremy Tribby, github.com/jpt/barlow",SIL Open Font License 1.1 (SourceArt/Fonts/OFL.txt),"menu font, Type.Body/BodySmall; loaded at runtime by PadelUiTokens"
