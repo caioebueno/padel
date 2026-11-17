@@ -163,6 +163,16 @@ def build_retargeter(source: unreal.IKRigDefinition, target: unreal.IKRigDefinit
     ctrl.add_default_ops()
     ctrl.assign_ik_rig_to_all_ops(SOURCE, source)
     ctrl.assign_ik_rig_to_all_ops(TARGET, target)
+    # The MetaHuman rides on the placeholder's component (0006), so it has no root motion of its
+    # own. With the placeholder as source, the default Root Motion op put the MetaHuman's pelvis
+    # joint on its root (the floor) and pushed the hips' height into spine_01. The body barely
+    # shows it, but the outfit is skinned to the pelvis and was dragged down into a flap between
+    # the knees (Padel.Animation.MetaHumanPelvis).
+    root_motion = ctrl.get_index_of_op_by_name("Root Motion")
+    if root_motion >= 0:
+        ctrl.remove_retarget_op(root_motion)
+    else:
+        fail("retargeter: no Root Motion op among the default ops; check that the pelvis still retargets")
     ctrl.auto_map_chains(unreal.AutoMapChainType.FUZZY, True)
     # The placeholder is in a T-pose and MetaHumans in an A-pose: line the source's chains up
     # with the target's so the arms don't come out raised.
