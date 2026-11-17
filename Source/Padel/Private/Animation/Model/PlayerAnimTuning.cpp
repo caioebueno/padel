@@ -80,6 +80,10 @@ namespace Padel::Animation
 		{
 			Out.push_back(W + ": LeanMaxDeg <= 30, FacingMaxChestTwistDeg <= 60 and FacingMaxHeadTwistDeg <= 80");
 		}
+		if (BackRunTurnDeg < 45.0 || BackRunTurnDeg > 180.0)
+		{
+			Out.push_back(W + ": BackRunTurnDeg must be 45 to 180");
+		}
 		if (GlassBackTurnDeg < 0.0 || GlassBackTurnDeg > 180.0 || GlassSideTurnDeg < 0.0 || GlassSideTurnDeg > 180.0)
 		{
 			Out.push_back(W + ": GlassBackTurnDeg and GlassSideTurnDeg must be 0 to 180");

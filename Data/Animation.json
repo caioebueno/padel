@@ -17,6 +17,7 @@
 		"FacingTurnRateDegPerS": 540.0,
 		"GlassBackTurnDeg": 80.0,
 		"GlassSideTurnDeg": 50.0,
+		"BackRunTurnDeg": 110.0,
 		"Stances": [
 			{
 				"Name": "Relaxed",

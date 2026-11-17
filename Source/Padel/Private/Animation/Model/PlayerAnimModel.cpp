@@ -217,6 +217,17 @@ namespace Padel::Animation
 		if (bRunning && In.Phase == ESwingPhase::Idle)
 		{
 			Want = std::atan2(In.Velocity.Y, In.Velocity.X) * RadToDeg;
+			// P1b (the motion catalogue, "lob over the net player"): going back with a ball to
+			// watch, real players don't turn their back on it. They turn side-on, racket shoulder
+			// back, and cross over, the head on the ball; the body turns at most BackRunTurnDeg
+			// from square to the net.
+			const double Back = -DotProduct(In.Velocity, Forward);
+			if (WatchesBall(In) && Back > 0.0 && Back >= 0.7 * Speed)
+			{
+				const double T = S.BackRunTurnDeg / RadToDeg;
+				const FVec3 Dir = Add(Scale(Forward, std::cos(T)), Scale(Right, std::sin(T) * Sign(In.ForehandSign)));
+				Want = std::atan2(Dir.Y, Dir.X) * RadToDeg;
+			}
 		}
 		else if (In.GlassWall != EGlassWall::None && In.Phase == ESwingPhase::Idle)
 		{

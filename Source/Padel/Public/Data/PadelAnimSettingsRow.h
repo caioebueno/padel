@@ -45,6 +45,8 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	/** N1c: degrees the body turns side-on from square to the net while it waits on a ball off the back glass, and off a side glass. */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double GlassBackTurnDeg = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double GlassSideTurnDeg = 0.0;
+	/** P1b: degrees the body turns from square to the net running back with a ball to watch (side-on, racket shoulder back). */
+	UPROPERTY(EditAnywhere, Category = "Locomotion") double BackRunTurnDeg = 0.0;
 	/** P1 stances (one per Padel::Animation::EStance), the rally's net and back zones, and the stance spring. */
 	UPROPERTY(EditAnywhere, Category = "Stance") TArray<FPadelStanceRow> Stances;
 	UPROPERTY(EditAnywhere, Category = "Stance") double StanceNetUntilM = 0.0;

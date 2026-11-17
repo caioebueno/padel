@@ -19,6 +19,7 @@ Padel::Animation::FAnimSettings FPadelAnimSettingsRow::ToCore() const
 	Out.FacingTurnRateDegPerS = FacingTurnRateDegPerS;
 	Out.GlassBackTurnDeg = GlassBackTurnDeg;
 	Out.GlassSideTurnDeg = GlassSideTurnDeg;
+	Out.BackRunTurnDeg = BackRunTurnDeg;
 	for (const FPadelStanceRow& Row : Stances)
 	{
 		Padel::Animation::EStance Stance;
