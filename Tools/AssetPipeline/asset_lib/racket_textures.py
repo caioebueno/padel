@@ -2,10 +2,13 @@
 graphic design are in config/racket.json; positions come from racket_layout.py.
 
   T_Racket_Masks      the face graphic over a square of the face (racket_layout.face_uv),
-                      linear RGBA: R = paint panel, G = accent (the keystone, the pinstripe
-                      and the panel's edge line), B = ink (the OSTREL wordmark, the model
-                      name and the fine print), A = holes (only drawn by LOD2, which has
-                      no hole geometry)
+                      linear RGBA: R = the arch emblem's silver stones, G = accent (the
+                      keystone, the chevron and the shoulder lines), B = ink (the OSTREL
+                      wordmark, the model name and the fine print), A = holes (only drawn
+                      by LOD2, which has no hole geometry)
+  T_RacketFrame_Masks the frame's edge unrolled (U round the outline from the neck, V across
+                      the thickness): OSTREL down each side in G
+  T_RacketGrip_Masks  the overgrip unrolled (U round, V along): its perforation dots in G
   T_CarbonWeave_Mask  one tile of 2x2 twill carbon: how bright each tow looks, so the bare
                       carbon catches the light tow by tow
   T_RacketGrit_N      one tile of the raised sand finish (the face's 3D texture),
@@ -132,57 +135,119 @@ class Canvas:
         return tuple(int(round(255 * max(0.0, min(1.0, c[i])))) for c in self.channels)  # type: ignore[return-value]
 
 
+def _fill_polygon(canvas: Canvas, ch: int, poly: list[Point]) -> None:
+    xs, zs = [p[0] for p in poly], [p[1] for p in poly]
+
+    def inside(x: float, z: float) -> float:
+        d = layout.distance_to_polyline((x, z), poly)
+        return d if layout.point_in_polygon((x, z), poly) else -d
+
+    canvas.fill(ch, inside, (min(xs), min(zs), max(xs), max(zs)))
+
+
 def draw_face(cfg: dict) -> Canvas:
     g = cfg["graphics"]
     canvas = Canvas(cfg)
     R, G, B, A = range(4)
-    half_w = layout.widest(cfg)[0] + 0.01
 
-    # The paint panel: everything below a line rising from left to right across the
-    # lower head (so the arms and the throat are painted too).
-    panel = g["panel"]
-    zl, zr = panel["left_top_z_m"], panel["right_top_z_m"]
+    # The arch emblem: silver stones, the keystone in the accent colour.
+    stones = layout.arch_stones(cfg)
+    key = cfg["graphics"]["arch"]["stones"] // 2
+    for i, stone in enumerate(stones):
+        _fill_polygon(canvas, G if i == key else R, stone)
 
-    def panel_edge(x: float) -> float:
-        return zl + (zr - zl) * (x + half_w) / (2 * half_w)
-
-    slope = (zr - zl) / (2 * half_w)
-    cos_s = 1 / math.sqrt(1 + slope * slope)
-    canvas.fill(R, lambda x, z: min((panel_edge(x) - z) * cos_s, z - panel["bottom_z_m"]),
-                (-half_w, panel["bottom_z_m"], half_w, max(zl, zr)))
-    # A fine accent line just above the panel's edge.
-    canvas.stroke(G, [(-half_w, zl + 0.0035), (half_w, zr + 0.0035)], g["pinstripe_m"])
-
-    # The keystone round the sweet spot.
-    k = g["keystone"]
-    stone = layout.keystone(cfg)
-    canvas.stroke(G, stone + stone[:1], k["stroke_m"])
-    for p in stone:
-        canvas.disc(G, p, k["stroke_m"] / 2)
-
-    # Pinstripe inside the frame edge, round the head only (the arms are too narrow).
-    inner = layout.offset(layout.outline(cfg, 360), g["pinstripe_inset_m"])
-    run: list[Point] = []
-    for p in inner + inner[:1]:
-        if p[1] > panel_edge(p[0]) + 0.006:
-            run.append(p)
-        elif run:
-            canvas.stroke(G, run, g["pinstripe_m"])
-            run = []
-    if run:
-        canvas.stroke(G, run, g["pinstripe_m"])
+    # The chevron along the bottom of the face, and a short line on each shoulder.
+    canvas.stroke(G, layout.chevron(cfg), g["chevron"]["stroke_m"])
+    sh = g["shoulder"]
+    inner = layout.offset(layout.outline(cfg, 360), sh["inset_m"])
+    for side in (-1, 1):
+        run = sorted((p for p in inner if p[0] * side > 0 and sh["z_m"][0] <= p[1] <= sh["z_m"][1]), key=lambda p: p[1])
+        canvas.stroke(G, run, sh["stroke_m"])
 
     # The wordmark, the model name and the fine print at the tip, in ink.
     brand = cfg["brand"]
-    for text, spec, slant in ((brand["name"], g["wordmark"], 0.16), (brand["model"], g["model"], 0.0),
-                              (brand["tag"], g["tag"], 0.0)):
-        for s in text_strokes(text, (0.0, spec["centre_z_m"]), spec["cap_m"], spec["tracking"], slant):
-            canvas.stroke(B, s, spec["stroke_m"])
+    for text, spec in ((brand["name"], g["wordmark"]), (brand["model"], g["model"]), (brand["tag"], g["tag"])):
+        for stroke in text_strokes(text, (0.0, spec["centre_z_m"]), spec["cap_m"], spec["tracking"], spec.get("slant", 0.0)):
+            canvas.stroke(B, stroke, spec["stroke_m"])
 
     # Holes, a little smaller than the drilled ones so LOD0 shows no dark ring round them.
     r = cfg["holes"]["diameter_m"] / 2 - 0.0004
     for c in layout.hole_centres(cfg):
         canvas.disc(A, c, r)
+    return canvas
+
+
+class StripCanvas:
+    """Float coverage over an unrolled strip: w x h pixels covering width_m x height_m,
+    wrapping in U. Points are (u_m, v_m) from the top-left corner."""
+
+    def __init__(self, w: int, h: int, width_m: float, height_m: float) -> None:
+        self.w, self.h = w, h
+        self.width_m, self.height_m = width_m, height_m
+        self.channels = [[0.0] * (w * h) for _ in range(4)]
+
+    def stroke(self, ch: int, polyline: list[Point], width: float) -> None:
+        half = width / 2
+        px = self.width_m / self.w
+        py = self.height_m / self.h
+        for a, b in zip(polyline, polyline[1:]):
+            c0 = int((min(a[0], b[0]) - half) / px) - 1
+            c1 = int((max(a[0], b[0]) + half) / px) + 2
+            r0 = max(0, int((min(a[1], b[1]) - half) / py) - 1)
+            r1 = min(self.h, int((max(a[1], b[1]) + half) / py) + 2)
+            for row in range(r0, r1):
+                for col in range(c0, c1):
+                    p = ((col + 0.5) * px, (row + 0.5) * py)
+                    d = layout._segment_distance(p, a, b)
+                    i = row * self.w + col % self.w
+                    v = min(1.0, (half - d) / min(px, py) + 0.5)
+                    if v > self.channels[ch][i]:
+                        self.channels[ch][i] = v
+
+    def disc(self, ch: int, centre: Point, radius: float) -> None:
+        self.stroke(ch, [centre, (centre[0] + 1e-6, centre[1])], 2 * radius)
+
+    def pixel(self, x: int, y: int) -> tuple[int, int, int, int]:
+        i = y * self.w + x
+        return tuple(int(round(255 * max(0.0, min(1.0, c[i])))) for c in self.channels)  # type: ignore[return-value]
+
+
+def draw_frame(cfg: dict) -> StripCanvas:
+    """OSTREL along each side of the frame, centred at frame_text.centre_z_m and read
+    from the throat towards the tip on both sides (so on one side it runs with U and on
+    the other against it). V runs across the thickness, the letters' height."""
+    w, h = cfg["textures"]["frame_px"]
+    length = layout.perimeter(cfg)
+    thick = cfg["frame"]["thickness_m"]
+    canvas = StripCanvas(w, h, length, thick)
+    spec = cfg["graphics"]["frame_text"]
+    param = layout.edge_param(cfg)
+    zc = spec["centre_z_m"]
+    for side in (1, -1):
+        u = layout.edge_u(cfg, side * layout.half_width_at(cfg, zc), zc, param) * length
+        # The neck is U = 0 and the outline runs CCW, so the right side (+X) climbs with U.
+        sign = 1.0 if side > 0 else -1.0
+        for stroke in text_strokes(cfg["brand"]["name"], (0.0, 0.0), spec["cap_m"], spec["tracking"], 0.12):
+            canvas.stroke(1, [(u + sign * x, thick / 2 - sign * z) for x, z in stroke], spec["stroke_m"])
+    return canvas
+
+
+def draw_grip(cfg: dict) -> StripCanvas:
+    """Perforation dots on the overgrip: staggered rows with a little seeded jitter."""
+    n = int(cfg["textures"]["grip_px"])
+    d = cfg["graphics"]["grip_dots"]
+    gr = cfg["grip"]
+    ax, ay = gr["semi_axes_m"]
+    around = math.pi * (3 * (ax + ay) - math.sqrt((3 * ax + ay) * (ax + 3 * ay)))
+    along = gr["wrap_top_z_m"] - gr["wrap_bottom_z_m"]
+    canvas = StripCanvas(n, n, around, along)
+    rng = random.Random(cfg["seed"] + 7)
+    rows, per = int(d["rows"]), int(d["per_row"])
+    for i in range(rows):
+        for j in range(per):
+            u = (j + (0.5 if i % 2 else 0.0) + rng.uniform(-d["jitter"], d["jitter"])) / per * around
+            v = (i + 0.5 + rng.uniform(-d["jitter"], d["jitter"])) / rows * along
+            canvas.disc(1, (u, v), d["radius_m"] * rng.uniform(0.8, 1.2))
     return canvas
 
 
@@ -250,6 +315,8 @@ def generate_all(out_dir: Path, cfg: dict | None = None) -> list[Path]:
     canvas = draw_face(cfg)
     n = canvas.n
     paths = [write_png(out_dir / "T_Racket_Masks.png", n, n, 4, canvas.pixel)]
+    for name, strip in (("T_RacketFrame_Masks", draw_frame(cfg)), ("T_RacketGrip_Masks", draw_grip(cfg))):
+        paths.append(write_png(out_dir / f"{name}.png", strip.w, strip.h, 4, strip.pixel))
 
     wsize, weave = weave_tile(cfg)
     paths.append(write_png(out_dir / "T_CarbonWeave_Mask.png", wsize, wsize, 1,

@@ -232,68 +232,90 @@
   "racket": {
     "Face": {
       "master": "RacketFace",
-      "_note": "The hitting faces: bare 2x2 twill carbon (T_CarbonWeave_Mask) under the original graphic in T_Racket_Masks (paint panel, accent keystone and lines, white ink), all under a raised sand finish (T_RacketGrit_N) that is rougher than the lacquer. color is the carbon; the others are the graphic's inks.",
-      "color": "#17191d",
-      "roughness": 0.32,
-      "paint_color": "#1fa79a",
-      "paint_roughness": 0.4,
-      "accent_color": "#ff5537",
-      "ink_color": "#eeeeea",
-      "hole_color": "#8f8c84",
-      "weave_contrast": 0.35,
-      "grit_roughness": 0.58,
-      "grit_amount": 0.55,
-      "grit_normal_strength": 0.8,
+      "_note": "The hitting faces: bare 2x2 twill carbon (T_CarbonWeave_Mask, 12K-size tows) under the original graphic in T_Racket_Masks (the silver arch emblem, the volt keystone and lines, white ink), all under a raised sand finish (T_RacketGrit_N) that is rougher than the lacquer. color is the carbon; the others are the graphic's inks.",
+      "color": "#1b1d21",
+      "roughness": 0.3,
+      "paint_color": "#a9adb1",
+      "paint_roughness": 0.36,
+      "accent_color": "#c8f230",
+      "ink_color": "#f0f0ec",
+      "hole_color": "#0d0e10",
+      "weave_contrast": 0.55,
+      "grit_roughness": 0.55,
+      "grit_amount": 0.5,
+      "grit_normal_strength": 0.75,
       "specular": 0.5,
       "detail_fade_start_m": 1.5,
       "detail_fade_end_m": 8.0
     },
     "Frame": {
-      "master": "Opaque",
-      "_note": "Gloss-lacquered carbon tube round the edge and the throat.",
-      "color": "#141518",
-      "roughness": 0.24,
-      "specular": 0.55
+      "master": "RacketFace",
+      "_note": "Gloss-lacquered carbon tube round the edge and the throat, lettered in volt (T_RacketFrame_Masks, the edge unrolled). No sand finish and no weave: from a step away the lacquer reads as solid black.",
+      "color": "#0f1013",
+      "roughness": 0.2,
+      "accent_color": "#c8f230",
+      "specular": 0.55,
+      "weave_contrast": 0.0,
+      "grit_amount": 0.0,
+      "grit_normal_strength": 0.0,
+      "masks": "T_RacketFrame_Masks",
+      "weave_tiles": 60.0,
+      "grit_tiles": 1.0
     },
     "Core": {
       "master": "Opaque",
-      "_note": "The EVA foam core, seen in the walls of the holes.",
-      "color": "#d9d6cb",
-      "roughness": 0.88,
+      "_note": "The black EVA foam core, seen in the walls of the holes.",
+      "color": "#16171a",
+      "roughness": 0.9,
       "specular": 0.3
     },
     "Bumper": {
       "master": "Opaque",
-      "_note": "Smoked rubber protector over the top of the frame.",
-      "color": "#2a2c30",
-      "roughness": 0.62,
+      "_note": "Matt black protector band over the top of the frame.",
+      "color": "#1c1d20",
+      "roughness": 0.66,
       "specular": 0.4
     },
     "Metal": {
       "master": "Opaque",
-      "_note": "Bead-blasted titanium-grey alloy: the weight cartridge and the shoulder ports.",
-      "color": "#9aa0a6",
-      "roughness": 0.34,
+      "_note": "Bead-blasted dark alloy: the weight slot at the tip.",
+      "color": "#5d6166",
+      "roughness": 0.36,
       "metallic": 1.0
     },
     "Accent": {
       "master": "Opaque",
-      "_note": "The design's coral: the finishing tape, the port rings and the butt cap's ring.",
-      "color": "#ff5537",
+      "_note": "The design's volt: the butt cap's ring.",
+      "color": "#c8f230",
       "roughness": 0.45
     },
     "Grip": {
-      "master": "Opaque",
-      "_note": "White perforated overgrip, slightly tacky.",
-      "color": "#ecebe5",
-      "roughness": 0.82,
-      "specular": 0.35
+      "master": "RacketFace",
+      "_note": "Black perforated overgrip, slightly tacky, its perforation dots printed in volt (T_RacketGrip_Masks, the wrap unrolled).",
+      "color": "#141517",
+      "roughness": 0.84,
+      "paint_roughness": 0.84,
+      "accent_color": "#c8f230",
+      "specular": 0.35,
+      "weave_contrast": 0.0,
+      "grit_amount": 0.0,
+      "grit_normal_strength": 0.0,
+      "masks": "T_RacketGrip_Masks",
+      "weave_tiles": 1.0,
+      "grit_tiles": 1.0
     },
     "Cap": {
       "master": "Opaque",
-      "_note": "Moulded butt cap and the cartridge's screws.",
-      "color": "#1a1b1e",
-      "roughness": 0.42
+      "_note": "Moulded collar, butt cap, slider and screws: gloss black.",
+      "color": "#15161a",
+      "roughness": 0.32
+    },
+    "Strap": {
+      "master": "Opaque",
+      "_note": "Woven nylon wrist strap.",
+      "color": "#121315",
+      "roughness": 0.78,
+      "specular": 0.3
     }
   },
   "team_a": {

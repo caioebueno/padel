@@ -93,22 +93,31 @@ class BlenderBuildTest(unittest.TestCase):
     def test_racket_is_within_the_regulation_size(self) -> None:
         asset = self.cat.get("Racket")
         report, fbx = self.build("Racket", "build_racket")
-        x, y, z = self.extent(fbx)
+        cfg = self.cfg_racket()
+        # The regulation size is the racket's; the wrist strap hangs below it.
+        bounds = report["racket_bounds_m"]
+        lo, hi = bounds[0]
+        x, y, z = (b - a for a, b in zip(lo, hi))
         # GDD 2: at most 455 x 260 mm, built to the limit like a real racket. Only the butt
         # cap is thicker than the 38 mm frame (racket_layout checks the frame itself).
         self.assertLessEqual(z, 0.455 + 1e-3)
         self.assertGreater(z, 0.45)
         self.assertLessEqual(x, 0.26 + 1e-3)
         self.assertGreater(x, 0.255)
-        self.assertLessEqual(y, 2 * self.cfg_racket()["grip"]["cap_semi_axes_m"][1] + 1e-3)
+        self.assertLessEqual(y, 2 * cfg["grip"]["cap_semi_axes_m"][1] + 1e-3)
         # Grip centre on the origin (README conventions): butt 75 mm below, the head up +Z.
-        self.assertAlmostEqual(fbx["bounds_min_m"][2], -0.075, delta=1e-3)
-        self.assertAlmostEqual(fbx["bounds_min_m"][0] + fbx["bounds_max_m"][0], 0.0, delta=1e-3)
-        self.assertAlmostEqual(fbx["bounds_min_m"][1] + fbx["bounds_max_m"][1], 0.0, delta=2e-3)
+        self.assertAlmostEqual(lo[2], -0.075, delta=1e-3)
+        self.assertAlmostEqual(lo[0] + hi[0], 0.0, delta=1e-3)
+        self.assertAlmostEqual(lo[1] + hi[1], 0.0, delta=2e-3)
+        # The strap loop hangs from the butt, no further than its loop.
+        self.assertLess(fbx["bounds_min_m"][2], lo[2])
+        self.assertGreater(fbx["bounds_min_m"][2], lo[2] - cfg["strap"]["loop_length_m"] - 0.01)
+        self.assertAlmostEqual(fbx["bounds_max_m"][2], hi[2], delta=1e-3)
         self.assertLessEqual(report["triangles"], asset.budget_tris)
         self.assertEqual(set(fbx["materials"]), {f"MI_Racket_{n}" for n in
-                                                 ("Face", "Frame", "Core", "Bumper", "Metal", "Accent", "Grip", "Cap")})
-        # Open surfaces (bumper, overgrip, tape, butt cap) face out on every LOD: Unreal
+                                                 ("Face", "Frame", "Core", "Bumper", "Metal", "Accent", "Grip", "Cap",
+                                                  "Strap")})
+        # Open surfaces (bumper, overgrip, collar, butt cap) face out on every LOD: Unreal
         # culls back faces, and an inside-out butt cap shipped once.
         self.assertEqual(report["inward_faces"], [0] * (1 + len(asset.lods)))
         # Built LODs, each a good deal lighter than the one before, and all in the FBXs.
@@ -117,8 +126,9 @@ class BlenderBuildTest(unittest.TestCase):
         for bigger, smaller in zip(tris, tris[1:]):
             self.assertLess(smaller, bigger * 0.5)
         for i in range(1, len(asset.lods) + 1):
-            lod = blender_runner.run("inspect_fbx", {"file": str(self.out / f"SM_Racket_LOD{i}.fbx")})
-            for a, b in zip(self.extent(lod), (x, y, z)):
+            self.assertTrue((self.out / f"SM_Racket_LOD{i}.fbx").exists())
+            lod_lo, lod_hi = bounds[i]
+            for a, b in zip((h - l for l, h in zip(lod_lo, lod_hi)), (x, y, z)):
                 self.assertAlmostEqual(a, b, delta=0.004)
 
     def test_net_matches_courtspec(self) -> None:

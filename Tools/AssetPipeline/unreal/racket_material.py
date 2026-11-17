@@ -1,7 +1,8 @@
-"""The racket face's master material (docs/decisions/0008-racket.md). Built from text by
-import_assets.py like every other master; never edit the asset by hand. The rest of the
-racket (frame, foam core, bumper, alloy, tape, overgrip, cap) uses M_PadelOpaque with
-palette.json 'racket' values.
+"""The racket's printed-carbon master material (docs/decisions/0008-racket.md). Built from
+text by import_assets.py like every other master; never edit the asset by hand. The
+face, the lettered frame and the dotted overgrip are instances of it, each with its own
+RacketMasks texture (palette.json 'racket' "masks"); the foam core, protector, alloy,
+cap and strap use M_PadelOpaque.
 
   M_PadelRacketFace  the hitting faces and the front of the rounded edges:
     carbon = BaseColor * (1 - WeaveContrast + 2 WeaveContrast * weave)   bare 2x2 twill
@@ -94,12 +95,19 @@ def build_face(mat: unreal.Material, material_dir: str, cfg: dict) -> None:
 # specular are set by import_assets.build_instances like every other master).
 INSTANCE_SCALARS = {"paint_roughness": "PaintRoughness", "grit_roughness": "GritRoughness", "grit_amount": "GritAmount",
                     "grit_normal_strength": "GritNormalStrength", "weave_contrast": "WeaveContrast",
-                    "detail_fade_start_m": "DetailFadeStart", "detail_fade_end_m": "DetailFadeEnd"}
+                    "detail_fade_start_m": "DetailFadeStart", "detail_fade_end_m": "DetailFadeEnd",
+                    "weave_tiles": "WeaveTiles", "grit_tiles": "GritTiles"}
 INSTANCE_VECTORS = {"paint_color": "PaintColor", "accent_color": "AccentColor", "ink_color": "InkColor",
                     "hole_color": "HoleColor"}
 
 
-def apply_instance(mi, settings: dict, linear) -> None:
+def apply_instance(mi, settings: dict, linear, material_dir: str = "", fail=print) -> None:
+    if "masks" in settings:
+        tex = unreal.load_asset(f"{material_dir}/{settings['masks']}")
+        if tex is None:
+            fail(f"{mi.get_name()}: texture {settings['masks']} not imported")
+        else:
+            MEL.set_material_instance_texture_parameter_value(mi, "RacketMasks", tex)
     for key, param in INSTANCE_SCALARS.items():
         if key in settings:
             MEL.set_material_instance_scalar_parameter_value(mi, param, float(settings[key]))

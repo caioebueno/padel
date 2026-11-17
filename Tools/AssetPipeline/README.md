@@ -47,23 +47,22 @@ That command does three things:
 
 ## Racket
 
-`build_racket.py` builds `SM_Racket` from `config/racket.json`. `asset_lib/racket_layout.py` lays out the outline, the heart windows, the holes and the face graphic. `asset_lib/racket_textures.py` draws the textures. Both are tested without Blender in `tests/test_racket.py`.
+`build_racket.py` builds `SM_Racket` from `config/racket.json`. `asset_lib/racket_layout.py` lays out the outline, the heart, the holes, the face graphic and the edge's arc length. `asset_lib/racket_textures.py` draws the textures. Both are tested without Blender in `tests/test_racket.py`.
 
-- **Mesh.** The frame is a 2D curve, filled, extruded to 38 mm and given a 6 mm round edge. The outline is inset and the windows are grown by that radius, so the bevel lands on the drawn shape. The holes are boolean-drilled through it. Added on top:
-  - the bumper over the tip;
-  - the weight cartridge in the throat;
-  - two recessed weight ports at the shoulders;
-  - the oval handle with a helix overgrip, its tape and the butt cap.
+- **Mesh.** The frame is a 2D curve, a pro-style teardrop with a broad flat top and long tapering throat, filled, extruded to 38 mm and given a 6 mm round edge. The outline is inset and the heart is grown by that radius, so the bevel lands on the drawn shape. The 66 holes (12 mm) are boolean-drilled through it. Added on top:
+  - the bumper over the tip, and a recessed weight slot with two screws in it at the top;
+  - one open V-shaped heart between the arms;
+  - the oval handle with its overgrip, a ribbed collar where it meets the throat and the butt cap;
+  - the wrist strap, a flat cord looped through the butt and a slider.
 
-  LOD1 and LOD2 are rebuilt with fewer outline points and segments, not decimated. LOD2 keeps the holes as texture only. The grip centre sits on the origin.
-- **Textures.** `T_Racket_Masks` (RGBA, uncompressed) is drawn in the face's UVs (0.305 m square, mirrored on the +Y face so the lettering reads from both sides):
-  - R: the paint panel;
-  - G: the accent lines and the keystone;
-  - B: the lettering;
-  - A: the holes, for LOD2.
+  LOD1 and LOD2 are rebuilt with fewer outline points and segments, not decimated (LOD2 keeps the holes as texture only, and has no strap slider). The grip centre sits on the origin; the regulation size (`racket_bounds_m` in the build report) leaves out the strap, which hangs below the butt.
+- **Textures.** Each is uncompressed and clamped:
+  - `T_Racket_Masks` (RGBA) is drawn in the face's UVs (0.305 m square, mirrored on the +Y face so the lettering reads from both sides). R is the silver arch emblem, G the volt keystone, chevron and shoulder lines, B the lettering, A the holes for LOD2.
+  - `T_RacketFrame_Masks` is drawn along the edge: U is the arc length round the outline from the neck, V across the 38 mm. G carries the lettering on each side.
+  - `T_RacketGrip_Masks` is the overgrip's dots: U round the wrap, V along it.
 
   `T_CarbonWeave_Mask` is one tile of 2 × 2 twill. `T_RacketGrit_N` is the sand finish.
-- **Material** (`unreal/racket_material.py`). `M_PadelRacketFace` lays the paint, the accent and the ink over a dark carbon base. Below the paint it shows the weave, and over all of it the grit normal and roughness. The grit and weave fade out between 1.5 m and 8 m, where they would only shimmer. The other slots are plain `M_PadelOpaque` instances.
+- **Material** (`unreal/racket_material.py`). `M_PadelRacketFace` lays the paint, the accent and the ink over a dark carbon base, with the weave showing through, and the grit normal and roughness over it. The grit and weave fade out between 1.5 m and 8 m, where they would only shimmer. The face, the frame and the grip are instances of it, each with its own masks texture (palette `"masks"`) and tiling; the other slots are plain `M_PadelOpaque` instances.
 - **Preview.** `pipeline.py preview-racket out.png [--shot hero|closeup|lods]` renders it in Cycles with the same textures.
 
 ## Setup

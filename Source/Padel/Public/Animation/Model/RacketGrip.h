@@ -39,7 +39,7 @@ namespace Padel::Animation
 		std::string Mesh = "/Game/Padel/Equipment/SM_Racket.SM_Racket";
 	// The middle of the hitting face up the handle from the grip centre (the mesh's origin):
 	// where the placeholder swing arc puts the face before there is a skeletal body.
-	double FaceCentreM = 0.27;
+	double FaceCentreM = 0.26;
 		// Bones the hand's frame is read from. The racket rides Animation.json's RacketBone.
 		std::string ForearmBone = "lowerarm_r";
 		std::string KnuckleBone = "middle_01_r";
