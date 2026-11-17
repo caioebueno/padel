@@ -55,3 +55,25 @@ In `Data/Animation.json`, in this order, checking `stat fps` after each:
 1. `MetaHumanMinLod` from 1 to 2.
 2. Re-assemble the players at **Low** quality.
 3. `MetaHumanIkLodThreshold` from 1 to 0.
+
+## Building all four by script (no Creator clicks)
+
+`Tools/AssetPipeline/unreal/metahuman_build.py` does the whole Creator flow from
+`Tools/AssetPipeline/config/metahumans.json`: a copy of one of the Creator's presets, the player's
+height, hair and facial hair, the default shirt and shorts, Auto-Rig (joints only), the 2K texture
+download and the optimised Medium assembly into the folder `Data/PlayerBodies.json` names. With
+the editor closed (it needs about 10 GB of free memory and a MetaHuman sign-in saved by one
+Auto-Rig in the Creator):
+
+```
+PADEL_MH_QUIT=1 "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor" "$PWD/Padel.uproject" -ExecutePythonScript="$PWD/Tools/AssetPipeline/unreal/metahuman_build.py"
+```
+
+Then run `metahuman_setup.py`. Each player takes about two minutes. A player whose own MetaHuman
+isn't on disk shows `MetaHumanFallbackClass` (Data/Animation.json) in their own kit
+(`ShirtColour`/`ShortsColour` in PlayerBodies.json, applied per player at spawn), so the player you
+control is always a MetaHuman.
+
+**Shoes and socks:** UE 5.8's MetaHuman wardrobe has none, so the game attaches `SM_PadelShoe`
+(built by `Tools/AssetPipeline/blender/build_shoe.py`, a court trainer with a white sock cuff) to
+each MetaHuman's feet, scaled to the foot, and hides the toes so they can't poke through.

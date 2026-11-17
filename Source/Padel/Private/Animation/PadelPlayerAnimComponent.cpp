@@ -13,6 +13,8 @@
 #include "Engine/StaticMesh.h"
 #include "Gameplay/PadelShotUnits.h"
 #include "Engine/World.h"
+#include "AnimationRuntime.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "PadelLog.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -172,6 +174,13 @@ bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
 		return false;
 	}
 	UClass* Class = LoadObject<UClass>(nullptr, *Row->MetaHumanClass, nullptr, LOAD_Quiet | LOAD_NoWarn);
+	FString ClassPath = Row->MetaHumanClass;
+	if (!Class && !Data->MetaHumanFallbackClass.IsEmpty())
+	{
+		// Until every player has their own MetaHuman, one stands in for the rest, in their kit.
+		Class = LoadObject<UClass>(nullptr, *Data->MetaHumanFallbackClass, nullptr, LOAD_Quiet | LOAD_NoWarn);
+		ClassPath = Data->MetaHumanFallbackClass;
+	}
 	UIKRetargeter* Retargeter = LoadObject<UIKRetargeter>(nullptr, *Data->MetaHumanRetargeter, nullptr, LOAD_Quiet | LOAD_NoWarn);
 	UWorld* World = GetWorld();
 	if (!Class || !Class->IsChildOf(AActor::StaticClass()) || !Retargeter || !World)
@@ -241,7 +250,9 @@ bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
 	{
 		DriverAnim->bWarpThisBody = false;
 	}
-	UE_LOG(LogPadel, Log, TEXT("Player %s: showing MetaHuman %s."), *PlayerKey.ToString(), *Row->MetaHumanClass);
+	ApplyKit(*Row);
+	AttachShoes(MetaBody);
+	UE_LOG(LogPadel, Log, TEXT("Player %s: showing MetaHuman %s."), *PlayerKey.ToString(), *ClassPath);
 	return true;
 }
 
@@ -336,6 +347,98 @@ void UPadelPlayerAnimComponent::AttachRacket(USkeletalMeshComponent* To)
 	else if (UPadelMetaHumanAnimInstance* MetaAnim = Cast<UPadelMetaHumanAnimInstance>(To->GetAnimInstance()))
 	{
 		MetaAnim->SetRacketFace(FaceInHand, bLeftHanded);
+	}
+}
+
+void UPadelPlayerAnimComponent::ApplyKit(const FPadelPlayerBodyRow& Row)
+{
+	// MetaHuman garments colour through these two vector parameters (the Creator's default
+	// garment: slots ending in _Shirt and _Short). A shared MetaHuman gets each player's kit
+	// through its own material instances; the asset itself is left alone.
+	static const FName ColourParams[] = { FName(TEXT("diffuse_color_1")), FName(TEXT("diffuse_color_2")) };
+	auto Colour = [](const FString& Hex, FLinearColor& Out)
+	{
+		if (Hex.IsEmpty())
+		{
+			return false;
+		}
+		Out = FLinearColor(FColor::FromHex(Hex));
+		return true;
+	};
+	FLinearColor Shirt, Shorts;
+	const bool bShirt = Colour(Row.ShirtColour, Shirt);
+	const bool bShorts = Colour(Row.ShortsColour, Shorts);
+	if (!MetaHuman || (!bShirt && !bShorts))
+	{
+		return;
+	}
+	TInlineComponentArray<USkinnedMeshComponent*> Meshes(MetaHuman);
+	for (USkinnedMeshComponent* Mesh : Meshes)
+	{
+		const TArray<FName> Slots = Mesh->GetMaterialSlotNames();
+		for (int32 Index = 0; Index < Slots.Num(); ++Index)
+		{
+			const FString Slot = Slots[Index].ToString();
+			const bool bIsShirt = bShirt && Slot.EndsWith(TEXT("_Shirt"));
+			const bool bIsShorts = bShorts && (Slot.EndsWith(TEXT("_Short")) || Slot.EndsWith(TEXT("_Shorts")));
+			if (!bIsShirt && !bIsShorts)
+			{
+				continue;
+			}
+			if (UMaterialInstanceDynamic* Mid = Mesh->CreateAndSetMaterialInstanceDynamic(Index))
+			{
+				for (const FName& Param : ColourParams)
+				{
+					Mid->SetVectorParameterValue(Param, bIsShirt ? Shirt : Shorts);
+				}
+			}
+		}
+	}
+}
+
+void UPadelPlayerAnimComponent::AttachShoes(USkeletalMeshComponent* MetaBody)
+{
+	UStaticMesh* Shoe = Data->MetaHumanShoeMesh.IsEmpty() ? nullptr
+		: LoadObject<UStaticMesh>(nullptr, *Data->MetaHumanShoeMesh, nullptr, LOAD_Quiet | LOAD_NoWarn);
+	if (!Shoe || !MetaBody || !MetaBody->GetSkeletalMeshAsset())
+	{
+		return;
+	}
+	const FReferenceSkeleton& Ref = MetaBody->GetSkeletalMeshAsset()->GetRefSkeleton();
+	for (const TCHAR* Side : { TEXT("l"), TEXT("r") })
+	{
+		const FName FootBone(*FString::Printf(TEXT("foot_%s"), Side));
+		const FName BallBone(*FString::Printf(TEXT("ball_%s"), Side));
+		const int32 Foot = Ref.FindBoneIndex(FootBone);
+		const int32 Ball = Ref.FindBoneIndex(BallBone);
+		if (Foot == INDEX_NONE || Ball == INDEX_NONE)
+		{
+			continue;
+		}
+		// Place the shoe in the reference pose, where the MetaHuman stands on its origin: on the
+		// ground under the ankle, pointing at the ball of the foot, sized to the foot. Then keep
+		// that placement relative to the foot bone, whatever the bone's own axes are.
+		const FTransform FootCS = FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, Foot);
+		const FTransform BallCS = FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, Ball);
+		FVector Forward = BallCS.GetLocation() - FootCS.GetLocation();
+		Forward.Z = 0.0;
+		const double Length = Forward.Size();
+		if (Length < 1.0)
+		{
+			continue;
+		}
+		const double Scale = Length / (Data->ShoeAnkleToBallM * 100.0);
+		const FTransform ShoeCS(FRotationMatrix::MakeFromXZ(Forward / Length, FVector::UpVector).ToQuat(),
+			FVector(FootCS.GetLocation().X, FootCS.GetLocation().Y, 0.0), FVector(Scale));
+
+		UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(MetaHuman);
+		Mesh->SetStaticMesh(Shoe);
+		Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Mesh->SetupAttachment(MetaBody, FootBone);
+		Mesh->SetRelativeTransform(ShoeCS.GetRelativeTransform(FootCS));
+		Mesh->RegisterComponent();
+		// The bare toes would bend through the shoe on every push-off.
+		MetaBody->HideBoneByName(BallBone, EPhysBodyOp::PBO_None);
 	}
 }
 

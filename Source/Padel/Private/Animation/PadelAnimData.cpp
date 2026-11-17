@@ -46,6 +46,13 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.MetaHumanRetargeter = Row->MetaHumanRetargeter;
 		Out.MetaHumanMinLod = Row->MetaHumanMinLod;
 		Out.MetaHumanIkLodThreshold = Row->MetaHumanIkLodThreshold;
+		Out.MetaHumanFallbackClass = Row->MetaHumanFallbackClass;
+		Out.MetaHumanShoeMesh = Row->MetaHumanShoeMesh;
+		Out.ShoeAnkleToBallM = Row->ShoeAnkleToBallM;
+		if (!Row->MetaHumanShoeMesh.IsEmpty() && Row->ShoeAnkleToBallM <= 0.0)
+		{
+			Out.Errors.Add(TEXT("Animation.json: ShoeAnkleToBallM must be above 0 with a MetaHumanShoeMesh"));
+		}
 		Out.IdleAsset = Row->IdleAsset;
 		Out.WalkAssets = Row->WalkAssets;
 		Out.JogAssets = Row->JogAssets;

@@ -1,0 +1,37 @@
+{
+  "_comment": "The slice players as MetaHumans (docs/decisions/0006-metahuman-players.md), built by Tools/AssetPipeline/unreal/metahuman_build.py. Each starts from one of the MetaHuman Creator's own presets (invented faces, not real people), then gets the player's height, hair, facial hair and team kit. 'player' is the row in Data/PlayerBodies.json; its MetaHumanClass says where the build goes.",
+  "players": [
+    {
+      "player": "selva_arunde",
+      "preset": "Mateo",
+      "height_cm": 178,
+      "hair": "Hair/WI_Hair_S_CurlyFade",
+      "beard": "Beards/WI_Beard_S_Full",
+      "build": true
+    },
+    {
+      "player": "mikko_ventara",
+      "preset": "Victor",
+      "height_cm": 186,
+      "hair": "Hair/WI_Hair_S_BuzzCut",
+      "beard": "",
+      "build": true
+    },
+    {
+      "player": "ilan_corvisa",
+      "preset": "",
+      "height_cm": 181,
+      "hair": "",
+      "beard": "",
+      "build": false
+    },
+    {
+      "player": "ruben_halvaro",
+      "preset": "Lorenzo",
+      "height_cm": 179,
+      "hair": "Hair/WI_Hair_S_SlickBack",
+      "beard": "Beards/WI_Beard_S_Stubble",
+      "build": true
+    }
+  ]
+}

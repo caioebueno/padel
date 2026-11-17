@@ -148,6 +148,31 @@
       "_note": "The match racket, the invented Ostrel Keystone (GDD 2: 455 x 260 x 38 mm at most, solid, perforated face; GDD 10): diamond head, carbon face with a raised sand finish, 43 drilled holes, open heart with a bridge, alloy weight cartridge and shoulder ports, rubber bumper, overgrip. Layout and graphic in config/racket.json, colours in palette.json 'racket'. Hand-built LODs, not Nanite: it is small, moves with the hand every frame, and the broadcast camera sees it a few dozen pixels long. See docs/decisions/0008-racket.md."
     },
     {
+      "id": "PadelShoe",
+      "kind": "static",
+      "category": "Characters",
+      "source": "procedural",
+      "builder": "shoe",
+      "size": {
+        "length_m": 0.284,
+        "ankle_to_ball_m": 0.155
+      },
+      "palette": "shoe",
+      "nanite": false,
+      "budget_tris": 3000,
+      "lods": [
+        {
+          "ratio": 0.4,
+          "screen_size": 0.05
+        },
+        {
+          "ratio": 0.15,
+          "screen_size": 0.02
+        }
+      ],
+      "_note": "The players' padel shoe with a low white sock (decision 0006): UE 5.8's MetaHuman wardrobe has no footwear, so UPadelPlayerAnimComponent attaches this to each MetaHuman's feet. One mesh for both feet."
+    },
+    {
       "id": "PlayerPlaceholderA",
       "kind": "skeletal",
       "category": "Characters",

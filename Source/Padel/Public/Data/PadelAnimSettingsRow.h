@@ -57,6 +57,12 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString MetaHumanRetargeter;
 	UPROPERTY(EditAnywhere, Category = "MetaHuman") int32 MetaHumanMinLod = 0;
 	UPROPERTY(EditAnywhere, Category = "MetaHuman") int32 MetaHumanIkLodThreshold = -1;
+	/** The MetaHuman a player shows while their own (PlayerBodies.json) isn't on disk; empty for the placeholder. */
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString MetaHumanFallbackClass;
+	/** Padel shoe with its sock, attached to each MetaHuman's feet (the 5.8 wardrobe has no footwear),
+	 *  and the shoe's authored ankle-to-ball length, which is scaled to each MetaHuman's foot. */
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString MetaHumanShoeMesh;
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") double ShoeAnkleToBallM = 0.0;
 
 	/**
 	 * The C++ pose used when ABP_PadelPlayer isn't there (0006): idle, walk and jog cycles

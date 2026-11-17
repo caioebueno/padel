@@ -21,4 +21,8 @@ struct PADEL_API FPadelPlayerBodyRow : public FTableRowBase
 	/** Palette group of the player's kit (Tools/AssetPipeline/config/palette.json, "team_a" or
 	 *  "team_b"); metahuman_setup.py paints the MetaHuman's shirt and shorts with it. */
 	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString Kit;
+	/** Kit colours ("#rrggbb", sRGB) set on the MetaHuman's garment materials at spawn, so one
+	 *  MetaHuman can stand in for several players in their own team's kit. Empty: leave as built. */
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString ShirtColour;
+	UPROPERTY(EditAnywhere, Category = "MetaHuman") FString ShortsColour;
 };

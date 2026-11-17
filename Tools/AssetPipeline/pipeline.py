@@ -34,7 +34,7 @@ from asset_lib import (ball_textures, blender_runner, catalogue, court_spec, gla
 from asset_lib.catalogue import Asset  # noqa: E402
 
 PROCEDURAL_SCRIPTS = {"court_glass": "build_court_glass", "court_frame": "build_court_frame",
-                      "ball": "build_equipment", "ball_trail": "build_equipment", "racket": "build_racket", "character": "build_character",
+                      "ball": "build_equipment", "ball_trail": "build_equipment", "racket": "build_racket", "shoe": "build_shoe", "character": "build_character",
                       "net": "build_net", "court_surface": "build_court_surface", "venue": "build_venue"}
 
 

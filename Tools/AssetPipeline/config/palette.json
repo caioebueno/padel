@@ -450,5 +450,27 @@
       "color": "#2d4422",
       "roughness": 0.95
     }
+  },
+  "shoe": {
+    "Sole": {
+      "master": "Opaque",
+      "color": "#ededed",
+      "roughness": 0.7
+    },
+    "Upper": {
+      "master": "Opaque",
+      "color": "#f4f4f4",
+      "roughness": 0.6
+    },
+    "Accent": {
+      "master": "Opaque",
+      "color": "#2f343c",
+      "roughness": 0.6
+    },
+    "Sock": {
+      "master": "Opaque",
+      "color": "#fafafa",
+      "roughness": 0.9
+    }
   }
 }

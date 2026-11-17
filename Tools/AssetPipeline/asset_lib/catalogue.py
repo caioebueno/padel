@@ -17,7 +17,7 @@ PALETTE_PATH = CONFIG_DIR / "palette.json"
 CATEGORIES = ("Court", "Equipment", "Characters", "Venue")
 KINDS = ("static", "skeletal")
 SOURCES = ("procedural", "ai", "external")
-BUILDERS = ("court_glass", "court_frame", "court_surface", "net", "ball", "ball_trail", "racket", "character", "venue")
+BUILDERS = ("court_glass", "court_frame", "court_surface", "net", "ball", "ball_trail", "racket", "shoe", "character", "venue")
 PROVIDERS = ("meshy", "tripo")
 MASTERS = ("Opaque", "Turf", "Glass", "Masked", "Emissive", "Net", "NetSolid", "Metal", "WireMesh",
            "BallFelt", "BallFuzz", "BallTrail", "RacketFace")

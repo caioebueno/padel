@@ -86,6 +86,9 @@
 		"WarpOverheadBlendM": 0.4,
 		"WarpTorsoClearanceM": 0.14,
 		"WarpMaxToeRiseM": 0.12,
-		"WarpMaxOverheadLeanDeg": 30.0
+		"WarpMaxOverheadLeanDeg": 30.0,
+		"MetaHumanFallbackClass": "/Game/Characters/IlanCorvisa/BP_IlanCorvisa.BP_IlanCorvisa_C",
+		"MetaHumanShoeMesh": "/Game/Padel/Characters/SM_PadelShoe.SM_PadelShoe",
+		"ShoeAnkleToBallM": 0.155
 	}
 ]

@@ -146,8 +146,15 @@ def target_rig(body: unreal.SkeletalMesh | None) -> unreal.IKRigDefinition | Non
 
 def build_retargeter(source: unreal.IKRigDefinition, target: unreal.IKRigDefinition,
                      source_mesh: unreal.SkeletalMesh, target_mesh: unreal.SkeletalMesh | None) -> None:
-    rtg = fresh_asset(RETARGETER, unreal.IKRetargeter, unreal.IKRetargetFactory())
+    # Rebuilt in place when it exists: a retargeter the game has loaded can't be deleted.
+    rtg = unreal.load_asset(RETARGETER)
+    if not isinstance(rtg, unreal.IKRetargeter):
+        rtg = fresh_asset(RETARGETER, unreal.IKRetargeter, unreal.IKRetargetFactory())
+    if rtg is None:
+        fail(f"could not create {RETARGETER}")
+        return
     ctrl = unreal.IKRetargeterController.get_controller(rtg)
+    ctrl.remove_all_ops()
     ctrl.set_ik_rig(SOURCE, source)
     ctrl.set_ik_rig(TARGET, target)
     ctrl.set_preview_mesh(SOURCE, source_mesh)

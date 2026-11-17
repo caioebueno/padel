@@ -82,6 +82,10 @@ private:
 	/** Spawns PlayerKey's MetaHuman over the hidden placeholder skeleton; false (and logged) when it can't. */
 	bool ShowMetaHuman(FName PlayerKey);
 	void RemoveMetaHuman();
+	/** The player's kit colours (PlayerBodies.json) on the MetaHuman's shirt and shorts. */
+	void ApplyKit(const struct FPadelPlayerBodyRow& Row);
+	/** The padel shoes (Animation.json MetaHumanShoeMesh) on the MetaHuman's feet; hides its toes. */
+	void AttachShoes(USkeletalMeshComponent* MetaBody);
 
 	/** Puts SM_Racket on the racket component when it's imported; keeps the placeholder otherwise. */
 	void LoadRacket();
