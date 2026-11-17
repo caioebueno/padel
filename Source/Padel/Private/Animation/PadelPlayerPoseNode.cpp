@@ -114,6 +114,7 @@ void FAnimNode_PadelPlayerPose::CacheBones_AnyThread(const FAnimationCacheBonesC
 	}
 
 	WarpBones.Cache(Bones, bLeftHanded);
+	BodyBones.Cache(Bones);
 }
 
 void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
@@ -127,7 +128,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	SpeedMps = Anim->Speed / 100.0;
 	DirectionDeg = Anim->Direction;
 	bReadyStance = Anim->Locomotion == EPadelLocomotionState::Ready || Anim->Locomotion == EPadelLocomotionState::SplitStep;
-	CrouchAlpha = Anim->CrouchAlpha;
+	CrouchAlpha = Anim->CrouchAlpha * Anim->StanceKeep();
 	JogStridePlayRate = Anim->StridePlayRate;
 	Swing = Anim->SwingSequence;
 	SwingTime = Anim->SwingTime;
@@ -148,6 +149,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	FaceInHand = Anim->RacketFaceInHand;
 	WarpTuning = Anim->WarpTuning;
 	bLeftHanded = Anim->bLeftHanded;
+	Body = Anim->PosedBody();
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
@@ -263,6 +265,9 @@ void FAnimNode_PadelPlayerPose::Evaluate_AnyThread(FPoseContext& Output)
 			BlendInto(Output, Cheer, static_cast<float>(CelebrationWeight));
 		}
 	}
+
+	// On this pose whether or not a MetaHuman shows it: the MetaHuman copies it in the retarget.
+	PadelBodyDynamics::Apply(Output.Pose, BodyBones, Body);
 
 	ApplyArmReach(Output);
 }

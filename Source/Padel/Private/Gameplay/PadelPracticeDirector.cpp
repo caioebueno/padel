@@ -1,5 +1,6 @@
 #include "Gameplay/PadelPracticeDirector.h"
 
+#include "Animation/Model/PlayerAnimModel.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
@@ -170,7 +171,11 @@ void APadelPracticeDirector::StepSimulation(double Dt)
 	}
 
 	const FSwingEvents Events = Player->Tick(PlayerPawn->SampleInput(), Dt, *Ball);
-	PlayerPawn->StepAnimation(Events, Dt, Ball->IsLive());
+	Padel::Animation::FPlayerAnimContext AnimContext;
+	AnimContext.bRallyLive = Ball->IsLive();
+	AnimContext.bBallVisible = Ball->IsLive();
+	AnimContext.BallPosition = Ball->GetPosition();
+	PlayerPawn->StepAnimation(Events, Dt, AnimContext);
 	if (Events.Outcome != ESwingOutcome::None)
 	{
 		DebugInfo.LastOutcome = Events.Outcome;

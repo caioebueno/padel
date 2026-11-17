@@ -83,18 +83,18 @@ void APadelPlayerPawn::InitAnimation(const Padel::Shots::FShotLibrary* Library, 
 	Body->SetVisibility(!Animation->HasSkeletalBody());
 }
 
-void APadelPlayerPawn::StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
+void APadelPlayerPawn::StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, const Padel::Animation::FPlayerAnimContext& Context)
 {
 	if (ShotController)
 	{
-		Animation->Step(*ShotController, Events, Dt, bRallyLive);
+		Animation->Step(*ShotController, Events, Dt, Context);
 	}
 }
 
-void APadelPlayerPawn::StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
-	Padel::EGlassWall GlassWall)
+void APadelPlayerPawn::StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt,
+	const Padel::Animation::FPlayerAnimContext& Context)
 {
-	Animation->Step(Controller, Events, Dt, bRallyLive, GlassWall);
+	Animation->Step(Controller, Events, Dt, Context);
 }
 
 void APadelPlayerPawn::PresentAnimation()

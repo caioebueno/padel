@@ -25,6 +25,22 @@
 
 namespace PadelMatchDirectorDetail
 {
+	/** P1: who each player is while the match waits for the serve. */
+	Padel::Animation::EServeRole ServeRoleOf(const Padel::FMatchSimulation& Match, int32 Id)
+	{
+		using Padel::Animation::EServeRole;
+		const int Server = Match.ServerId();
+		if (Id == Server)
+		{
+			return EServeRole::Server;
+		}
+		if (Id == Padel::PartnerOf(Server))
+		{
+			return EServeRole::ServerPartner;
+		}
+		return Id == Match.Score().ReceiverId() ? EServeRole::Receiver : EServeRole::ReceiverPartner;
+	}
+
 	// A long hitch runs at most this many fixed ticks in one frame, then drops the
 	// backlog rather than spiral (same rule as the practice director).
 	constexpr int32 MaxTicksPerFrame = 12;
@@ -386,14 +402,24 @@ void APadelMatchDirector::StepOnce()
 	// The animation follows each swing on the same fixed step, reading the runner's
 	// controllers fresh (they are rebuilt at a change of ends).
 	const bool bRallyLive = Match->Phase() == Padel::EMatchPhase::Live;
+	const bool bAwaitingServe = Match->Phase() == Padel::EMatchPhase::AwaitingServe;
 	for (int32 Id = 0; Id < Padel::NumPlayers; ++Id)
 	{
 		if (APadelPlayerPawn* Pawn = GetPawn(Id))
 		{
+			Padel::Animation::FPlayerAnimContext Context;
+			Context.bRallyLive = bRallyLive;
 			// N1c: an AI player waiting on a ball off the glass turns side-on to it.
 			const Padel::AI::FAiGlassRead Glass = Runner->GlassRead(Id);
-			Pawn->StepAnimation(Runner->Player(Id), Runner->LastEvents(Id), Padel::SimTickSeconds, bRallyLive,
-				Glass.bPlayingOffGlass ? Glass.Wall : Padel::EGlassWall::None);
+			Context.GlassWall = Glass.bPlayingOffGlass ? Glass.Wall : Padel::EGlassWall::None;
+			// P1: before the serve the four stand their own ways (the motion catalogue, section 1).
+			if (bAwaitingServe)
+			{
+				Context.ServeRole = PadelMatchDirectorDetail::ServeRoleOf(*Match, Id);
+			}
+			Context.bBallVisible = bRallyLive || bAwaitingServe;
+			Context.BallPosition = Match->Ball().Position;
+			Pawn->StepAnimation(Runner->Player(Id), Runner->LastEvents(Id), Padel::SimTickSeconds, Context);
 		}
 	}
 }

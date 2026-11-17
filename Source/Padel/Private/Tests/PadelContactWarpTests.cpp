@@ -500,43 +500,52 @@ bool FPadelSwingClearanceTest::RunTest(const FString& Parameters)
 		++Checked;
 		const TCHAR* BodyName = Pawn->GetAnimation()->GetMetaHuman() ? TEXT("MetaHuman") : TEXT("placeholder");
 		const FName Top = TopSpine(Shown);
-		const FPlayerFrameVec& Ready = Data.Settings.ReadyRacket;
-		for (const FSwing& Swing : Swings)
+		// P1: a swing starts wherever the stance carries the racket.
+		for (int32 StanceIndex = 0; StanceIndex < NumStances; ++StanceIndex)
 		{
-			const FAnimClip* Clip = Data.Clips.Find(Swing.Shot, Swing.Side, ESwingVariant::Perfect);
-			if (!TestNotNull(TEXT("Clip"), Clip))
+			const FStancePose& Stance = Data.Settings.Stances[static_cast<std::size_t>(StanceIndex)];
+			if (Stance.ArmAlpha <= 0.0)
 			{
 				continue;
 			}
-			// The model's mirroring: the racket hand's side is +, a backhand is on the other side.
-			const double RightSign = Swing.Side == ESwingSide::Fore ? 1.0 : -1.0;
-			const FPlayerFrameVec Back{ Clip->Backswing.RightM * RightSign, Clip->Backswing.ForwardM, Clip->Backswing.UpM };
-			const FPlayerFrameVec Contact{ Swing.Contact.RightM * RightSign, Swing.Contact.ForwardM, Swing.Contact.UpM };
-			const FPlayerFrameVec Follow{ Clip->Follow.RightM * RightSign, Clip->Follow.ForwardM, Clip->Follow.UpM };
-			auto LerpKey = [](const FPlayerFrameVec& A, const FPlayerFrameVec& B, double T)
+			const FPlayerFrameVec& Ready = Stance.Racket;
+			for (const FSwing& Swing : Swings)
 			{
-				return FPlayerFrameVec{ A.RightM + (B.RightM - A.RightM) * T, A.ForwardM + (B.ForwardM - A.ForwardM) * T, A.UpM + (B.UpM - A.UpM) * T };
-			};
-			double Closest = TNumericLimits<double>::Max();
-			double ClosestP = 0.0;
-			for (double P = 0.0; P <= 3.0001; P += 0.1)
-			{
-				const FPlayerFrameVec Key = P <= 1.0 ? LerpKey(Ready, Back, P) : (P <= 2.0 ? LerpKey(Back, Contact, P - 1.0) : LerpKey(Contact, Follow, P - 2.0));
-				PoseAt(Pawn, Around(Pawn, Key.RightM, Key.ForwardM, Key.UpM));
-				const FVector Mid = (Shown->GetBoneLocation(Side(Pawn, TEXT("lowerarm"))) + Shown->GetBoneLocation(Side(Pawn, TEXT("hand")))) * 0.5;
-				const FVector Bottom = Shown->GetBoneLocation(FName(TEXT("pelvis")));
-				const FVector TopAt = Shown->GetBoneLocation(Top);
-				const double Distance = FMath::PointDistToSegment(Mid, Bottom, TopAt);
-				if (Distance < Closest)
+				const FAnimClip* Clip = Data.Clips.Find(Swing.Shot, Swing.Side, ESwingVariant::Perfect);
+				if (!TestNotNull(TEXT("Clip"), Clip))
 				{
-					Closest = Distance;
-					ClosestP = P;
+					continue;
 				}
+				// The model's mirroring: the racket hand's side is +, a backhand is on the other side.
+				const double RightSign = Swing.Side == ESwingSide::Fore ? 1.0 : -1.0;
+				const FPlayerFrameVec Back{ Clip->Backswing.RightM * RightSign, Clip->Backswing.ForwardM, Clip->Backswing.UpM };
+				const FPlayerFrameVec Contact{ Swing.Contact.RightM * RightSign, Swing.Contact.ForwardM, Swing.Contact.UpM };
+				const FPlayerFrameVec Follow{ Clip->Follow.RightM * RightSign, Clip->Follow.ForwardM, Clip->Follow.UpM };
+				auto LerpKey = [](const FPlayerFrameVec& A, const FPlayerFrameVec& B, double T)
+				{
+					return FPlayerFrameVec{ A.RightM + (B.RightM - A.RightM) * T, A.ForwardM + (B.ForwardM - A.ForwardM) * T, A.UpM + (B.UpM - A.UpM) * T };
+				};
+				double Closest = TNumericLimits<double>::Max();
+				double ClosestP = 0.0;
+				for (double P = 0.0; P <= 3.0001; P += 0.1)
+				{
+					const FPlayerFrameVec Key = P <= 1.0 ? LerpKey(Ready, Back, P) : (P <= 2.0 ? LerpKey(Back, Contact, P - 1.0) : LerpKey(Contact, Follow, P - 2.0));
+					PoseAt(Pawn, Around(Pawn, Key.RightM, Key.ForwardM, Key.UpM));
+					const FVector Mid = (Shown->GetBoneLocation(Side(Pawn, TEXT("lowerarm"))) + Shown->GetBoneLocation(Side(Pawn, TEXT("hand")))) * 0.5;
+					const FVector Bottom = Shown->GetBoneLocation(FName(TEXT("pelvis")));
+					const FVector TopAt = Shown->GetBoneLocation(Top);
+					const double Distance = FMath::PointDistToSegment(Mid, Bottom, TopAt);
+					if (Distance < Closest)
+					{
+						Closest = Distance;
+						ClosestP = P;
+					}
+				}
+				const FString Name = FString::Printf(TEXT("%s from %s"), UTF8_TO_TCHAR(Clip->Name.c_str()), UTF8_TO_TCHAR(StanceName(static_cast<EStance>(StanceIndex))));
+				AddInfo(FString::Printf(TEXT("Pawn %d (%s) %s: forearm %.1f cm from the spine at its closest (progress %.1f)"), Id, BodyName, *Name, Closest, ClosestP));
+				TestTrue(FString::Printf(TEXT("Pawn %d (%s) %s: forearm clear of the torso (%.1f cm at progress %.1f)"), Id, BodyName, *Name, Closest, ClosestP),
+					Closest > TorsoRadiusUnits);
 			}
-			const FString Name = UTF8_TO_TCHAR(Clip->Name.c_str());
-			AddInfo(FString::Printf(TEXT("Pawn %d (%s) %s: forearm %.1f cm from the spine at its closest (progress %.1f)"), Id, BodyName, *Name, Closest, ClosestP));
-			TestTrue(FString::Printf(TEXT("Pawn %d (%s) %s: forearm clear of the torso (%.1f cm at progress %.1f)"), Id, BodyName, *Name, Closest, ClosestP),
-				Closest > TorsoRadiusUnits);
 		}
 	}
 	if (Checked == 0)

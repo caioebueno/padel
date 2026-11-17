@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Animation/PadelBodyDynamics.h"
 #include "Animation/PadelContactWarp.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimInstanceProxy.h"
@@ -65,8 +66,27 @@ public:
 	UPROPERTY(Transient)
 	FPadelLocomotionSet LocomotionSet;
 
-	/** N1 ready-stance depth: the crouched clips' weight against the upright ones (FPlayerAnimFrame::CrouchAlpha). */
+	/** P1 stance depth: the crouched clips' weight against the upright ones (the frame's StancePose.CrouchAlpha). */
 	float CrouchAlpha = 1.0f;
+
+	/** P1: how firmly the arm carries the racket where the stance holds it (StancePose.ArmAlpha). */
+	float ArmCarryAlpha = 0.0f;
+
+	/** F1 body dynamics (FPlayerAnimFrame's twist, lean, pelvis and hop fields), in Unreal units. */
+	FPadelBodyDynamics Body;
+
+	/** P1: the stance's trunk tip, knee bend and feet width (StancePose), in Unreal units. */
+	FPadelBodyDynamics Stance;
+
+	/**
+	 * How much of the stance the pose keeps, 0..1: all of it standing, none at the height of a
+	 * swing, so the body rises out of the crouch into the shot and the reach starts from full
+	 * height (the contact warp then bends it as far as the ball needs).
+	 */
+	float StanceKeep() const;
+
+	/** Body plus Stance by StanceKeep: what the pose puts on the bones. */
+	FPadelBodyDynamics PosedBody() const;
 
 	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
 	float RawSwingWeight = 0.0f;
@@ -95,7 +115,7 @@ public:
 
 	/**
 	 * How far the arm reaches for RacketTargetWorld, 0..1: through a swing with no swing clip
-	 * (the racket target meets the ball on the contact tick), and a little in the ready stance.
+	 * (the racket target meets the ball on the contact tick), and as the stance carries it otherwise.
 	 */
 	float WarpArmAlpha() const;
 

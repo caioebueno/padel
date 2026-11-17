@@ -65,6 +65,66 @@ namespace Padel::Animation
 			return WrapDeg(Angle + (D > 0.0 ? std::fmin(D, MaxDelta) : std::fmax(D, -MaxDelta)));
 		}
 
+		// A critically damped spring by half-life (the time to close half the gap), stepped
+		// exactly for Dt: no overshoot, continuous velocity, the same at any frame rate.
+		void Spring(double& X, double& V, double Goal, double HalfLifeS, double Dt)
+		{
+			const double Y = 2.0 * 0.6931471805599453 / std::fmax(HalfLifeS, 1e-4);
+			const double J0 = X - Goal;
+			const double J1 = V + J0 * Y;
+			const double E = std::exp(-Y * Dt);
+			X = E * (J0 + J1 * Dt) + Goal;
+			V = E * (V - J1 * Y * Dt);
+		}
+
+		// The spring on an angle in degrees, the short way round, its speed capped at MaxRate
+		// (0 = no cap). Snaps when within a quarter of a degree and nearly still (too small to
+		// see), so a turn ends exactly on its target.
+		void SpringAngle(double& Deg, double& Rate, double Goal, double HalfLifeS, double MaxRate, double Dt)
+		{
+			const double From = Deg;
+			double X = Deg;
+			Spring(X, Rate, Deg + WrapDeg(Goal - Deg), HalfLifeS, Dt);
+			if (MaxRate > 0.0 && std::fabs(X - From) > MaxRate * Dt)
+			{
+				X = From + (X > From ? MaxRate : -MaxRate) * Dt;
+				Rate = X > From ? MaxRate : -MaxRate;
+			}
+			Deg = WrapDeg(X);
+			if (std::fabs(WrapDeg(Goal - Deg)) < 0.25 && std::fabs(Rate) < 15.0)
+			{
+				Deg = WrapDeg(Goal);
+				Rate = 0.0;
+			}
+		}
+
+		// P1: every field of a stance on its own spring.
+		void SpringStance(FStancePose& X, FStancePose& V, const FStancePose& Goal, double HalfLifeS, double Dt)
+		{
+			Spring(X.CrouchAlpha, V.CrouchAlpha, Goal.CrouchAlpha, HalfLifeS, Dt);
+			Spring(X.Racket.RightM, V.Racket.RightM, Goal.Racket.RightM, HalfLifeS, Dt);
+			Spring(X.Racket.ForwardM, V.Racket.ForwardM, Goal.Racket.ForwardM, HalfLifeS, Dt);
+			Spring(X.Racket.UpM, V.Racket.UpM, Goal.Racket.UpM, HalfLifeS, Dt);
+			Spring(X.ArmAlpha, V.ArmAlpha, Goal.ArmAlpha, HalfLifeS, Dt);
+			Spring(X.WidenM, V.WidenM, Goal.WidenM, HalfLifeS, Dt);
+			Spring(X.DropM, V.DropM, Goal.DropM, HalfLifeS, Dt);
+			Spring(X.TrunkDeg, V.TrunkDeg, Goal.TrunkDeg, HalfLifeS, Dt);
+		}
+
+		FStancePose LerpStance(const FStancePose& A, const FStancePose& B, double T)
+		{
+			FStancePose Out;
+			Out.CrouchAlpha = A.CrouchAlpha + (B.CrouchAlpha - A.CrouchAlpha) * T;
+			Out.Racket.RightM = A.Racket.RightM + (B.Racket.RightM - A.Racket.RightM) * T;
+			Out.Racket.ForwardM = A.Racket.ForwardM + (B.Racket.ForwardM - A.Racket.ForwardM) * T;
+			Out.Racket.UpM = A.Racket.UpM + (B.Racket.UpM - A.Racket.UpM) * T;
+			Out.ArmAlpha = A.ArmAlpha + (B.ArmAlpha - A.ArmAlpha) * T;
+			Out.WidenM = A.WidenM + (B.WidenM - A.WidenM) * T;
+			Out.DropM = A.DropM + (B.DropM - A.DropM) * T;
+			Out.TrunkDeg = A.TrunkDeg + (B.TrunkDeg - A.TrunkDeg) * T;
+			return Out;
+		}
+
 		// Movement doc 3.3, 5.3: the gaits that turn the body toward where it's going.
 		bool FacesTravel(EMovementMode Mode)
 		{
@@ -84,7 +144,7 @@ namespace Padel::Animation
 		}
 	}
 
-	FPlayerAnimInput FPlayerAnimInput::FromController(const FPlayerShotController& Controller, const FSwingEvents& Events, bool bInRallyLive)
+	FPlayerAnimInput FPlayerAnimInput::FromController(const FPlayerShotController& Controller, const FSwingEvents& Events, const FPlayerAnimContext& Context)
 	{
 		FPlayerAnimInput In;
 		In.Phase = Controller.GetPhase();
@@ -106,10 +166,15 @@ namespace Padel::Animation
 		In.Velocity = Motion.GetVelocity();
 		In.bSprinting = Motion.IsSprinting();
 		In.bSplitHopping = Motion.IsSplitHopping();
+		In.SplitHopLeftS = Motion.GetSplitHopLeftS();
 		In.TeamSign = Controller.GetTeamSign();
 		In.ForehandSign = Controller.GetRatings().ForehandSign();
 		In.Mode = Motion.GetMode();
-		In.bRallyLive = bInRallyLive;
+		In.bRallyLive = Context.bRallyLive;
+		In.GlassWall = Context.GlassWall;
+		In.ServeRole = Context.ServeRole;
+		In.bBallVisible = Context.bBallVisible;
+		In.BallPosition = Context.BallPosition;
 		return In;
 	}
 
@@ -159,7 +224,17 @@ namespace Padel::Animation
 			// Running there still faces travel; the swing squares up as above.
 			Want = GlassFacingYaw(In, Forward, Right);
 		}
-		Frame.FacingYawDeg = bFirstStep ? Want : PlayerAnimModelDetail::TurnToward(Frame.FacingYawDeg, Want, S.FacingTurnRateDegPerS * Dt);
+		// F1: a spring, not a constant rate, so a turn eases in and out; the chest and head
+		// lead it (StepBody).
+		if (bFirstStep)
+		{
+			Frame.FacingYawDeg = Want;
+			FacingRateDegPerS = 0.0;
+		}
+		else
+		{
+			PlayerAnimModelDetail::SpringAngle(Frame.FacingYawDeg, FacingRateDegPerS, Want, S.FacingHalfLifeS, S.FacingTurnRateDegPerS, Dt);
+		}
 
 		// Direction of travel relative to where the body faces, for the cycle blend.
 		const double FacingRad = Frame.FacingYawDeg / RadToDeg;
@@ -169,11 +244,8 @@ namespace Padel::Animation
 		const FVec3 BodyRight = Vec(-BodyForward.Y * Handed, BodyForward.X * Handed, 0.0);
 		Frame.DirectionDeg = Speed > 1e-6 ? std::atan2(DotProduct(In.Velocity, BodyRight), DotProduct(In.Velocity, BodyForward)) * RadToDeg : 0.0;
 
-		// Ready-stance depth (N1, movement doc 2.1): taller at the net, lower at the back glass.
-		const double FromNet = Clamp(std::fabs(In.Position.X) / Court::HalfLength, 0.0, 1.0);
-		Frame.CrouchAlpha = Lerp(S.ReadyCrouchAlphaNet, S.ReadyCrouchAlphaBack, FromNet);
-
 		const bool bSwinging = In.Phase != ESwingPhase::Idle;
+		StepStance(In, Dt);
 		if (In.bSplitHopping)
 		{
 			Frame.Locomotion = ELocomotionState::SplitStep;
@@ -189,7 +261,8 @@ namespace Padel::Animation
 		else
 		{
 			const bool bBallComing = In.bHasIdeal && In.TimeToIdealS < S.ReadyBallWindowS;
-			Frame.Locomotion = (In.bRallyLive || bBallComing || bSwinging || In.bServing) ? ELocomotionState::Ready : ELocomotionState::Idle;
+			Frame.Locomotion = (In.bRallyLive || bBallComing || bSwinging || In.bServing || In.ServeRole != EServeRole::None)
+				? ELocomotionState::Ready : ELocomotionState::Idle;
 		}
 		const double ClipSpeed = Frame.Locomotion == ELocomotionState::Sprint ? S.SprintClipSpeedMps : S.RunClipSpeedMps;
 		Frame.StridePlayRate = Frame.Locomotion == ELocomotionState::Run || Frame.Locomotion == ELocomotionState::Sprint
@@ -203,6 +276,169 @@ namespace Padel::Animation
 			Frame.FullBodyAlpha = 0.0;
 		}
 		Frame.FootSlideMps = Frame.FullBodyAlpha * Frame.SwingWeight * Speed;
+		StepBody(In, Want, Dt);
+	}
+
+	bool FPlayerAnimModel::WatchesBall(const FPlayerAnimInput& In)
+	{
+		// The server's partner faces the receivers, not the ball behind them.
+		return In.bBallVisible && (In.bRallyLive || (In.ServeRole != EServeRole::None && In.ServeRole != EServeRole::ServerPartner));
+	}
+
+	void FPlayerAnimModel::StepStance(const FPlayerAnimInput& In, double Dt)
+	{
+		using namespace PlayerAnimModelDetail;
+		const FAnimSettings& S = *Settings;
+		auto Pose = [&S](EStance Stance) -> const FStancePose& { return S.Stances[static_cast<std::size_t>(Stance)]; };
+
+		// The motion catalogue, section 1: before the serve each of the four stands its own way;
+		// in a rally, taller at the net and lower toward the back glass; between points, relaxed.
+		FStancePose Goal;
+		const bool bBallComing = In.bHasIdeal && In.TimeToIdealS < S.ReadyBallWindowS;
+		if (In.bServing || In.ServeRole == EServeRole::Server)
+		{
+			Frame.Stance = EStance::Serve;
+			Goal = Pose(EStance::Serve);
+		}
+		else if (In.ServeRole == EServeRole::Receiver)
+		{
+			Frame.Stance = EStance::Receive;
+			Goal = Pose(EStance::Receive);
+		}
+		else if (In.ServeRole == EServeRole::ServerPartner)
+		{
+			Frame.Stance = EStance::Net;
+			Goal = Pose(EStance::Net);
+		}
+		else if (In.ServeRole == EServeRole::ReceiverPartner)
+		{
+			Frame.Stance = EStance::Back;
+			Goal = Pose(EStance::Back);
+		}
+		else if (In.bRallyLive || bBallComing || In.Phase != ESwingPhase::Idle)
+		{
+			const double FromNet = std::fabs(In.Position.X);
+			const double T = Clamp((FromNet - S.StanceNetUntilM) / std::fmax(S.StanceBackFromM - S.StanceNetUntilM, 1e-3), 0.0, 1.0);
+			Frame.Stance = T < 0.5 ? EStance::Net : EStance::Back;
+			Goal = LerpStance(Pose(EStance::Net), Pose(EStance::Back), T);
+		}
+		else
+		{
+			Frame.Stance = EStance::Relaxed;
+			Goal = Pose(EStance::Relaxed);
+		}
+		if (bFirstStep)
+		{
+			Frame.StancePose = Goal;
+			StanceRate = FStancePose{};
+		}
+		else
+		{
+			SpringStance(Frame.StancePose, StanceRate, Goal, S.StanceHalfLifeS, Dt);
+		}
+	}
+
+	void FPlayerAnimModel::StepBody(const FPlayerAnimInput& In, double WantYawDeg, double Dt)
+	{
+		using namespace PlayerAnimModelDetail;
+		const FAnimSettings& S = *Settings;
+		BodyClockS += Dt;
+
+		// Facing lead: the head, then the chest, reach the new facing before the hips do.
+		if (bFirstStep)
+		{
+			ChestYawDeg = HeadYawDeg = Frame.FacingYawDeg;
+			ChestRateDegPerS = HeadRateDegPerS = 0.0;
+			LastVelocity = In.Velocity;
+		}
+		else
+		{
+			SpringAngle(ChestYawDeg, ChestRateDegPerS, WantYawDeg, S.FacingChestHalfLifeS, 0.0, Dt);
+			// P1: the head follows the ball when there is one to watch, within what the neck
+			// can turn from the chest; otherwise it leads the body's turn.
+			double HeadGoal = WantYawDeg;
+			double PitchGoal = 0.0;
+			double HeadHalfLife = S.FacingHeadHalfLifeS;
+			if (WatchesBall(In))
+			{
+				const FVec3 ToBall = Sub(In.BallPosition, In.Position);
+				const double Across = LengthXY(ToBall);
+				if (Across > 0.05)
+				{
+					const double BallYaw = std::atan2(ToBall.Y, ToBall.X) * RadToDeg;
+					HeadGoal = ChestYawDeg + Clamp(WrapDeg(BallYaw - ChestYawDeg), -S.HeadLookMaxYawDeg, S.HeadLookMaxYawDeg);
+				}
+				const double Eye = S.HeadLookEyeHeightM - Frame.StancePose.DropM;
+				PitchGoal = Clamp(std::atan2(In.BallPosition.Z - Eye, std::fmax(Across, 0.3)) * RadToDeg, S.HeadLookMinPitchDeg, S.HeadLookMaxPitchDeg);
+				HeadHalfLife = S.HeadLookHalfLifeS;
+			}
+			SpringAngle(HeadYawDeg, HeadRateDegPerS, HeadGoal, HeadHalfLife, 0.0, Dt);
+			Spring(Frame.HeadPitchDeg, HeadPitchRateDegPerS, PitchGoal, S.HeadLookHalfLifeS, Dt);
+		}
+		Frame.ChestTwistDeg = Clamp(WrapDeg(ChestYawDeg - Frame.FacingYawDeg), -S.FacingMaxChestTwistDeg, S.FacingMaxChestTwistDeg);
+		Frame.HeadTwistDeg = Clamp(WrapDeg(HeadYawDeg - Frame.FacingYawDeg) - Frame.ChestTwistDeg, -S.FacingMaxHeadTwistDeg, S.FacingMaxHeadTwistDeg);
+
+		// Lean into the acceleration, in the body's own frame (Frame.FacingYawDeg is the pelvis).
+		const FVec3 RawAccel = Dt > 0.0 ? Scale(Sub(In.Velocity, LastVelocity), 1.0 / Dt) : FVec3{};
+		LastVelocity = In.Velocity;
+		Spring(Accel.X, AccelRate.X, RawAccel.X, S.LeanHalfLifeS, Dt);
+		Spring(Accel.Y, AccelRate.Y, RawAccel.Y, S.LeanHalfLifeS, Dt);
+		const double FacingRad = Frame.FacingYawDeg / RadToDeg;
+		const FVec3 BodyForward = Vec(std::cos(FacingRad), std::sin(FacingRad), 0.0);
+		const FVec3 NetForward = ForwardAxis(In.TeamSign);
+		const FVec3 CourtRight = RightAxis(In.TeamSign);
+		const double Handed = DotProduct(Vec(-NetForward.Y, NetForward.X, 0.0), CourtRight) >= 0.0 ? 1.0 : -1.0;
+		const FVec3 BodyRight = Vec(-BodyForward.Y * Handed, BodyForward.X * Handed, 0.0);
+		double LeanF = DotProduct(Accel, BodyForward) * S.LeanDegPerMps2;
+		double LeanR = DotProduct(Accel, BodyRight) * S.LeanDegPerMps2;
+		const double Lean = std::sqrt(LeanF * LeanF + LeanR * LeanR);
+		if (Lean > S.LeanMaxDeg && Lean > 0.0)
+		{
+			LeanF *= S.LeanMaxDeg / Lean;
+			LeanR *= S.LeanMaxDeg / Lean;
+		}
+		Frame.LeanForwardDeg = LeanF;
+		Frame.LeanRightDeg = LeanR;
+
+		// Split step: a hop shaped over FPlayerMotion's hop, then the landing loads the legs.
+		Frame.HopLiftM = 0.0;
+		if (In.bSplitHopping)
+		{
+			HopElapsedS += Dt;
+			const double Total = HopElapsedS + std::fmax(In.SplitHopLeftS, 0.0);
+			const double T = Total > 0.0 ? Clamp(HopElapsedS / Total, 0.0, 1.0) : 1.0;
+			Frame.HopLiftM = S.SplitHopHeightM * std::sin(3.141592653589793 * T);
+		}
+		else
+		{
+			if (HopElapsedS > 0.0)
+			{
+				LandLeftS = S.SplitLandS;
+			}
+			HopElapsedS = 0.0;
+			LandLeftS = std::fmax(LandLeftS - Dt, 0.0);
+		}
+
+		// Ready bounce: only standing in the ready stance; it fades rather than stopping dead.
+		const bool bStill = Frame.Locomotion == ELocomotionState::Ready && Frame.SpeedMps < S.WalkMinMps && In.Phase == ESwingPhase::Idle;
+		Spring(ReadyBounceAmount, ReadyBounceRate, bStill ? 1.0 : 0.0, S.ReadyBounceHalfLifeS, Dt);
+		const double Bounce = Clamp(ReadyBounceAmount, 0.0, 1.0) * S.ReadyBounceM * 0.5 * (1.0 - std::cos(2.0 * 3.141592653589793 * S.ReadyBounceHz * BodyClockS));
+
+		// Pelvis: braking (deceleration along the velocity) and the landing sink it; springs back.
+		const double Speed = LengthXY(In.Velocity);
+		const double Braking = Speed > 1e-6 ? std::fmax(-DotProduct(Accel, In.Velocity) / Speed, 0.0) : 0.0;
+		const double Plant = std::fmin(Braking * S.PlantDropPerMps2, S.PlantDropMaxM);
+		const double Land = LandLeftS > 0.0 ? S.SplitLandDropM : 0.0;
+		if (bFirstStep)
+		{
+			PelvisSinkM = 0.0;
+			PelvisSinkRate = 0.0;
+		}
+		else
+		{
+			Spring(PelvisSinkM, PelvisSinkRate, std::fmax(Plant, Land), S.PelvisHalfLifeS, Dt);
+		}
+		Frame.PelvisDropM = -std::fmax(PelvisSinkM, 0.0) - Bounce;
 	}
 
 	EShotType FPlayerAnimModel::FamilyShot(const FPlayerAnimInput& In) const
@@ -447,10 +683,9 @@ namespace Padel::Animation
 	void FPlayerAnimModel::StepRacket(const FPlayerAnimInput& In)
 	{
 		using namespace PlayerAnimModelDetail;
-		const FAnimSettings& S = *Settings;
 		// The right-hander's keys mirror to the side being played.
 		const double RightSign = (Frame.Side == ESwingSide::Fore ? 1.0 : -1.0) * In.ForehandSign;
-		const FPlayerFrameVec Ready = Mirror(S.ReadyRacket, In.ForehandSign);
+		const FPlayerFrameVec Ready = Mirror(Frame.StancePose.Racket, In.ForehandSign);
 		FPlayerFrameVec Local = Ready;
 		if (Frame.Clip && Frame.SwingWeight > 0.0)
 		{

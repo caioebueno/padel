@@ -5,6 +5,24 @@
 #include "Animation/Model/PlayerAnimTuning.h"
 #include "PadelAnimSettingsRow.generated.h"
 
+/** P1: one stance in Animation.json "Stances". Meanings on Padel::Animation::FStancePose. */
+USTRUCT(BlueprintType)
+struct PADEL_API FPadelStanceRow
+{
+	GENERATED_BODY()
+
+	/** Relaxed, Serve, Receive, Net or Back (Padel::Animation::EStance). */
+	UPROPERTY(EditAnywhere, Category = "Stance") FString Name;
+	UPROPERTY(EditAnywhere, Category = "Stance") double CrouchAlpha = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double RacketRightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double RacketForwardM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double RacketUpM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double ArmAlpha = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double WidenM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double DropM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double TrunkDeg = 0.0;
+};
+
 /**
  * The single row ("default") of Data/Animation.json (docs/decisions/0005-player-animation.md).
  * Field meanings are documented on Padel::Animation::FAnimSettings.
@@ -27,17 +45,40 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	/** N1c: degrees the body turns side-on from square to the net while it waits on a ball off the back glass, and off a side glass. */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double GlassBackTurnDeg = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double GlassSideTurnDeg = 0.0;
-	/** N1: ready-stance depth, the crouched clips' weight against the upright ones: at the net, and at the back glass. */
-	UPROPERTY(EditAnywhere, Category = "Locomotion") double ReadyCrouchAlphaNet = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Locomotion") double ReadyCrouchAlphaBack = 0.0;
+	/** P1 stances (one per Padel::Animation::EStance), the rally's net and back zones, and the stance spring. */
+	UPROPERTY(EditAnywhere, Category = "Stance") TArray<FPadelStanceRow> Stances;
+	UPROPERTY(EditAnywhere, Category = "Stance") double StanceNetUntilM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double StanceBackFromM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double StanceHalfLifeS = 0.0;
+	/** P1: the head follows the ball. Meanings on Padel::Animation::FAnimSettings. */
+	UPROPERTY(EditAnywhere, Category = "Stance") double HeadLookHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double HeadLookMaxYawDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double HeadLookMinPitchDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double HeadLookMaxPitchDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Stance") double HeadLookEyeHeightM = 0.0;
+	/** F1 body dynamics: facing springs, lean, plant drop, split-step hop and ready bounce. Meanings on Padel::Animation::FAnimSettings. */
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingChestHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingHeadHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingMaxChestTwistDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double FacingMaxHeadTwistDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double LeanDegPerMps2 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double LeanMaxDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double LeanHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double PlantDropPerMps2 = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double PlantDropMaxM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double PelvisHalfLifeS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double SplitHopHeightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double SplitLandDropM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double SplitLandS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double ReadyBounceM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double ReadyBounceHz = 0.0;
+	UPROPERTY(EditAnywhere, Category = "BodyDynamics") double ReadyBounceHalfLifeS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Swing") double FullBodyBlendPerS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Swing") double SwingBlendInS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Swing") double ClipCrossfadeS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Celebration") double CelebrationS = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Celebration") double CelebrationBlendS = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Placeholder") double ReadyRacketRightM = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Placeholder") double ReadyRacketForwardM = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Placeholder") double ReadyRacketUpM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") TArray<double> TrajectoryTimesS;
 	UPROPERTY(EditAnywhere, Category = "Celebration") TArray<FString> CelebrateAssets;
 	UPROPERTY(EditAnywhere, Category = "Celebration") TArray<FString> DejectedAssets;
@@ -67,17 +108,15 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	/**
 	 * The C++ pose used when ABP_PadelPlayer isn't there (0006): idle, walk and jog cycles
 	 * (forward, back, left, right) on the placeholder skeleton, the walk cycle's ground speed
-	 * (the jog's is RunClipSpeedMps), and how far the arm reaches for the racket target in the
-	 * ready stance while no swing clip is imported.
+	 * (the jog's is RunClipSpeedMps). How firmly the arm carries the racket is per stance.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") FString IdleAsset;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") TArray<FString> WalkAssets;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") TArray<FString> JogAssets;
-	/** N1: the crouched ready idle and the upright walk cycles (forward, back, left, right) the ready stance mixes with by ReadyCrouchAlpha*. */
+	/** N1: the crouched ready idle and the upright walk cycles (forward, back, left, right) the stance mixes with by its CrouchAlpha. */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") FString ReadyAsset;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") TArray<FString> WalkUprightAssets;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double WalkClipSpeedMps = 0.0;
-	UPROPERTY(EditAnywhere, Category = "Placeholder") double ArmReadyAlpha = 0.0;
 
 	/**
 	 * Contact warp (movement plan N3, shots doc 4.2, PadelContactWarp.h): how the reach for the

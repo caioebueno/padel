@@ -7,6 +7,7 @@
 
 #include "PadelTypes.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -63,6 +64,45 @@ namespace Padel::Animation
 		static std::string MakeName(EShotType Shot, ESwingSide Side, ESwingVariant Variant);
 	};
 
+	// P1 (docs/animation/MOVEMENT_FLUENCY.md): where the player is and what the point is
+	// doing decides how they stand. Partners of the server and receiver take Net and Back.
+	enum class EStance : std::uint8_t
+	{
+		// Between points, or nothing to play: upright, racket down.
+		Relaxed,
+		// The server before the serve: side-on behind the service line, ball in hand.
+		Serve,
+		// The receiver before the serve: the widest, lowest stance in the game.
+		Receive,
+		// In a rally near the net: taller, racket head up at the chest, elbows in front.
+		Net,
+		// In a rally at the back: lower and wider, racket at the waist.
+		Back,
+		Count,
+	};
+
+	inline constexpr int NumStances = static_cast<int>(EStance::Count);
+	const char* StanceName(EStance Stance);
+	bool ParseStance(const std::string& Text, EStance& Out);
+
+	// One stance, as the pose holds it while standing (Data/Animation.json "Stances").
+	struct FStancePose
+	{
+		// Weight of the crouched ready clips against the upright ones, 0 to 1.
+		double CrouchAlpha = 0.0;
+		// Where the racket face centre is carried, in the player's frame (Up is the height
+		// above the ground), for a right-hander's forehand side.
+		FPlayerFrameVec Racket;
+		// How firmly the arm holds the racket there over the clip's arm, 0 to 1.
+		double ArmAlpha = 0.0;
+		// Feet this much further apart than the clips put them, metres.
+		double WidenM = 0.0;
+		// Knees bent this much more (pelvis lower, feet planted), metres.
+		double DropM = 0.0;
+		// Trunk tipped forward over the knees, degrees.
+		double TrunkDeg = 0.0;
+	};
+
 	struct FAnimSettings
 	{
 		// Below this planar speed the legs stand (idle or ready stance).
@@ -89,7 +129,6 @@ namespace Padel::Animation
 		double ClipCrossfadeS = 0.0;
 		double CelebrationS = 0.0;
 		double CelebrationBlendS = 0.0;
-		FPlayerFrameVec ReadyRacket;
 		// N1 (movement doc 3.3, 5.3): how fast the body turns to its facing, degrees a second.
 		// Square to the net by default; toward travel in Crossover, TurnAndRun and Run.
 		double FacingTurnRateDegPerS = 0.0;
@@ -99,11 +138,51 @@ namespace Padel::Animation
 		// glass: toward that wall.
 		double GlassBackTurnDeg = 0.0;
 		double GlassSideTurnDeg = 0.0;
-		// N1 (movement doc 2.1): the ready stance mixes the crouched stand-in clips with the
-		// upright ones by this much: taller at the net (racket up), lower at the back glass
-		// (digging balls off the glass).
-		double ReadyCrouchAlphaNet = 0.0;
-		double ReadyCrouchAlphaBack = 0.0;
+		// P1 stances (movement doc 2.1, the motion catalogue): one pose per EStance. In a rally
+		// the stance is Net up to StanceNetUntilM from the net, Back from StanceBackFromM, and a
+		// blend between; every change is followed on StanceHalfLifeS.
+		std::array<FStancePose, NumStances> Stances{};
+		double StanceNetUntilM = 0.0;
+		double StanceBackFromM = 0.0;
+		double StanceHalfLifeS = 0.0;
+		// P1: the head follows the ball (in a rally, and the receivers watch the server's ball),
+		// on HeadLookHalfLifeS, at most HeadLookMaxYawDeg either side of the chest and between
+		// HeadLookMinPitchDeg (down) and HeadLookMaxPitchDeg (up), measured from the eyes.
+		double HeadLookHalfLifeS = 0.0;
+		double HeadLookMaxYawDeg = 0.0;
+		double HeadLookMinPitchDeg = 0.0;
+		double HeadLookMaxPitchDeg = 0.0;
+		double HeadLookEyeHeightM = 0.0;
+		// F1 body dynamics (docs/animation/MOVEMENT_FLUENCY.md). Springs are critically damped
+		// and set by half-life: the time to close half the gap.
+		// Facing: the pelvis follows the facing target on FacingHalfLifeS (at most
+		// FacingTurnRateDegPerS), the chest and head on their own shorter half-lives, so a turn
+		// starts at the eyes and ends at the hips. The twists are capped against the body below.
+		double FacingHalfLifeS = 0.0;
+		double FacingChestHalfLifeS = 0.0;
+		double FacingHeadHalfLifeS = 0.0;
+		double FacingMaxChestTwistDeg = 0.0;
+		double FacingMaxHeadTwistDeg = 0.0;
+		// Lean into the movement's acceleration (forward on a start, back on a brake, into a
+		// turn), degrees per m/s^2 of the acceleration smoothed over LeanHalfLifeS, up to LeanMaxDeg.
+		double LeanDegPerMps2 = 0.0;
+		double LeanMaxDeg = 0.0;
+		double LeanHalfLifeS = 0.0;
+		// Braking sinks the pelvis (knees take the load; feet stay planted): metres per m/s^2
+		// of deceleration, up to PlantDropMaxM, followed on PelvisHalfLifeS.
+		double PlantDropPerMps2 = 0.0;
+		double PlantDropMaxM = 0.0;
+		double PelvisHalfLifeS = 0.0;
+		// The split step shows as a hop this high over FPlayerMotion's hop, then a landing
+		// that loads the legs by SplitLandDropM for SplitLandS.
+		double SplitHopHeightM = 0.0;
+		double SplitLandDropM = 0.0;
+		double SplitLandS = 0.0;
+		// Standing in the ready stance in a rally, a light bounce on the toes: a dip this deep,
+		// this many times a second, faded in and out on ReadyBounceHalfLifeS.
+		double ReadyBounceM = 0.0;
+		double ReadyBounceHz = 0.0;
+		double ReadyBounceHalfLifeS = 0.0;
 		// Motion Matching trajectory sample times (negative = past), seconds.
 		std::vector<double> TrajectoryTimesS;
 		std::vector<std::string> CelebrateAssets;

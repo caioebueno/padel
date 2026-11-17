@@ -1,5 +1,9 @@
 #include "Animation/Model/PlayerAnimTuning.h"
 
+#include "CourtSpec.h"
+
+#include <utility>
+
 namespace Padel::Animation
 {
 	namespace PlayerAnimTuningDetail
@@ -52,13 +56,64 @@ namespace Padel::Animation
 		Positive(Out, W, "CelebrationS", CelebrationS);
 		Positive(Out, W, "CelebrationBlendS", CelebrationBlendS);
 		Positive(Out, W, "FacingTurnRateDegPerS", FacingTurnRateDegPerS);
+		for (const auto& [Field, Value] : { std::pair<const char*, double>{ "FacingHalfLifeS", FacingHalfLifeS },
+			{ "FacingChestHalfLifeS", FacingChestHalfLifeS }, { "FacingHeadHalfLifeS", FacingHeadHalfLifeS },
+			{ "LeanHalfLifeS", LeanHalfLifeS }, { "PelvisHalfLifeS", PelvisHalfLifeS }, { "ReadyBounceHalfLifeS", ReadyBounceHalfLifeS } })
+		{
+			Positive(Out, W, Field, Value);
+		}
+		for (const auto& [Field, Value] : { std::pair<const char*, double>{ "FacingMaxChestTwistDeg", FacingMaxChestTwistDeg },
+			{ "FacingMaxHeadTwistDeg", FacingMaxHeadTwistDeg }, { "LeanDegPerMps2", LeanDegPerMps2 }, { "LeanMaxDeg", LeanMaxDeg },
+			{ "PlantDropPerMps2", PlantDropPerMps2 }, { "PlantDropMaxM", PlantDropMaxM }, { "SplitHopHeightM", SplitHopHeightM },
+			{ "SplitLandDropM", SplitLandDropM }, { "SplitLandS", SplitLandS }, { "ReadyBounceM", ReadyBounceM }, { "ReadyBounceHz", ReadyBounceHz } })
+		{
+			if (Value < 0.0)
+			{
+				Out.push_back(W + ": " + Field + " must not be negative");
+			}
+		}
+		if (FacingChestHalfLifeS > FacingHalfLifeS || FacingHeadHalfLifeS > FacingChestHalfLifeS)
+		{
+			Out.push_back(W + ": the head turns first, then the chest, then the pelvis (FacingHeadHalfLifeS <= FacingChestHalfLifeS <= FacingHalfLifeS)");
+		}
+		if (LeanMaxDeg > 30.0 || FacingMaxChestTwistDeg > 60.0 || FacingMaxHeadTwistDeg > 80.0)
+		{
+			Out.push_back(W + ": LeanMaxDeg <= 30, FacingMaxChestTwistDeg <= 60 and FacingMaxHeadTwistDeg <= 80");
+		}
 		if (GlassBackTurnDeg < 0.0 || GlassBackTurnDeg > 180.0 || GlassSideTurnDeg < 0.0 || GlassSideTurnDeg > 180.0)
 		{
 			Out.push_back(W + ": GlassBackTurnDeg and GlassSideTurnDeg must be 0 to 180");
 		}
-		if (ReadyCrouchAlphaNet < 0.0 || ReadyCrouchAlphaNet > 1.0 || ReadyCrouchAlphaBack < 0.0 || ReadyCrouchAlphaBack > 1.0)
+		for (int I = 0; I < NumStances; ++I)
 		{
-			Out.push_back(W + ": ReadyCrouchAlphaNet and ReadyCrouchAlphaBack must be 0 to 1");
+			const FStancePose& P = Stances[static_cast<std::size_t>(I)];
+			const std::string Name = W + ": stance " + StanceName(static_cast<EStance>(I));
+			if (P.CrouchAlpha < 0.0 || P.CrouchAlpha > 1.0 || P.ArmAlpha < 0.0 || P.ArmAlpha > 1.0)
+			{
+				Out.push_back(Name + ": CrouchAlpha and ArmAlpha must be 0 to 1");
+			}
+			if (P.WidenM < 0.0 || P.WidenM > 0.5 || P.DropM < 0.0 || P.DropM > 0.2 || P.TrunkDeg < -10.0 || P.TrunkDeg > 30.0)
+			{
+				Out.push_back(Name + ": WidenM 0 to 0.5, DropM 0 to 0.2, TrunkDeg -10 to 30");
+			}
+			if (P.Racket.UpM < 0.3 || P.Racket.UpM > 2.0 || P.Racket.ForwardM < -0.2 || P.Racket.ForwardM > 0.8)
+			{
+				Out.push_back(Name + ": the racket is carried 0.3 to 2 m up and -0.2 to 0.8 m forward");
+			}
+		}
+		if (StanceNetUntilM <= 0.0 || StanceBackFromM <= StanceNetUntilM || StanceBackFromM > Court::HalfLength)
+		{
+			Out.push_back(W + ": 0 < StanceNetUntilM < StanceBackFromM <= 10");
+		}
+		for (const auto& [Field, Value] : { std::pair<const char*, double>{ "StanceHalfLifeS", StanceHalfLifeS }, { "HeadLookHalfLifeS", HeadLookHalfLifeS },
+			{ "HeadLookEyeHeightM", HeadLookEyeHeightM } })
+		{
+			Positive(Out, W, Field, Value);
+		}
+		if (HeadLookMaxYawDeg < 0.0 || HeadLookMaxYawDeg > 80.0 || HeadLookMinPitchDeg > 0.0 || HeadLookMinPitchDeg < -60.0
+			|| HeadLookMaxPitchDeg < 0.0 || HeadLookMaxPitchDeg > 70.0)
+		{
+			Out.push_back(W + ": HeadLookMaxYawDeg 0 to 80, HeadLookMinPitchDeg -60 to 0, HeadLookMaxPitchDeg 0 to 70");
 		}
 		if (StrideRateMax < StrideRateMin)
 		{
@@ -88,6 +143,32 @@ namespace Padel::Animation
 			Out.push_back(W + ": CelebrateAssets and DejectedAssets need at least one clip each");
 		}
 		return Out;
+	}
+
+	const char* StanceName(EStance Stance)
+	{
+		switch (Stance)
+		{
+		case EStance::Relaxed: return "Relaxed";
+		case EStance::Serve: return "Serve";
+		case EStance::Receive: return "Receive";
+		case EStance::Net: return "Net";
+		case EStance::Back: return "Back";
+		default: return "?";
+		}
+	}
+
+	bool ParseStance(const std::string& Text, EStance& Out)
+	{
+		for (int I = 0; I < NumStances; ++I)
+		{
+			if (Text == StanceName(static_cast<EStance>(I)))
+			{
+				Out = static_cast<EStance>(I);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	const FAnimClip* FAnimClipLibrary::FindExact(EShotType Shot, ESwingSide Side, ESwingVariant Variant) const

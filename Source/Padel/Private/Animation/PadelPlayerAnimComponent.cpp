@@ -162,7 +162,6 @@ FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
 	Set.WalkMinMps = Data->Settings.WalkMinMps;
 	Set.StrideRateMin = Data->Settings.StrideRateMin;
 	Set.StrideRateMax = Data->Settings.StrideRateMax;
-	Set.ArmReadyAlpha = Data->ArmReadyAlpha;
 	return Set;
 }
 
@@ -461,8 +460,8 @@ void UPadelPlayerAnimComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 	Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
-void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
-	Padel::EGlassWall GlassWall)
+void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt,
+	const Padel::Animation::FPlayerAnimContext& Context)
 {
 	if (Model)
 	{
@@ -472,8 +471,7 @@ void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& 
 		{
 			SetLeftHanded(bLeft);
 		}
-		Padel::Animation::FPlayerAnimInput In = Padel::Animation::FPlayerAnimInput::FromController(Controller, Events, bRallyLive);
-		In.GlassWall = GlassWall;
+		const Padel::Animation::FPlayerAnimInput In = Padel::Animation::FPlayerAnimInput::FromController(Controller, Events, Context);
 		Model->Step(In, Dt);
 		bStepped = true;
 	}

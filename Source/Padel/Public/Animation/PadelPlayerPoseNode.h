@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNodeBase.h"
+#include "Animation/PadelBodyDynamics.h"
 #include "Animation/PadelContactWarp.h"
 #include "PadelPlayerPoseNode.generated.h"
 
@@ -25,8 +26,6 @@ struct FPadelLocomotionSet
 	double WalkMinMps = 0.3;
 	double StrideRateMin = 0.75;
 	double StrideRateMax = 1.3;
-	/** Arm reach toward the racket target while ready and no swing clip is imported. */
-	double ArmReadyAlpha = 0.0;
 
 	bool IsValid() const { return Idle != nullptr; }
 };
@@ -41,6 +40,8 @@ struct FPadelLocomotionSet
  * 2. Swing: the swing clip at its explicit time (0005's contact-frame sync), over the upper
  *    body from spine_01, or the whole body by FullBodyAlpha.
  * 3. Celebration on top.
+ * 3b. F1 body dynamics (PadelBodyDynamics.h): the chest and head lead turns, the trunk leans
+ *    into the acceleration, the pelvis sinks on brakes and landings, the split step hops.
  * 4. The contact warp (PadelContactWarp.h): the arm puts the racket's face centre on the
  *    racket target, which meets the ball on the contact tick, and for clips with contact
  *    fields the knees and spine take part of the reach. Skipped while a MetaHuman shows
@@ -90,6 +91,7 @@ private:
 	FVector FaceInHand = FVector::ZeroVector;
 	FPadelWarpTuning WarpTuning;
 	bool bLeftHanded = false;
+	FPadelBodyDynamics Body;
 
 	// Advanced in Update.
 	double CyclePhase = 0.0;
@@ -98,4 +100,5 @@ private:
 	// Bone setup, from CacheBones: per compact bone 1 above spine_01, else 0.
 	TArray<float> UpperBodyMask;
 	mutable FPadelWarpBones WarpBones;
+	FPadelBodyBones BodyBones;
 };

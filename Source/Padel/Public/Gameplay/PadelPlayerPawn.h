@@ -7,6 +7,8 @@
 #include "Shots/PlayerShotController.h"
 #include "PadelPlayerPawn.generated.h"
 
+namespace Padel::Animation { struct FPlayerAnimContext; }
+
 class UCapsuleComponent;
 class UEnhancedInputComponent;
 class UPadelInputConfig;
@@ -56,7 +58,7 @@ public:
 	void SyncFromSimulation();
 
 	/** Steps the animation for the pawn's own controller (practice); once per fixed step, right after its Tick. */
-	void StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
+	void StepAnimation(const Padel::Shots::FSwingEvents& Events, double Dt, const Padel::Animation::FPlayerAnimContext& Context);
 
 	/**
 	 * For pawns whose controller lives elsewhere (the match: FAiMatchRunner owns all four).
@@ -65,8 +67,8 @@ public:
 	 * runner rebuilds them at a change of ends.
 	 */
 	void InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex, FName PlayerKey = NAME_None);
-	void StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
-		Padel::EGlassWall GlassWall = Padel::EGlassWall::None);
+	void StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt,
+		const Padel::Animation::FPlayerAnimContext& Context);
 
 	/** Applies the latest animation frame; SyncFromSimulation does this for the pawn's own controller. */
 	void PresentAnimation();

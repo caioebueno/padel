@@ -59,7 +59,6 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.ReadyAsset = Row->ReadyAsset;
 		Out.WalkUprightAssets = Row->WalkUprightAssets;
 		Out.WalkClipSpeedMps = Row->WalkClipSpeedMps;
-		Out.ArmReadyAlpha = Row->ArmReadyAlpha;
 		{
 			// Metres to Unreal units once, here (CLAUDE.md, "Coordinates and units").
 			const double Cm = Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
@@ -108,9 +107,26 @@ FPadelAnimData FPadelAnimData::Load()
 		{
 			Out.Errors.Add(TEXT("Animation.json: WalkAssets, JogAssets and WalkUprightAssets list forward, back, left, right"));
 		}
-		if (Row->ArmReadyAlpha < 0.0 || Row->ArmReadyAlpha > 1.0)
 		{
-			Out.Errors.Add(TEXT("Animation.json: ArmReadyAlpha must be 0 to 1"));
+			// P1: every stance exactly once.
+			TSet<FString> Seen;
+			for (const FPadelStanceRow& Stance : Row->Stances)
+			{
+				Padel::Animation::EStance Parsed;
+				if (!Padel::Animation::ParseStance(TCHAR_TO_UTF8(*Stance.Name), Parsed))
+				{
+					Out.Errors.Add(FString::Printf(TEXT("Animation.json: unknown stance \"%s\""), *Stance.Name));
+				}
+				else if (Seen.Contains(Stance.Name))
+				{
+					Out.Errors.Add(FString::Printf(TEXT("Animation.json: stance \"%s\" is listed twice"), *Stance.Name));
+				}
+				Seen.Add(Stance.Name);
+			}
+			if (Seen.Num() != Padel::Animation::NumStances)
+			{
+				Out.Errors.Add(TEXT("Animation.json: Stances must list Relaxed, Serve, Receive, Net and Back"));
+			}
 		}
 		if (Row->MetaHumanMinLod < 0)
 		{

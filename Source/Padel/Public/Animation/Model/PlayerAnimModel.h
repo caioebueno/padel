@@ -39,6 +39,31 @@ namespace Padel::Animation
 
 	const char* LocomotionStateName(ELocomotionState State);
 
+	// P1: who this player is before a serve (the match is awaiting it); None otherwise.
+	enum class EServeRole : std::uint8_t
+	{
+		None,
+		Server,
+		ServerPartner,
+		Receiver,
+		ReceiverPartner,
+	};
+
+	// What the match (or practice) knows that the player's controller doesn't: the owner fills
+	// it each tick and FPlayerAnimInput::FromController copies it in.
+	struct FPlayerAnimContext
+	{
+		// The ball is in play (practice ball live, or a rally on).
+		bool bRallyLive = false;
+		// N1c: the wall an AI player is set to take the ball off (FAiMatchRunner::GlassRead).
+		EGlassWall GlassWall = EGlassWall::None;
+		// P1: this player's role while the match waits for the serve.
+		EServeRole ServeRole = EServeRole::None;
+		// P1: where the ball is, world metres, when there is one on court.
+		bool bBallVisible = false;
+		FVec3 BallPosition;
+	};
+
 	// What the model needs each tick. FromController fills it from the shot controller.
 	struct FPlayerAnimInput
 	{
@@ -63,6 +88,8 @@ namespace Padel::Animation
 		FVec3 Velocity;
 		bool bSprinting = false;
 		bool bSplitHopping = false;
+		// Time left in the split-step hop (FPlayerMotion::GetSplitHopLeftS), to shape it.
+		double SplitHopLeftS = 0.0;
 		double TeamSign = 1.0;
 		double ForehandSign = 1.0;
 		// M2: how the player is moving (gait), from FPlayerMotion.
@@ -72,8 +99,12 @@ namespace Padel::Animation
 		// N1c: the wall this player is set to take the ball off (FAiMatchRunner::GlassRead,
 		// AI players only); None otherwise. Turns the body side-on while it waits.
 		EGlassWall GlassWall = EGlassWall::None;
+		// P1: the role before a serve, and the ball for the head to follow (world metres).
+		EServeRole ServeRole = EServeRole::None;
+		bool bBallVisible = false;
+		FVec3 BallPosition;
 
-		static FPlayerAnimInput FromController(const Shots::FPlayerShotController& Controller, const Shots::FSwingEvents& Events, bool bInRallyLive);
+		static FPlayerAnimInput FromController(const Shots::FPlayerShotController& Controller, const Shots::FSwingEvents& Events, const FPlayerAnimContext& Context);
 	};
 
 	inline constexpr int MaxTrajectorySamples = 8;
@@ -88,15 +119,36 @@ namespace Padel::Animation
 		EMovementMode Mode = EMovementMode::Adjust;
 		// World yaw of the net direction for this player's team, degrees, Unreal convention.
 		double NetYawDeg = 0.0;
-		// N1 ready-stance depth: how much the crouched clips weigh against the upright ones
-		// (Animation.json ReadyCrouchAlphaNet at the net to ReadyCrouchAlphaBack at the back).
-		double CrouchAlpha = 0.0;
+		// P1 stance (docs/animation/MOVEMENT_FLUENCY.md): the one the player is settling into,
+		// and the pose actually held (springing between stances). Its CrouchAlpha weighs the
+		// crouched clips against the upright ones; WidenM, DropM and TrunkDeg go on the bones
+		// with the body dynamics below; Racket and ArmAlpha are where the arm carries the racket.
+		EStance Stance = EStance::Relaxed;
+		FStancePose StancePose;
 		// Play rate for the run or sprint cycle so the feet match the ground speed.
 		double StridePlayRate = 1.0;
 		// World yaw the body faces, degrees, Unreal convention (N1): square to the net, or
 		// turned toward travel in Crossover, TurnAndRun and Run, at FacingTurnRateDegPerS;
 		// side-on to the glass while reading a ball off it (N1c).
 		double FacingYawDeg = 0.0;
+
+		// F1 body dynamics (docs/animation/MOVEMENT_FLUENCY.md), applied over the clips by the pose.
+		// Facing above is the pelvis; the chest and head turn ahead of it into a turn. Degrees
+		// about the up axis, positive the same way as FacingYawDeg: the chest from the pelvis,
+		// the head from the chest.
+		double ChestTwistDeg = 0.0;
+		double HeadTwistDeg = 0.0;
+		// P1: the head tipped up (positive) or down to keep the ball in view, degrees.
+		double HeadPitchDeg = 0.0;
+		// Lean of the trunk into the acceleration, degrees: forward (positive) or back, and to
+		// the body's right (positive) or left.
+		double LeanForwardDeg = 0.0;
+		double LeanRightDeg = 0.0;
+		// The pelvis lowered by braking, the split-step landing and the ready bounce, metres
+		// (zero or negative); the feet stay planted.
+		double PelvisDropM = 0.0;
+		// The split-step hop: the whole body lifted, feet too, metres (zero or positive).
+		double HopLiftM = 0.0;
 
 		// Swing layer. Clip is the one to show; PrevClip fades out under it.
 		const FAnimClip* Clip = nullptr;
@@ -144,6 +196,13 @@ namespace Padel::Animation
 
 	private:
 		void StepLocomotion(const FPlayerAnimInput& In, double Dt);
+		// F1: facing springs and twists (from the facing target StepLocomotion picked), lean,
+		// pelvis drop, split-step hop and ready bounce.
+		void StepBody(const FPlayerAnimInput& In, double WantYawDeg, double Dt);
+		// P1: picks the stance and springs the held pose toward it.
+		void StepStance(const FPlayerAnimInput& In, double Dt);
+		// P1: whether the head follows the ball this tick.
+		static bool WatchesBall(const FPlayerAnimInput& In);
 		void StepSwing(const FPlayerAnimInput& In, double Dt);
 		void StepCelebration(const FPlayerAnimInput& In, double Dt);
 		void StepRacket(const FPlayerAnimInput& In);
@@ -179,5 +238,25 @@ namespace Padel::Animation
 		std::string PendingCelebration;
 
 		std::vector<FVec3> History;
+
+		// F1 spring state.
+		double FacingRateDegPerS = 0.0;
+		double ChestYawDeg = 0.0;
+		double ChestRateDegPerS = 0.0;
+		double HeadYawDeg = 0.0;
+		double HeadRateDegPerS = 0.0;
+		FVec3 LastVelocity;
+		FVec3 Accel;
+		FVec3 AccelRate;
+		double PelvisSinkM = 0.0;
+		double PelvisSinkRate = 0.0;
+		double ReadyBounceAmount = 0.0;
+		double ReadyBounceRate = 0.0;
+		double BodyClockS = 0.0;
+		double HopElapsedS = 0.0;
+		double LandLeftS = 0.0;
+		// P1 spring state.
+		FStancePose StanceRate;
+		double HeadPitchRateDegPerS = 0.0;
 	};
 }
