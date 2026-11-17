@@ -390,7 +390,10 @@ void APadelMatchDirector::StepOnce()
 	{
 		if (APadelPlayerPawn* Pawn = GetPawn(Id))
 		{
-			Pawn->StepAnimation(Runner->Player(Id), Runner->LastEvents(Id), Padel::SimTickSeconds, bRallyLive);
+			// N1c: an AI player waiting on a ball off the glass turns side-on to it.
+			const Padel::AI::FAiGlassRead Glass = Runner->GlassRead(Id);
+			Pawn->StepAnimation(Runner->Player(Id), Runner->LastEvents(Id), Padel::SimTickSeconds, bRallyLive,
+				Glass.bPlayingOffGlass ? Glass.Wall : Padel::EGlassWall::None);
 		}
 	}
 }

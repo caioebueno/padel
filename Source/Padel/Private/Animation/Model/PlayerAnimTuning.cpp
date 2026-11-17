@@ -52,6 +52,10 @@ namespace Padel::Animation
 		Positive(Out, W, "CelebrationS", CelebrationS);
 		Positive(Out, W, "CelebrationBlendS", CelebrationBlendS);
 		Positive(Out, W, "FacingTurnRateDegPerS", FacingTurnRateDegPerS);
+		if (GlassBackTurnDeg < 0.0 || GlassBackTurnDeg > 180.0 || GlassSideTurnDeg < 0.0 || GlassSideTurnDeg > 180.0)
+		{
+			Out.push_back(W + ": GlassBackTurnDeg and GlassSideTurnDeg must be 0 to 180");
+		}
 		if (ReadyCrouchAlphaNet < 0.0 || ReadyCrouchAlphaNet > 1.0 || ReadyCrouchAlphaBack < 0.0 || ReadyCrouchAlphaBack > 1.0)
 		{
 			Out.push_back(W + ": ReadyCrouchAlphaNet and ReadyCrouchAlphaBack must be 0 to 1");

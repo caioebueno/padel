@@ -69,6 +69,9 @@ namespace Padel::Animation
 		EMovementMode Mode = EMovementMode::Adjust;
 		// The ball is in play (the owner knows: practice ball live, or a rally on).
 		bool bRallyLive = false;
+		// N1c: the wall this player is set to take the ball off (FAiMatchRunner::GlassRead,
+		// AI players only); None otherwise. Turns the body side-on while it waits.
+		EGlassWall GlassWall = EGlassWall::None;
 
 		static FPlayerAnimInput FromController(const Shots::FPlayerShotController& Controller, const Shots::FSwingEvents& Events, bool bInRallyLive);
 	};
@@ -91,7 +94,8 @@ namespace Padel::Animation
 		// Play rate for the run or sprint cycle so the feet match the ground speed.
 		double StridePlayRate = 1.0;
 		// World yaw the body faces, degrees, Unreal convention (N1): square to the net, or
-		// turned toward travel in Crossover, TurnAndRun and Run, at FacingTurnRateDegPerS.
+		// turned toward travel in Crossover, TurnAndRun and Run, at FacingTurnRateDegPerS;
+		// side-on to the glass while reading a ball off it (N1c).
 		double FacingYawDeg = 0.0;
 
 		// Swing layer. Clip is the one to show; PrevClip fades out under it.
@@ -147,6 +151,8 @@ namespace Padel::Animation
 		void SetClip(const FAnimClip* InClip);
 		EShotType FamilyShot(const FPlayerAnimInput& In) const;
 		ESwingSide SideOf(const FPlayerAnimInput& In, const FVec3& BallPosition) const;
+		// N1c: world yaw, degrees, for standing side-on to In.GlassWall.
+		double GlassFacingYaw(const FPlayerAnimInput& In, const FVec3& Forward, const FVec3& Right) const;
 		double FollowThroughS(EShotType Shot) const;
 		static double ClipTime(const FAnimClip& Clip, double Progress);
 

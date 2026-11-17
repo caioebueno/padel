@@ -93,6 +93,12 @@ namespace Padel::Animation
 		// N1 (movement doc 3.3, 5.3): how fast the body turns to its facing, degrees a second.
 		// Square to the net by default; toward travel in Crossover, TurnAndRun and Run.
 		double FacingTurnRateDegPerS = 0.0;
+		// N1c (movement doc 2.10): reading a ball off the glass, the body turns side-on, away
+		// from square to the net by this many degrees. Back glass: toward the side the ball
+		// comes on (forehand or backhand), so the racket shoulder is toward the glass. Side
+		// glass: toward that wall.
+		double GlassBackTurnDeg = 0.0;
+		double GlassSideTurnDeg = 0.0;
 		// N1 (movement doc 2.1): the ready stance mixes the crouched stand-in clips with the
 		// upright ones by this much: taller at the net (racket up), lower at the back glass
 		// (digging balls off the glass).

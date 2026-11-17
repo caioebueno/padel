@@ -65,7 +65,8 @@ public:
 	 * runner rebuilds them at a change of ends.
 	 */
 	void InitAnimation(const Padel::Shots::FShotLibrary* Library, int32 TeamIndex, FName PlayerKey = NAME_None);
-	void StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
+	void StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
+		Padel::EGlassWall GlassWall = Padel::EGlassWall::None);
 
 	/** Applies the latest animation frame; SyncFromSimulation does this for the pawn's own controller. */
 	void PresentAnimation();

@@ -24,6 +24,9 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Swing") double PlantedMaxSpeedMps = 0.0;
 	/** N1: how fast the body turns to its facing (square to the net, or toward travel in Crossover, TurnAndRun and Run), degrees a second. */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double FacingTurnRateDegPerS = 0.0;
+	/** N1c: degrees the body turns side-on from square to the net while it waits on a ball off the back glass, and off a side glass. */
+	UPROPERTY(EditAnywhere, Category = "Locomotion") double GlassBackTurnDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Locomotion") double GlassSideTurnDeg = 0.0;
 	/** N1: ready-stance depth, the crouched clips' weight against the upright ones: at the net, and at the back glass. */
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double ReadyCrouchAlphaNet = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double ReadyCrouchAlphaBack = 0.0;

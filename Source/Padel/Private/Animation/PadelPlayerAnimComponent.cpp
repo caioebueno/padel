@@ -358,7 +358,8 @@ void UPadelPlayerAnimComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 	Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
-void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
+void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
+	Padel::EGlassWall GlassWall)
 {
 	if (Model)
 	{
@@ -368,7 +369,9 @@ void UPadelPlayerAnimComponent::Step(const Padel::Shots::FPlayerShotController& 
 		{
 			SetLeftHanded(bLeft);
 		}
-		Model->Step(Padel::Animation::FPlayerAnimInput::FromController(Controller, Events, bRallyLive), Dt);
+		Padel::Animation::FPlayerAnimInput In = Padel::Animation::FPlayerAnimInput::FromController(Controller, Events, bRallyLive);
+		In.GlassWall = GlassWall;
+		Model->Step(In, Dt);
 		bStepped = true;
 	}
 }

@@ -91,9 +91,10 @@ void APadelPlayerPawn::StepAnimation(const Padel::Shots::FSwingEvents& Events, d
 	}
 }
 
-void APadelPlayerPawn::StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive)
+void APadelPlayerPawn::StepAnimation(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
+	Padel::EGlassWall GlassWall)
 {
-	Animation->Step(Controller, Events, Dt, bRallyLive);
+	Animation->Step(Controller, Events, Dt, bRallyLive, GlassWall);
 }
 
 void APadelPlayerPawn::PresentAnimation()

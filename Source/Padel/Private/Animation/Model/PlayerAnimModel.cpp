@@ -148,9 +148,16 @@ namespace Padel::Animation
 		// degrees running back to the glass). A swing squares up again; forehand or backhand
 		// still comes from the ball's side (SideOf, on the court's axes).
 		double Want = Frame.NetYawDeg;
-		if (PlayerAnimModelDetail::FacesTravel(In.Mode) && Speed >= S.WalkMinMps && In.Phase == ESwingPhase::Idle)
+		const bool bRunning = PlayerAnimModelDetail::FacesTravel(In.Mode) && Speed >= S.WalkMinMps;
+		if (bRunning && In.Phase == ESwingPhase::Idle)
 		{
 			Want = std::atan2(In.Velocity.Y, In.Velocity.X) * RadToDeg;
+		}
+		else if (In.GlassWall != EGlassWall::None && In.Phase == ESwingPhase::Idle)
+		{
+			// N1c (movement doc 2.10): waiting on a ball off the glass, stand side-on to it.
+			// Running there still faces travel; the swing squares up as above.
+			Want = GlassFacingYaw(In, Forward, Right);
 		}
 		Frame.FacingYawDeg = bFirstStep ? Want : PlayerAnimModelDetail::TurnToward(Frame.FacingYawDeg, Want, S.FacingTurnRateDegPerS * Dt);
 
@@ -217,6 +224,31 @@ namespace Padel::Animation
 			}
 			return (!In.bHasIdeal || In.bIdealBounced) ? EShotType::Drive : EShotType::Volley;
 		}
+	}
+
+	double FPlayerAnimModel::GlassFacingYaw(const FPlayerAnimInput& In, const FVec3& Forward, const FVec3& Right) const
+	{
+		using PlayerAnimModelDetail::RadToDeg;
+		double TurnDeg = Settings->GlassSideTurnDeg;
+		// Which way across the court the chest turns.
+		double Across = 0.0;
+		if (In.GlassWall == EGlassWall::Back)
+		{
+			// Chest toward the ball's side: the racket shoulder ends up toward the glass,
+			// the other toward the net (a closed stance for either wing).
+			TurnDeg = Settings->GlassBackTurnDeg;
+			const ESwingSide Side = In.bHasIdeal ? SideOf(In, In.IdealBallPosition) : ESwingSide::Fore;
+			Across = Sign(In.ForehandSign) * (Side == ESwingSide::Fore ? 1.0 : -1.0);
+		}
+		else
+		{
+			// Side glass: open toward that wall, in world Y, whichever half the player is on.
+			const double WallY = In.GlassWall == EGlassWall::SidePlusY ? 1.0 : -1.0;
+			Across = DotProduct(Vec(0.0, WallY, 0.0), Right) >= 0.0 ? 1.0 : -1.0;
+		}
+		const double T = TurnDeg / RadToDeg;
+		const FVec3 Dir = Add(Scale(Forward, std::cos(T)), Scale(Right, std::sin(T) * Across));
+		return std::atan2(Dir.Y, Dir.X) * RadToDeg;
 	}
 
 	ESwingSide FPlayerAnimModel::SideOf(const FPlayerAnimInput& In, const FVec3& BallPosition) const
