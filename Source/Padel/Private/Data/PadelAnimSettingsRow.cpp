@@ -18,6 +18,8 @@ Padel::Animation::FAnimSettings FPadelAnimSettingsRow::ToCore() const
 	Out.CelebrationBlendS = CelebrationBlendS;
 	Out.ReadyRacket = { ReadyRacketRightM, ReadyRacketForwardM, ReadyRacketUpM };
 	Out.FacingTurnRateDegPerS = FacingTurnRateDegPerS;
+	Out.GlassBackTurnDeg = GlassBackTurnDeg;
+	Out.GlassSideTurnDeg = GlassSideTurnDeg;
 	Out.ReadyCrouchAlphaNet = ReadyCrouchAlphaNet;
 	Out.ReadyCrouchAlphaBack = ReadyCrouchAlphaBack;
 	for (const double T : TrajectoryTimesS)

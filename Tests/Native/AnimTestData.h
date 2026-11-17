@@ -46,6 +46,8 @@ namespace AnimTestData
 		S.CelebrationBlendS = Num(R, "CelebrationBlendS");
 		S.ReadyRacket = Vec3(R, "ReadyRacket");
 		S.FacingTurnRateDegPerS = Num(R, "FacingTurnRateDegPerS");
+		S.GlassBackTurnDeg = Num(R, "GlassBackTurnDeg");
+		S.GlassSideTurnDeg = Num(R, "GlassSideTurnDeg");
 		S.ReadyCrouchAlphaNet = Num(R, "ReadyCrouchAlphaNet");
 		S.ReadyCrouchAlphaBack = Num(R, "ReadyCrouchAlphaBack");
 		for (const FValue& T : R["TrajectoryTimesS"].Array)

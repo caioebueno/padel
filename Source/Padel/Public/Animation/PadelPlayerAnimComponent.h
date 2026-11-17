@@ -45,8 +45,12 @@ public:
 	 */
 	void Init(const Padel::Shots::FShotLibrary* Shots, int32 TeamIndex, FName PlayerKey, USkeletalMeshComponent* InBody, USceneComponent* InRacket);
 
-	/** One fixed simulation step, after FPlayerShotController::Tick returned Events. */
-	void Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive);
+	/**
+	 * One fixed simulation step, after FPlayerShotController::Tick returned Events.
+	 * GlassWall: the wall an AI player is set to take the ball off (FAiMatchRunner::GlassRead), for N1c's side-on facing.
+	 */
+	void Step(const Padel::Shots::FPlayerShotController& Controller, const Padel::Shots::FSwingEvents& Events, double Dt, bool bRallyLive,
+		Padel::EGlassWall GlassWall = Padel::EGlassWall::None);
 
 	void NotifyPointEnded(bool bWon, uint32 PointIndex);
 
