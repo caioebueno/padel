@@ -61,7 +61,7 @@ CLIPS = {
     f"{GASP_DIR}/M_Relaxed_Run_Loop_LL": "A_Jog_Left",
     f"{GASP_DIR}/M_Relaxed_Run_Loop_RR_offset": "A_Jog_Right",
     # N1 ready-stance depth: the crouched idle and the upright walk the pose mixes with the
-    # crouch by ReadyCrouchAlpha* (the Relaxed walk moves at 1.65 m/s too, like the crouch).
+    # crouch by the stance's CrouchAlpha (Animation.json Stances; the Relaxed walk moves at 1.65 m/s too, like the crouch).
     f"{GASP_DIR}/M_Neutral_Crouch_Idle_Loop": "A_Ready",
     f"{GASP_DIR}/M_Relaxed_Walk_Loop_F": "A_WalkUpright_Fwd",
     f"{GASP_DIR}/M_Relaxed_Walk_Loop_B": "A_WalkUpright_Bwd",

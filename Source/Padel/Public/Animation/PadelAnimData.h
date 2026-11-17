@@ -24,14 +24,13 @@ struct PADEL_API FPadelAnimData
 	FString MetaHumanRetargeter;
 	int32 MetaHumanMinLod = 0;
 	int32 MetaHumanIkLodThreshold = -1;
-	/** The C++ pose's clips (Animation.json IdleAsset, WalkAssets, JogAssets) and its two values. */
+	/** The C++ pose's clips (Animation.json IdleAsset, WalkAssets, JogAssets) and the walk's speed. */
 	FString IdleAsset;
 	TArray<FString> WalkAssets;
 	TArray<FString> JogAssets;
 	FString ReadyAsset;
 	TArray<FString> WalkUprightAssets;
 	double WalkClipSpeedMps = 0.0;
-	double ArmReadyAlpha = 0.0;
 	/** Contact warp tuning (Animation.json Warp*), already in Unreal units. */
 	FPadelWarpTuning Warp;
 	bool bOk = false;

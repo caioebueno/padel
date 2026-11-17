@@ -26,8 +26,6 @@ struct FPadelLocomotionSet
 	double WalkMinMps = 0.3;
 	double StrideRateMin = 0.75;
 	double StrideRateMax = 1.3;
-	/** Arm reach toward the racket target while ready and no swing clip is imported. */
-	double ArmReadyAlpha = 0.0;
 
 	bool IsValid() const { return Idle != nullptr; }
 };

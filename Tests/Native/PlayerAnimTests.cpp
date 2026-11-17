@@ -120,7 +120,7 @@ namespace
 					}
 				}
 				const FSwingEvents E = P.Tick(In, Dt, Ball);
-				const FPlayerAnimFrame& F = Model.Step(FPlayerAnimInput::FromController(P, E, true), Dt);
+				const FPlayerAnimFrame& F = Model.Step(FPlayerAnimInput::FromController(P, E, RallyLive()), Dt);
 				Ball.Advance(Dt);
 				Ticks.push_back({ F, P.GetPhase(), P.GetCharge(), E.Outcome, E.Intent });
 				if (E.Outcome != ESwingOutcome::None && ContactTick < 0)
@@ -541,7 +541,7 @@ TEST_CASE("Anim.Contact: an AI swing lines up the same way")
 				}
 			}
 			const FSwingEvents E = P.Tick(In, Dt, Rig.Ball);
-			const FPlayerAnimFrame& F = Model.Step(FPlayerAnimInput::FromController(P, E, true), Dt);
+			const FPlayerAnimFrame& F = Model.Step(FPlayerAnimInput::FromController(P, E, RallyLive()), Dt);
 			Rig.Ball.Advance(Dt);
 			Rig.Ticks.push_back({ F, P.GetPhase(), P.GetCharge(), E.Outcome, E.Intent });
 			if (E.Outcome != ESwingOutcome::None && Rig.ContactTick < 0)
@@ -635,28 +635,6 @@ TEST_CASE("Anim.Facing: square to the net by default, toward travel in Crossover
 		Model.Step(In, Dt);
 	}
 	CHECK(Model.GetFrame().FacingYawDeg == Approx(180.0));
-}
-
-TEST_CASE("Anim.Ready: the stance is taller at the net and lower at the back glass (N1)")
-{
-	const FAnimSettings Settings = LoadSettings();
-	const FAnimClipLibrary Clips = LoadClips();
-	const FShotLibrary Lib = LoadLibrary();
-	FPlayerAnimModel Model(&Settings, &Clips, &Lib);
-	FPlayerAnimInput In;
-	In.TeamSign = 1.0;
-	In.bRallyLive = true;
-	// Net players stand taller with the racket up; back-court players stay low to dig balls off the glass.
-	CHECK(Settings.ReadyCrouchAlphaBack > Settings.ReadyCrouchAlphaNet);
-	In.Position = Vec(0.0, 0.0, 0.0);
-	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(Settings.ReadyCrouchAlphaNet));
-	In.Position = Vec(10.0, 0.0, 0.0);
-	CHECK(Model.Step(In, Dt).CrouchAlpha == Approx(Settings.ReadyCrouchAlphaBack));
-	// Halfway in between in the middle of the half, about 0.4 (movement doc 2.1).
-	In.Position = Vec(5.0, 0.0, 0.0);
-	const double Mid = Model.Step(In, Dt).CrouchAlpha;
-	CHECK(Mid == Approx(0.5 * (Settings.ReadyCrouchAlphaNet + Settings.ReadyCrouchAlphaBack)));
-	CHECK(Mid == Approx(0.4).epsilon(0.15));
 }
 
 TEST_CASE("Anim.Contact: the forward swing runs over ForwardS with no jump, contact only on the hit tick (N2)")

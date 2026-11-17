@@ -39,6 +39,31 @@ namespace Padel::Animation
 
 	const char* LocomotionStateName(ELocomotionState State);
 
+	// P1: who this player is before a serve (the match is awaiting it); None otherwise.
+	enum class EServeRole : std::uint8_t
+	{
+		None,
+		Server,
+		ServerPartner,
+		Receiver,
+		ReceiverPartner,
+	};
+
+	// What the match (or practice) knows that the player's controller doesn't: the owner fills
+	// it each tick and FPlayerAnimInput::FromController copies it in.
+	struct FPlayerAnimContext
+	{
+		// The ball is in play (practice ball live, or a rally on).
+		bool bRallyLive = false;
+		// N1c: the wall an AI player is set to take the ball off (FAiMatchRunner::GlassRead).
+		EGlassWall GlassWall = EGlassWall::None;
+		// P1: this player's role while the match waits for the serve.
+		EServeRole ServeRole = EServeRole::None;
+		// P1: where the ball is, world metres, when there is one on court.
+		bool bBallVisible = false;
+		FVec3 BallPosition;
+	};
+
 	// What the model needs each tick. FromController fills it from the shot controller.
 	struct FPlayerAnimInput
 	{
@@ -74,8 +99,12 @@ namespace Padel::Animation
 		// N1c: the wall this player is set to take the ball off (FAiMatchRunner::GlassRead,
 		// AI players only); None otherwise. Turns the body side-on while it waits.
 		EGlassWall GlassWall = EGlassWall::None;
+		// P1: the role before a serve, and the ball for the head to follow (world metres).
+		EServeRole ServeRole = EServeRole::None;
+		bool bBallVisible = false;
+		FVec3 BallPosition;
 
-		static FPlayerAnimInput FromController(const Shots::FPlayerShotController& Controller, const Shots::FSwingEvents& Events, bool bInRallyLive);
+		static FPlayerAnimInput FromController(const Shots::FPlayerShotController& Controller, const Shots::FSwingEvents& Events, const FPlayerAnimContext& Context);
 	};
 
 	inline constexpr int MaxTrajectorySamples = 8;
@@ -90,9 +119,12 @@ namespace Padel::Animation
 		EMovementMode Mode = EMovementMode::Adjust;
 		// World yaw of the net direction for this player's team, degrees, Unreal convention.
 		double NetYawDeg = 0.0;
-		// N1 ready-stance depth: how much the crouched clips weigh against the upright ones
-		// (Animation.json ReadyCrouchAlphaNet at the net to ReadyCrouchAlphaBack at the back).
-		double CrouchAlpha = 0.0;
+		// P1 stance (docs/animation/MOVEMENT_FLUENCY.md): the one the player is settling into,
+		// and the pose actually held (springing between stances). Its CrouchAlpha weighs the
+		// crouched clips against the upright ones; WidenM, DropM and TrunkDeg go on the bones
+		// with the body dynamics below; Racket and ArmAlpha are where the arm carries the racket.
+		EStance Stance = EStance::Relaxed;
+		FStancePose StancePose;
 		// Play rate for the run or sprint cycle so the feet match the ground speed.
 		double StridePlayRate = 1.0;
 		// World yaw the body faces, degrees, Unreal convention (N1): square to the net, or
@@ -106,6 +138,8 @@ namespace Padel::Animation
 		// the head from the chest.
 		double ChestTwistDeg = 0.0;
 		double HeadTwistDeg = 0.0;
+		// P1: the head tipped up (positive) or down to keep the ball in view, degrees.
+		double HeadPitchDeg = 0.0;
 		// Lean of the trunk into the acceleration, degrees: forward (positive) or back, and to
 		// the body's right (positive) or left.
 		double LeanForwardDeg = 0.0;
@@ -165,6 +199,10 @@ namespace Padel::Animation
 		// F1: facing springs and twists (from the facing target StepLocomotion picked), lean,
 		// pelvis drop, split-step hop and ready bounce.
 		void StepBody(const FPlayerAnimInput& In, double WantYawDeg, double Dt);
+		// P1: picks the stance and springs the held pose toward it.
+		void StepStance(const FPlayerAnimInput& In, double Dt);
+		// P1: whether the head follows the ball this tick.
+		static bool WatchesBall(const FPlayerAnimInput& In);
 		void StepSwing(const FPlayerAnimInput& In, double Dt);
 		void StepCelebration(const FPlayerAnimInput& In, double Dt);
 		void StepRacket(const FPlayerAnimInput& In);
@@ -217,5 +255,8 @@ namespace Padel::Animation
 		double BodyClockS = 0.0;
 		double HopElapsedS = 0.0;
 		double LandLeftS = 0.0;
+		// P1 spring state.
+		FStancePose StanceRate;
+		double HeadPitchRateDegPerS = 0.0;
 	};
 }

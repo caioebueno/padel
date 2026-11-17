@@ -1,6 +1,7 @@
 // F1 body dynamics (docs/animation/MOVEMENT_FLUENCY.md) on a real skeleton: the pelvis drop
 // keeps the feet planted, the split-step hop lifts them, the chest twist turns the shoulders
-// and the forward lean carries the head toward the net. The model's numbers are checked by
+// and the forward lean carries the head toward the net. P1: the stance sets the feet wider
+// and the head pitches up toward a ball. The model's numbers are checked by
 // the native tests (Anim.Body); this checks the bones do what the numbers say.
 #include "Misc/AutomationTest.h"
 
@@ -47,6 +48,12 @@ namespace PadelBodyDynamicsTests
 		S.Head = CS(Body, TEXT("head"));
 		S.ShoulderLine = CS(Body, TEXT("upperarm_r")) - CS(Body, TEXT("upperarm_l"));
 		return S;
+	}
+
+	FQuat HeadRotation(USkeletalMeshComponent* Body, UPadelPlayerAnimInstance* Anim, const FPadelBodyDynamics& Dyn)
+	{
+		Pose(Body, Anim, Dyn);
+		return Body->GetSocketTransform(FName(TEXT("head")), RTS_Component).GetRotation();
 	}
 
 	double YawDeg(const FVector& V)

@@ -14,13 +14,17 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	// Speeds leave the simulation in m/s; the graph works in Unreal units.
 	Speed = static_cast<float>(Padel::MetresToWorld(FVector(Frame.SpeedMps, 0.0, 0.0)).X);
 	Direction = static_cast<float>(Frame.DirectionDeg);
-	CrouchAlpha = static_cast<float>(Frame.CrouchAlpha);
+	CrouchAlpha = static_cast<float>(Frame.StancePose.CrouchAlpha);
+	ArmCarryAlpha = static_cast<float>(Frame.StancePose.ArmAlpha);
 	StridePlayRate = static_cast<float>(Frame.StridePlayRate);
 	Body.ChestTwistDeg = static_cast<float>(Frame.ChestTwistDeg);
 	Body.HeadTwistDeg = static_cast<float>(Frame.HeadTwistDeg);
-	Body.LeanForwardDeg = static_cast<float>(Frame.LeanForwardDeg);
+	Body.HeadPitchDeg = static_cast<float>(Frame.HeadPitchDeg);
+	// P1: the stance's trunk tip and knee bend sit under the F1 lean and plant drop.
+	Body.LeanForwardDeg = static_cast<float>(Frame.LeanForwardDeg + Frame.StancePose.TrunkDeg);
 	Body.LeanRightDeg = static_cast<float>(Frame.LeanRightDeg);
-	Body.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.PelvisDropM)).Z);
+	Body.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.PelvisDropM - Frame.StancePose.DropM)).Z);
+	Body.FeetWidenUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.StancePose.WidenM)).Z);
 	Body.HopLiftUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.HopLiftM)).Z);
 	Trajectory = InTrajectoryWorld;
 
@@ -52,8 +56,7 @@ float UPadelPlayerAnimInstance::WarpArmAlpha() const
 	{
 		return 0.0f;
 	}
-	const bool bReady = Locomotion == EPadelLocomotionState::Ready || Locomotion == EPadelLocomotionState::SplitStep;
-	return FMath::Clamp(FMath::Max(RawSwingWeight, bReady ? static_cast<float>(LocomotionSet.ArmReadyAlpha) : 0.0f), 0.0f, 1.0f);
+	return FMath::Clamp(FMath::Max(RawSwingWeight, ArmCarryAlpha), 0.0f, 1.0f);
 }
 
 FAnimInstanceProxy* UPadelPlayerAnimInstance::CreateAnimInstanceProxy()

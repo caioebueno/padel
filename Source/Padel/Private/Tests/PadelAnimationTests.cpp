@@ -53,6 +53,8 @@ bool FPadelAnimContactSyncTest::RunTest(const FString& Parameters)
 	FBallMachine Machine(Shots.Feeds, 1.0, 3);
 	FPlayerShotController Controller(0, 1.0, &Player, &Shots.Library, &Shots.Movement, FVec3{ 8.5, 0.0, 0.0 }, 3);
 	FPlayerAnimModel Model(&Anim.Settings, &Anim.Clips, &Shots.Library);
+	FPlayerAnimContext RallyContext;
+	RallyContext.bRallyLive = true;
 
 	// Hold the drive from the feed until the controller fires: the hit tick must show
 	// the clip's contact frame, with the placeholder racket on the ball.
@@ -64,7 +66,7 @@ bool FPadelAnimContactSyncTest::RunTest(const FString& Parameters)
 		FPlayerInputFrame Input;
 		Input.bDrive = Controller.HasIdealMoment() && Controller.TimeToIdealS() < 0.3;
 		const FSwingEvents Events = Controller.Tick(Input, Dt, Ball);
-		const FPlayerAnimFrame& Frame = Model.Step(FPlayerAnimInput::FromController(Controller, Events, true), Dt);
+		const FPlayerAnimFrame& Frame = Model.Step(FPlayerAnimInput::FromController(Controller, Events, RallyContext), Dt);
 		Ball.Advance(Dt);
 		if (Events.Outcome == ESwingOutcome::Hit)
 		{

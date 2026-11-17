@@ -118,21 +118,24 @@ namespace PadelBodyDynamics
 			Right = FVector::CrossProduct(FVector::UpVector, FacingAxis); // UE is left-handed: up x forward = right
 		}
 
-		// Pelvis: the hop lifts everything; the drop is taken by the knees, feet where they were.
+		// Pelvis: the hop lifts everything; the drop is taken by the knees, feet where they were
+		// (or set wider apart by the stance, half each side: foot_l to the left, foot_r right).
 		const float Drop = FMath::Min(Body.PelvisDropUnits, 0.0f);
 		const float Lift = FMath::Max(Body.HopLiftUnits, 0.0f);
-		if (Drop != 0.0f || Lift != 0.0f)
+		const float Widen = FMath::Max(Body.FeetWidenUnits, 0.0f);
+		if (Drop != 0.0f || Lift != 0.0f || Widen != 0.0f)
 		{
 			FTransform Pelvis = CS.GetComponentSpaceTransform(Bones.Pelvis);
 			Pelvis.AddToTranslation(FVector(0.0, 0.0, Drop + Lift));
 			SetCS(CS, Bones.Pelvis, Pelvis);
-			if (Drop != 0.0f)
+			if (Drop != 0.0f || Widen != 0.0f)
 			{
 				for (int32 Side = 0; Side < 2; ++Side)
 				{
 					if (bLeg[Side])
 					{
-						SolveLeg(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side] + FVector(0.0, 0.0, Lift));
+						const FVector Out = Right * (Side == 0 ? -0.5 : 0.5) * Widen;
+						SolveLeg(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side] + Out + FVector(0.0, 0.0, Lift));
 					}
 				}
 			}
@@ -142,6 +145,10 @@ namespace PadelBodyDynamics
 		// or left. Rotating about up x dir carries up toward dir in Unreal's left-handed axes.
 		RotateChain(CS, Bones.Spine, FVector::CrossProduct(FVector::UpVector, FacingAxis).GetSafeNormal(), FMath::DegreesToRadians(Body.LeanForwardDeg));
 		RotateChain(CS, Bones.Spine, FVector::CrossProduct(FVector::UpVector, Right).GetSafeNormal(), FMath::DegreesToRadians(Body.LeanRightDeg));
+
+		// Head pitch, before the twists so the look turns with them: up toward the face carries
+		// the face (forward) toward up, the opposite way to a forward lean.
+		RotateChain(CS, Bones.NeckAndHead, FVector::CrossProduct(FVector::UpVector, FacingAxis).GetSafeNormal(), -FMath::DegreesToRadians(Body.HeadPitchDeg));
 
 		// Facing lead: positive yaw is the same way as FacingYawDeg (FRotator yaw, about +Z).
 		RotateChain(CS, Bones.Spine, FVector::UpVector, FMath::DegreesToRadians(Body.ChestTwistDeg));

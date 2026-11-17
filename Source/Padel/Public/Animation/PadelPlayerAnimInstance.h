@@ -66,8 +66,11 @@ public:
 	UPROPERTY(Transient)
 	FPadelLocomotionSet LocomotionSet;
 
-	/** N1 ready-stance depth: the crouched clips' weight against the upright ones (FPlayerAnimFrame::CrouchAlpha). */
+	/** P1 stance depth: the crouched clips' weight against the upright ones (the frame's StancePose.CrouchAlpha). */
 	float CrouchAlpha = 1.0f;
+
+	/** P1: how firmly the arm carries the racket where the stance holds it (StancePose.ArmAlpha). */
+	float ArmCarryAlpha = 0.0f;
 
 	/** F1 body dynamics (FPlayerAnimFrame's twist, lean, pelvis and hop fields), in Unreal units. */
 	FPadelBodyDynamics Body;
@@ -99,7 +102,7 @@ public:
 
 	/**
 	 * How far the arm reaches for RacketTargetWorld, 0..1: through a swing with no swing clip
-	 * (the racket target meets the ball on the contact tick), and a little in the ready stance.
+	 * (the racket target meets the ball on the contact tick), and as the stance carries it otherwise.
 	 */
 	float WarpArmAlpha() const;
 

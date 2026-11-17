@@ -16,12 +16,31 @@ Padel::Animation::FAnimSettings FPadelAnimSettingsRow::ToCore() const
 	Out.ClipCrossfadeS = ClipCrossfadeS;
 	Out.CelebrationS = CelebrationS;
 	Out.CelebrationBlendS = CelebrationBlendS;
-	Out.ReadyRacket = { ReadyRacketRightM, ReadyRacketForwardM, ReadyRacketUpM };
 	Out.FacingTurnRateDegPerS = FacingTurnRateDegPerS;
 	Out.GlassBackTurnDeg = GlassBackTurnDeg;
 	Out.GlassSideTurnDeg = GlassSideTurnDeg;
-	Out.ReadyCrouchAlphaNet = ReadyCrouchAlphaNet;
-	Out.ReadyCrouchAlphaBack = ReadyCrouchAlphaBack;
+	for (const FPadelStanceRow& Row : Stances)
+	{
+		Padel::Animation::EStance Stance;
+		if (Padel::Animation::ParseStance(TCHAR_TO_UTF8(*Row.Name), Stance))
+		{
+			Padel::Animation::FStancePose& P = Out.Stances[static_cast<std::size_t>(Stance)];
+			P.CrouchAlpha = Row.CrouchAlpha;
+			P.Racket = { Row.RacketRightM, Row.RacketForwardM, Row.RacketUpM };
+			P.ArmAlpha = Row.ArmAlpha;
+			P.WidenM = Row.WidenM;
+			P.DropM = Row.DropM;
+			P.TrunkDeg = Row.TrunkDeg;
+		}
+	}
+	Out.StanceNetUntilM = StanceNetUntilM;
+	Out.StanceBackFromM = StanceBackFromM;
+	Out.StanceHalfLifeS = StanceHalfLifeS;
+	Out.HeadLookHalfLifeS = HeadLookHalfLifeS;
+	Out.HeadLookMaxYawDeg = HeadLookMaxYawDeg;
+	Out.HeadLookMinPitchDeg = HeadLookMinPitchDeg;
+	Out.HeadLookMaxPitchDeg = HeadLookMaxPitchDeg;
+	Out.HeadLookEyeHeightM = HeadLookEyeHeightM;
 	Out.FacingHalfLifeS = FacingHalfLifeS;
 	Out.FacingChestHalfLifeS = FacingChestHalfLifeS;
 	Out.FacingHeadHalfLifeS = FacingHeadHalfLifeS;

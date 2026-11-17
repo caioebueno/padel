@@ -49,7 +49,7 @@ The four are invented: built from the Creator's presets and blends, never from a
 1. **Locomotion:** idle, and walk and jog cycles in four directions (forward, back, left, right, relative to facing the net), blended by direction and speed on one shared phase. Walk rate is `speed / WalkClipSpeedMps`, jog rate is 0005's `StridePlayRate`.
 2. **Swing:** the swing clip at its explicit time (0005's contact-frame sync), over the upper body from `spine_01`, or the whole body by `FullBodyAlpha`.
 3. **Celebration** on top.
-4. **Until swing clips exist,** the right arm reaches for the placeholder racket target with two-bone IK (full during a swing, `ArmReadyAlpha` in the ready stance). That target meets the ball on the contact tick, so the swing is in time with the ball, without any swing clip.
+4. **Until swing clips exist,** the right arm reaches for the placeholder racket target with two-bone IK (full during a swing, otherwise each stance's `ArmAlpha` in `Animation.json` `Stances`). That target meets the ball on the contact tick, so the swing is in time with the ball, without any swing clip.
 
 The component picks this class when `ABP_PadelPlayer` is missing and the idle clip is on the mesh's skeleton. A MetaHuman player's hidden driver is always `SK_PlayerPlaceholderA`, whose skeleton the clips and the MetaHuman retargeter are made for. If an `ABP_PadelPlayer` is made later, it wins: an AnimBP subclass brings its own graph and the C++ root is not used.
 

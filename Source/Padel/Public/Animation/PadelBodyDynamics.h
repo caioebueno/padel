@@ -2,7 +2,8 @@
 // Padel::Animation::FPlayerAnimModel computes (StepBody) put on the bones, over whatever
 // the clips play. The chest and head turn ahead of the hips, the trunk leans into the
 // acceleration, the pelvis sinks on a brake, a landing or the ready bounce with the feet
-// kept planted, and the split step lifts the whole body.
+// kept planted, and the split step lifts the whole body. P1 adds the stance (feet wider,
+// knees bent, trunk tipped, all through the same fields) and the head pitched to the ball.
 //
 // It runs on the placeholder pose, before the contact warp (which then aims the arm from the
 // leaned body). A MetaHuman copies it through the retarget like the rest of the pose.
@@ -41,11 +42,15 @@ struct PADEL_API FPadelBodyDynamics
 	float PelvisDropUnits = 0.0f;
 	/** Zero or positive: the whole body lifted, feet too (the split-step hop). */
 	float HopLiftUnits = 0.0f;
+	/** P1: the feet this much further apart (half each side), planted there by the leg IK. */
+	float FeetWidenUnits = 0.0f;
+	/** P1: the head tipped up (positive) or down to watch the ball. */
+	float HeadPitchDeg = 0.0f;
 
 	bool IsZero() const
 	{
 		return ChestTwistDeg == 0.0f && HeadTwistDeg == 0.0f && LeanForwardDeg == 0.0f && LeanRightDeg == 0.0f
-			&& PelvisDropUnits == 0.0f && HopLiftUnits == 0.0f;
+			&& PelvisDropUnits == 0.0f && HopLiftUnits == 0.0f && FeetWidenUnits == 0.0f && HeadPitchDeg == 0.0f;
 	}
 };
 
