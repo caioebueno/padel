@@ -31,6 +31,10 @@ TEST_CASE("Contracts.Realism: Movement.json's new fields are neutral (GDD 6.1, 6
 	CHECK(M.FatigueDrainPerRallySAt99 == Approx(0.03));
 	CHECK(M.FatigueBetweenPointRestS == Approx(20.0));
 	CHECK(M.FatigueTopSpeedLossAtZero == Approx(0.06));
+	// M2b turned these on (PlayerGaitTests pins their behaviour; the tolerance is a safety
+	// net, and the gait tests run with it at 0).
+	CHECK(M.GaitHysteresisDeg == Approx(10.0));
+	CHECK(M.EdgeStopToleranceMps == Approx(0.1));
 }
 
 TEST_CASE("Contracts.Realism: a speed fraction left out of Movement.json is caught")
