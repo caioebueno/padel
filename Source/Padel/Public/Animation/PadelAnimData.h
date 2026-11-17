@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/PadelContactWarp.h"
+#include "Animation/PadelMotionMatching.h"
 #include "Animation/Model/PlayerAnimTuning.h"
 #include "Data/PadelPlayerBodyRow.h"
 
@@ -34,6 +35,19 @@ struct PADEL_API FPadelAnimData
 	FString ReadyAsset;
 	TArray<FString> WalkUprightAssets;
 	double WalkClipSpeedMps = 0.0;
+	/** M1 motion matching: the database paths and the search tuning, and the leg layers' fade over mocap legs. */
+	TArray<FString> MotionMatchingDatabases;
+	/** The chooser: which of MotionMatchingDatabases are searched still, and turning in place (the rest moving). */
+	TArray<FString> MotionMatchingStillDatabases;
+	TArray<FString> MotionMatchingStopDatabases;
+	TArray<FString> MotionMatchingWalkDatabases;
+	TArray<FString> MotionMatchingSprintDatabases;
+	TArray<FString> MotionMatchingTurnInPlaceDatabases;
+	FPadelMotionMatchingTuning MotionMatching;
+	double MocapLegFadeFromMps = 0.3;
+	double MocapLegFadeToMps = 1.5;
+	double MocapLegKeep = 0.0;
+	double MocapLeanKeep = 0.5;
 	/** Contact warp tuning (Animation.json Warp*), already in Unreal units. */
 	FPadelWarpTuning Warp;
 	bool bOk = false;

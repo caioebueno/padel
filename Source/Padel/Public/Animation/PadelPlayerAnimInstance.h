@@ -85,8 +85,25 @@ public:
 	 */
 	float StanceKeep() const;
 
-	/** Body plus Stance by StanceKeep: what the pose puts on the bones. */
-	FPadelBodyDynamics PosedBody() const;
+	/**
+	 * Body plus Stance by StanceKeep: what the pose puts on the bones. M1: over mocap legs the
+	 * pose scales the leg layers (the stance's drop and feet widen, the pelvis drops) by LegKeep
+	 * and the trunk leans by LeanKeep.
+	 */
+	FPadelBodyDynamics PosedBody(float LegKeep = 1.0f, float LeanKeep = 1.0f) const;
+
+	/**
+	 * M1 motion matching trajectory: the model's past positions (Trajectory, at TrajectoryTimes)
+	 * on the mesh component's height, facing as the mesh did at each past time and as it does now
+	 * for the future. The future carries the model's velocity on with the acceleration the
+	 * player has now (braking stops at rest rather than reversing), so a stop or a start shows
+	 * in the trajectory before it happens, as the search's stop and start clips expect.
+	 * Mesh component world space, cm; built in ApplyFrame.
+	 */
+	FTransformTrajectory MotionTrajectory;
+
+	/** The C++ pose (tests and debugging: what motion matching picked). */
+	const FAnimNode_PadelPlayerPose& GetPoseNode() const { return PoseNode; }
 
 	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
 	float RawSwingWeight = 0.0f;
@@ -183,6 +200,14 @@ public:
 
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
+
+	/** The mesh's facing over the last second, for the trajectory's past samples (world seconds, rotation). */
+	TArray<TPair<double, FQuat>> FacingHistory;
+	/** The ground velocity (cm/s) the model's trajectory implied last frame, its time, and the acceleration since (smoothed). */
+	FVector LastVelocity = FVector::ZeroVector;
+	double LastVelocityTime = -1.0;
+	FVector Acceleration = FVector::ZeroVector;
+	void BuildMotionTrajectory();
 
 	UPROPERTY(Transient)
 	FAnimNode_PadelPlayerPose PoseNode;

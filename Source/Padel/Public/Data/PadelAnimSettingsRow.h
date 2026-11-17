@@ -121,6 +121,62 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Locomotion") double WalkClipSpeedMps = 0.0;
 
 	/**
+	 * M1 motion matching (docs/animation/MOVEMENT_FLUENCY.md): the Pose Search databases the
+	 * C++ pose searches for its locomotion (built by Tools/AssetPipeline/unreal/animation_setup.py
+	 * from the Game Animation Sample's Dense Stand set). Missing databases leave the loop mix above.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingDatabases;
+	/**
+	 * The chooser (the sample's chooser table, as data): below MotionMatchingStillBelowMps and not
+	 * speeding up, the search uses MotionMatchingStillDatabases (idles), the stop ones when the
+	 * trajectory's past travelled MotionMatchingStopAfterM, and the turn-in-place ones once the
+	 * body has turned MotionMatchingTurnInPlaceDeg over it; otherwise every other database
+	 * (starts, loops, pivots).
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingStillDatabases;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingStopDatabases;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingStopAfterM = 0.2;
+	/**
+	 * Gaits, moving: MotionMatchingWalkDatabases up to MotionMatchingRunFromMps, the rest (run)
+	 * from there, MotionMatchingSprintDatabases from MotionMatchingSprintFromMps, by the current
+	 * speed; each band reaches MotionMatchingGaitOverlap (a share) past its edges.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingWalkDatabases;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingSprintDatabases;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingRunFromMps = 2.5;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSprintFromMps = 5.0;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingGaitOverlap = 0.2;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingTurnInPlaceDatabases;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingStillBelowMps = 1.0;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingTurnInPlaceDeg = 30.0;
+	/** Seconds between searches (0: every update). */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSearchThrottleS = 0.0;
+	/** Crossfade from one selected clip to the next. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingBlendTimeS = 0.2;
+	/** A result in the clip already playing closer than this to its playhead doesn't start a new blend. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingPoseJumpThresholdS = 0.25;
+	/** Play rate range that matches a clip's root speed to the simulation's speed (stride matching). */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingPlayRateMin = 0.8;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingPlayRateMax = 1.3;
+	/** Clips blending at once; the oldest drops out past this. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") int32 MotionMatchingMaxBlends = 4;
+	/** A new pick waits until the latest is this far (0..1) through its crossfade. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingRepickAfterBlend = 0.5;
+	/** The pose history the search reads (its pose features): poses kept and seconds between them. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") int32 MotionMatchingHistoryPoses = 10;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingHistorySamplingS = 0.04;
+	/**
+	 * With mocap legs (motion matching on), the procedural leg layers that fight the clips fade
+	 * with speed: the stance's crouch and feet widen, the pelvis drops (plant, bounce). Fully on
+	 * up to MocapLegFadeFromMps, down to MocapLegKeep of themselves from MocapLegFadeToMps.
+	 * The trunk lean keeps MocapLeanKeep of itself at speed (the clips lean on their own).
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLegFadeFromMps = 0.3;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLegFadeToMps = 1.5;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLegKeep = 0.0;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLeanKeep = 0.5;
+
+	/**
 	 * Contact warp (movement plan N3, shots doc 4.2, PadelContactWarp.h): how the reach for the
 	 * ball splits across the body. Metres and degrees here; Unreal units once, at load.
 	 */

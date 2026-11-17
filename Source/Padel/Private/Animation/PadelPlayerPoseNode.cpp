@@ -93,6 +93,7 @@ void FAnimNode_PadelPlayerPose::Initialize_AnyThread(const FAnimationInitializeC
 	FAnimNode_Base::Initialize_AnyThread(Context);
 	CyclePhase = 0.0;
 	IdleTime = 0.0;
+	Matcher.Reset();
 }
 
 void FAnimNode_PadelPlayerPose::CacheBones_AnyThread(const FAnimationCacheBonesContext& Context)
@@ -149,7 +150,21 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	FaceInHand = Anim->RacketFaceInHand;
 	WarpTuning = Anim->WarpTuning;
 	bLeftHanded = Anim->bLeftHanded;
-	Body = Anim->PosedBody();
+	Trajectory = Anim->MotionTrajectory;
+	Matcher.Configure(Set.MotionMatchingDatabases, Set.MotionMatchingRoles, Set.MotionMatching);
+	if (Matcher.HasPose())
+	{
+		// M1: over mocap legs the procedural crouch, feet widen and pelvis drops fade with speed
+		// (the clips bend their own knees and plant their own feet); the head look stays, the
+		// trunk lean lightens (the clips lean too).
+		const double From = Set.MocapLegFadeFromMps;
+		const double Moving = FMath::Clamp((SpeedMps - From) / FMath::Max(Set.MocapLegFadeToMps - From, 0.01), 0.0, 1.0);
+		Body = Anim->PosedBody(static_cast<float>(FMath::Lerp(1.0, Set.MocapLegKeep, Moving)), static_cast<float>(FMath::Lerp(1.0, Set.MocapLeanKeep, Moving)));
+	}
+	else
+	{
+		Body = Anim->PosedBody();
+	}
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
@@ -160,6 +175,7 @@ void FAnimNode_PadelPlayerPose::Update_AnyThread(const FAnimationUpdateContext& 
 {
 	const double Dt = Context.GetDeltaTime();
 	IdleTime += Dt;
+	Matcher.Update(Context, Trajectory, SpeedMps * 100.0);
 	if (SpeedMps <= 0.0)
 	{
 		return;
@@ -174,6 +190,12 @@ void FAnimNode_PadelPlayerPose::Update_AnyThread(const FAnimationUpdateContext& 
 }
 
 bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output) const
+{
+	// M1: motion matching once it has a pick; the loop mix until then and without databases.
+	return Matcher.Evaluate(Output) || SampleLoopMix(Output);
+}
+
+bool FAnimNode_PadelPlayerPose::SampleLoopMix(FPoseContext& Output) const
 {
 	using namespace PadelPlayerPoseDetail;
 	if (!Sample(Set.Idle, FMath::Fmod(IdleTime, FMath::Max(Set.Idle ? Set.Idle->GetPlayLength() : 1.0, 0.1)), true, Output))
@@ -228,10 +250,12 @@ bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output) const
 void FAnimNode_PadelPlayerPose::Evaluate_AnyThread(FPoseContext& Output)
 {
 	using namespace PadelPlayerPoseDetail;
+	bMotionMatched = Matcher.HasPose();
 	if (!SampleLocomotion(Output))
 	{
 		Output.ResetToRefPose();
 	}
+	Matcher.RecordHistory(Output);
 
 	if (Swing && SwingWeight > 0.0)
 	{

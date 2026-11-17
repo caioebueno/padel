@@ -59,6 +59,66 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.ReadyAsset = Row->ReadyAsset;
 		Out.WalkUprightAssets = Row->WalkUprightAssets;
 		Out.WalkClipSpeedMps = Row->WalkClipSpeedMps;
+		Out.MotionMatchingDatabases = Row->MotionMatchingDatabases;
+		Out.MotionMatchingStillDatabases = Row->MotionMatchingStillDatabases;
+		Out.MotionMatchingStopDatabases = Row->MotionMatchingStopDatabases;
+		Out.MotionMatchingWalkDatabases = Row->MotionMatchingWalkDatabases;
+		Out.MotionMatchingSprintDatabases = Row->MotionMatchingSprintDatabases;
+		Out.MotionMatchingTurnInPlaceDatabases = Row->MotionMatchingTurnInPlaceDatabases;
+		for (const TArray<FString>* Subset : { &Row->MotionMatchingStillDatabases, &Row->MotionMatchingStopDatabases, &Row->MotionMatchingTurnInPlaceDatabases,
+			&Row->MotionMatchingWalkDatabases, &Row->MotionMatchingSprintDatabases })
+		{
+			for (const FString& Path : *Subset)
+			{
+				if (!Row->MotionMatchingDatabases.Contains(Path))
+				{
+					Out.Errors.Add(FString::Printf(TEXT("Animation.json: %s isn't in MotionMatchingDatabases"), *Path));
+				}
+			}
+		}
+		{
+			FPadelMotionMatchingTuning& M = Out.MotionMatching;
+			M.SearchThrottleS = Row->MotionMatchingSearchThrottleS;
+			M.BlendTimeS = Row->MotionMatchingBlendTimeS;
+			M.PoseJumpThresholdS = Row->MotionMatchingPoseJumpThresholdS;
+			M.PlayRateMin = Row->MotionMatchingPlayRateMin;
+			M.PlayRateMax = Row->MotionMatchingPlayRateMax;
+			M.MaxBlends = Row->MotionMatchingMaxBlends;
+			M.RepickAfterBlend = Row->MotionMatchingRepickAfterBlend;
+			M.HistoryPoses = Row->MotionMatchingHistoryPoses;
+			M.HistorySamplingS = Row->MotionMatchingHistorySamplingS;
+			M.StillBelowUnits = Row->MotionMatchingStillBelowMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			M.TurnInPlaceDeg = Row->MotionMatchingTurnInPlaceDeg;
+			M.StopAfterUnits = Row->MotionMatchingStopAfterM * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			M.RunFromUnits = Row->MotionMatchingRunFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			M.SprintFromUnits = Row->MotionMatchingSprintFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			M.GaitOverlap = Row->MotionMatchingGaitOverlap;
+			if (M.RunFromUnits <= 0.0 || M.SprintFromUnits <= M.RunFromUnits || M.GaitOverlap < 0.0 || M.GaitOverlap >= 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingSprintFromMps must be above MotionMatchingRunFromMps (above 0), MotionMatchingGaitOverlap 0 to below 1"));
+			}
+			if (M.SearchThrottleS < 0.0 || M.BlendTimeS < 0.0 || M.PoseJumpThresholdS < 0.0 || M.HistorySamplingS < 0.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatching times must be 0 or more"));
+			}
+			if (M.PlayRateMin <= 0.0 || M.PlayRateMin > 1.0 || M.PlayRateMax < 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingPlayRateMin must be above 0 and at most 1, MotionMatchingPlayRateMax at least 1"));
+			}
+			if (M.MaxBlends < 1 || M.HistoryPoses < 2)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingMaxBlends must be 1 or more and MotionMatchingHistoryPoses 2 or more"));
+			}
+		}
+		Out.MocapLegFadeFromMps = Row->MocapLegFadeFromMps;
+		Out.MocapLegFadeToMps = Row->MocapLegFadeToMps;
+		Out.MocapLegKeep = Row->MocapLegKeep;
+		Out.MocapLeanKeep = Row->MocapLeanKeep;
+		if (Row->MocapLegFadeFromMps < 0.0 || Row->MocapLegFadeToMps <= Row->MocapLegFadeFromMps
+			|| Row->MocapLegKeep < 0.0 || Row->MocapLegKeep > 1.0 || Row->MocapLeanKeep < 0.0 || Row->MocapLeanKeep > 1.0)
+		{
+			Out.Errors.Add(TEXT("Animation.json: MocapLegFadeToMps must be above MocapLegFadeFromMps (0 or more), MocapLegKeep and MocapLeanKeep 0 to 1"));
+		}
 		{
 			// Metres to Unreal units once, here (CLAUDE.md, "Coordinates and units").
 			const double Cm = Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
