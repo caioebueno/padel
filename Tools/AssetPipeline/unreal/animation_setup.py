@@ -20,6 +20,15 @@ creates, from text like the rest of the pipeline:
 the clip paths Data/Animation.json names (IdleAsset, WalkAssets, JogAssets). The clips
 carry root motion; the pose plays them in place (root locked) and the game moves the pawn,
 so each clip's root speed is logged for WalkClipSpeedMps and RunClipSpeedMps.
+
+M1 motion matching (docs/animation/MOVEMENT_FLUENCY.md): when gasp_export.py has written
+SourceArt/_incoming/GASP/motion_matching.json, every clip of the sample's Dense Stand
+locomotion databases is imported and retargeted the same way into
+/Game/Padel/Animations/MotionMatching/Clips (root motion on for the search to read, root
+locked for the pose), and the databases are rebuilt there on the placeholder skeleton with
+the sample's schemas (trajectory, feet and pelvis; no mirroring) and one normalization set:
+Data/Animation.json MotionMatchingDatabases names them. PadelMotionMatchingBuilder (C++)
+does the Pose Search parts Python can't reach.
 Log lines start with [padel-anim]; the last one is "[padel-anim] done" or "... FAILED".
 """
 
@@ -68,6 +77,11 @@ CLIPS = {
     f"{GASP_DIR}/M_Relaxed_Walk_Loop_LL": "A_WalkUpright_Left",
     f"{GASP_DIR}/M_Relaxed_Walk_Loop_RR_offset": "A_WalkUpright_Right",
 }
+MM_MANIFEST = INCOMING / "motion_matching.json"
+MM_DIR = "/Game/Padel/Animations/MotionMatching"
+MM_CLIPS = f"{MM_DIR}/Clips"
+MM_STAGING = f"{MM_DIR}/_Staging"
+MM_NORMALIZATION = f"{MM_DIR}/PSN_Stand"
 ASSETS = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 SOURCE = unreal.RetargetSourceOrTarget.SOURCE
@@ -110,10 +124,11 @@ def copy_template() -> bool:
     return True
 
 
-def import_gasp_clips(skeleton: unreal.Skeleton) -> bool:
+def import_gasp_clips(skeleton: unreal.Skeleton, paths=None) -> bool:
     """Imports the exported Game Animation Sample FBX onto the mannequin skeleton."""
+    paths = list(CLIPS) if paths is None else paths
     tasks = []
-    for path in CLIPS:
+    for path in paths:
         name = path.rsplit("/", 1)[-1]
         fbx = INCOMING / f"{name}.fbx"
         if not fbx.is_file():
@@ -135,12 +150,13 @@ def import_gasp_clips(skeleton: unreal.Skeleton) -> bool:
         task.set_editor_property("save", True)
         task.set_editor_property("options", ui)
         tasks.append(task)
-    TOOLS.import_asset_tasks(tasks)
-    missing = [p for p in CLIPS if not ASSETS.does_asset_exist(p)]
+    for start in range(0, len(tasks), 50):
+        TOOLS.import_asset_tasks(tasks[start:start + 50])
+    missing = [p for p in paths if not ASSETS.does_asset_exist(p)]
     for p in missing:
         fail(f"{p} did not import")
     if not missing:
-        log(f"imported {len(CLIPS)} Game Animation Sample clips into {GASP_DIR}")
+        log(f"imported {len(paths)} Game Animation Sample clips into {GASP_DIR}")
     return not missing
 
 
@@ -170,6 +186,102 @@ def auto_rig(path: str, mesh: unreal.SkeletalMesh) -> unreal.IKRigDefinition | N
     ASSETS.save_loaded_asset(rig)
     log(f"built {path}")
     return rig
+
+
+def mm_name(gasp_name: str) -> str:
+    """The sample's database or schema name as Padel's (PSD_Dense_Stand_Walk_Loops -> PSD_Stand_Walk_Loops)."""
+    return gasp_name.replace("_Dense_", "_")
+
+
+def build_motion_matching(settings: dict, manny: unreal.SkeletalMesh, placeholder: unreal.SkeletalMesh, rtg: unreal.IKRetargeter) -> None:
+    """M1: the sample's Dense Stand databases, rebuilt on the placeholder skeleton."""
+    if not MM_MANIFEST.is_file():
+        log(f"no {MM_MANIFEST}: run gasp_export.py for motion matching; locomotion keeps the loop mix")
+        return
+    manifest = json.loads(MM_MANIFEST.read_text(encoding="utf-8"))
+    wanted = settings.get("MotionMatchingDatabases", [])
+    by_name = {mm_name(d["name"]): d for d in manifest["databases"]}
+    missing = [p for p in wanted if p.rsplit("/", 1)[-1] not in by_name]
+    if missing:
+        fail(f"motion_matching.json has no source for {', '.join(missing)}: run gasp_export.py again")
+        return
+    builder = unreal.PadelMotionMatchingBuilder
+
+    # Clips: import, retarget (the same RTG, root motion kept for the search), root locked for the pose.
+    names = sorted({c["name"] for d in manifest["databases"] for c in d["clips"]})
+    sources = [f"{GASP_DIR}/{n}" for n in names]
+    if not import_gasp_clips(manny.get_editor_property("skeleton"), sources):
+        return
+    todo = [n for n in names if not ASSETS.does_asset_exist(f"{MM_CLIPS}/{n}")]
+    if todo:
+        if ASSETS.does_directory_exist(MM_STAGING):
+            ASSETS.delete_directory(MM_STAGING)
+        inputs = unreal.IKRetargetBatchOperationInputs()
+        inputs.set_editor_property("assets_to_retarget", [ASSETS.find_asset_data(f"{GASP_DIR}/{n}") for n in todo])
+        inputs.set_editor_property("source_mesh", manny)
+        inputs.set_editor_property("target_mesh", placeholder)
+        inputs.set_editor_property("ik_retarget_asset", rtg)
+        inputs.set_editor_property("target_path", MM_STAGING)
+        inputs.set_editor_property("include_referenced_assets", False)
+        inputs.set_editor_property("overwrite_existing_files", True)
+        made = unreal.IKRetargetBatchOperation.run_batch_retarget(inputs)
+        for data in made:
+            asset = data.get_asset()
+            if isinstance(asset, unreal.AnimSequence) and str(data.asset_name) in todo:
+                if not ASSETS.rename_asset(asset.get_path_name(), f"{MM_CLIPS}/{data.asset_name}"):
+                    fail(f"could not move {data.asset_name} to {MM_CLIPS}")
+        if ASSETS.does_directory_exist(MM_STAGING):
+            ASSETS.delete_directory(MM_STAGING)
+        log(f"retargeted {len(todo)} motion matching clip(s) into {MM_CLIPS}")
+    clips = {}
+    for n in names:
+        seq = unreal.load_asset(f"{MM_CLIPS}/{n}")
+        if not isinstance(seq, unreal.AnimSequence):
+            fail(f"{MM_CLIPS}/{n} was not made")
+            return
+        seq.set_editor_property("enable_root_motion", True)
+        seq.set_editor_property("force_root_lock", True)
+        ASSETS.save_asset(f"{MM_CLIPS}/{n}", only_if_is_dirty=False)
+        clips[n] = seq
+
+    skeleton = placeholder.get_editor_property("skeleton")
+    schemas = {}
+    for gasp_name, schema_json in manifest["schemas"].items():
+        path = f"{MM_DIR}/{mm_name(gasp_name).replace('PSS_', 'PSS_Stand_', 1)}"
+        schema = builder.find_or_create_asset(unreal.PoseSearchSchema, path)
+        error = builder.build_schema(schema, skeleton, json.dumps(schema_json)) if schema else f"could not make {path}"
+        if error:
+            fail(f"{path}: {error}")
+            return
+        ASSETS.save_asset(path, only_if_is_dirty=False)
+        schemas[gasp_name] = schema
+
+    normalization = builder.find_or_create_asset(unreal.PoseSearchNormalizationSet, MM_NORMALIZATION)
+    databases = []
+    for path in wanted:
+        source = by_name[path.rsplit("/", 1)[-1]]
+        db = builder.find_or_create_asset(unreal.PoseSearchDatabase, path)
+        if not db:
+            fail(f"could not make {path}")
+            return
+        error = builder.build_database(db, schemas[source["schema"]], normalization,
+                                       [clips[c["name"]] for c in source["clips"]], json.dumps(source["settings"]))
+        if error:
+            fail(f"{path}: {error}")
+            return
+        databases.append(db)
+    error = builder.build_normalization_set(normalization, databases)
+    if error:
+        fail(f"{MM_NORMALIZATION}: {error}")
+        return
+    ASSETS.save_asset(MM_NORMALIZATION, only_if_is_dirty=False)
+    for path, db in zip(wanted, databases):
+        error = builder.build_index(db)
+        if error:
+            fail(error)
+        ASSETS.save_asset(path, only_if_is_dirty=False)
+        log(f"{path.rsplit('/', 1)[-1]}: {len(by_name[path.rsplit('/', 1)[-1]]['clips'])} clip(s)")
+    log(f"built {len(databases)} motion matching database(s) in {MM_DIR}")
 
 
 def main() -> None:
@@ -260,6 +372,7 @@ def main() -> None:
         ASSETS.save_asset(object_path(path), only_if_is_dirty=False)
     if ASSETS.does_directory_exist(STAGING):
         ASSETS.delete_directory(STAGING)
+    build_motion_matching(settings, manny, placeholder, rtg)
     log("FAILED" if failures else "done")
 
 
