@@ -209,7 +209,8 @@ namespace Padel::Shots
 		// Plan the braking with the push the player has at the end of their stamina: a hard
 		// effort or a long rally can take a little away mid-stop, and the plan must still
 		// hold (GDD 6.3 fatigue).
-		LimitAtMargins(Desired, BaseAccel * Tuning->BrakeMult * (1.0 - Tuning->FatigueTopSpeedLossAtZero) / FatigueFactor(), Dt);
+		const double MarginBrake = BaseAccel * Tuning->BrakeMult * (1.0 - Tuning->FatigueTopSpeedLossAtZero) / FatigueFactor();
+		LimitAtMargins(Desired, MarginBrake, Dt);
 
 		double Accel = BaseAccel;
 		if (SplitBoostLeftS > 0.0)
@@ -241,13 +242,49 @@ namespace Padel::Shots
 			}
 		}
 
-		const FVec3 Delta = Sub(Desired, Velocity);
-		const double DeltaLength = LengthXY(Delta);
+		FVec3 Delta = Sub(Desired, Velocity);
 		const double MaxChange = Accel * Dt;
+		bool bAllocated = false;
+		{
+			// GDD 6.3 (BIOMECHANICS_MOVEMENT 2.6): braking into a margin comes first. A player
+			// redirecting near the glass or net still plants against the direction they are
+			// travelling; without this the sideways turn shares the tick's change with the
+			// braking, the braking falls behind the plan, and the player hits the margin.
+			bool bBrakeX = false;
+			bool bBrakeY = false;
+			MarginBraking(MarginBrake, Dt, bBrakeX, bBrakeY);
+			bBrakeX = bBrakeX && Delta.X * Velocity.X < 0.0;
+			bBrakeY = bBrakeY && Delta.Y * Velocity.Y < 0.0;
+			if (bBrakeX || bBrakeY)
+			{
+				// The braking gets at least the strength the margin plan assumed, even while the
+				// hip turn weakens the push. The plan is per axis, so the budget is too: heading
+				// into a corner, each wall's braking gets the strength its own plan counted on
+				// (a moment's extra plant, not a stop at the glass).
+				const double BrakeBudget = std::max(MaxChange, MarginBrake * Dt);
+				const auto Brake = [BrakeBudget](bool bOn, double D)
+				{
+					return bOn ? Clamp(D, -BrakeBudget, BrakeBudget) : 0.0;
+				};
+				const FVec3 First = Vec(Brake(bBrakeX, Delta.X), Brake(bBrakeY, Delta.Y), 0.0);
+				FVec3 Rest = Vec(bBrakeX ? 0.0 : Delta.X, bBrakeY ? 0.0 : Delta.Y, 0.0);
+				const double Left = std::sqrt(std::max(0.0, MaxChange * MaxChange - (First.X * First.X + First.Y * First.Y)));
+				const double RestLength = LengthXY(Rest);
+				if (RestLength > Left)
+				{
+					Rest = RestLength > 0.0 ? Scale(Rest, Left / RestLength) : Rest;
+				}
+				// The change fits the tick's budget now, so the update below takes it whole.
+				Delta = Add(First, Rest);
+				Desired = Add(Velocity, Delta);
+				bAllocated = true;
+			}
+		}
+		const double DeltaLength = LengthXY(Delta);
 		// Braking that this tick can't finish is a deceleration; a small trim of speed (the
 		// stick wobbling between gaits' top speeds) is reached at once and isn't one.
 		const bool bDecelerating = bBraking && Speed - DesiredSpeed > MaxChange;
-		Velocity = DeltaLength <= MaxChange ? Desired : Add(Velocity, Scale(Delta, MaxChange / DeltaLength));
+		Velocity = bAllocated || DeltaLength <= MaxChange ? Desired : Add(Velocity, Scale(Delta, MaxChange / DeltaLength));
 		Velocity.Z = 0.0;
 		Position = Add(Position, Scale(Velocity, Dt));
 		const int EdgeStopsBefore = EdgeStopCount;
@@ -300,26 +337,51 @@ namespace Padel::Shots
 		double Side = 0.0;
 		OwnHalfLimits(Lo, Hi, Side);
 		const double Step = Brake * Dt;
-		const auto MaxSpeed = [Step, Dt](double Room)
-		{
-			// Whole ticks, so each one sheds exactly Brake * Dt; inside the last tick, just the
-			// room that is left.
-			const double Ticks = std::floor(0.5 * (std::sqrt(1.0 + 8.0 * std::max(0.0, Room) / (Step * Dt)) - 1.0));
-			return Ticks >= 1.0 ? Ticks * Step : std::max(0.0, Room) / Dt;
-		};
-		const auto Limit = [&MaxSpeed](double& Component, double Pos, double Min, double Max)
+		const auto Limit = [Step, Dt](double& Component, double Pos, double Min, double Max)
 		{
 			if (Component > 0.0)
 			{
-				Component = std::min(Component, MaxSpeed(Max - Pos));
+				Component = std::min(Component, MarginSpeed(Max - Pos, Step, Dt));
 			}
 			else if (Component < 0.0)
 			{
-				Component = std::max(Component, -MaxSpeed(Pos - Min));
+				Component = std::max(Component, -MarginSpeed(Pos - Min, Step, Dt));
 			}
 		};
 		Limit(Desired.X, Position.X, Lo, Hi);
 		Limit(Desired.Y, Position.Y, -Side, Side);
+	}
+
+	double FPlayerMotion::MarginSpeed(double Room, double Step, double Dt)
+	{
+		// Whole ticks, so each one sheds exactly Step = Brake * Dt; inside the last tick, just
+		// the room that is left.
+		const double Ticks = std::floor(0.5 * (std::sqrt(1.0 + 8.0 * std::max(0.0, Room) / (Step * Dt)) - 1.0));
+		return Ticks >= 1.0 ? Ticks * Step : std::max(0.0, Room) / Dt;
+	}
+
+	void FPlayerMotion::MarginBraking(double Brake, double Dt, bool& bX, bool& bY) const
+	{
+		// An axis on which the player is moving toward a margin and is at (or within a tick
+		// of) the most speed they can still brake away there: its braking has to happen now.
+		bX = false;
+		bY = false;
+		if (Brake <= 0.0 || Dt <= 0.0)
+		{
+			return;
+		}
+		double Lo = 0.0;
+		double Hi = 0.0;
+		double Side = 0.0;
+		OwnHalfLimits(Lo, Hi, Side);
+		const double Step = Brake * Dt;
+		const auto Binding = [Step, Dt](double V, double Pos, double Min, double Max)
+		{
+			const double Room = V > 0.0 ? Max - Pos : Pos - Min;
+			return V != 0.0 && std::abs(V) + Step >= MarginSpeed(Room, Step, Dt);
+		};
+		bX = Binding(Velocity.X, Position.X, Lo, Hi);
+		bY = Binding(Velocity.Y, Position.Y, -Side, Side);
 	}
 
 	bool FPlayerMotion::NotifyOpponentContact()

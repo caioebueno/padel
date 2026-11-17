@@ -80,6 +80,9 @@ namespace Padel::Shots
 		EHeld ClassifyHeld(const FVec2& UnitDir) const;
 		void UpdateGait(EHeld Held, const FVec2& UnitDir, double Top, double Dt, double PlannedDistanceM);
 		void LimitAtMargins(FVec3& Desired, double Brake, double Dt) const;
+		// The most speed toward a margin Room away that whole ticks of Step can brake away.
+		static double MarginSpeed(double Room, double Step, double Dt);
+		void MarginBraking(double Brake, double Dt, bool& bX, bool& bY) const;
 		void OwnHalfLimits(double& Lo, double& Hi, double& Side) const;
 		void ClampToOwnHalf();
 		void UpdateFatigue(bool bEdgeStop, double Dt);
