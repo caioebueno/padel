@@ -115,6 +115,7 @@ private:
 	double CelebrationTime = 0.0;
 	double CelebrationWeight = 0.0;
 	double ArmAlpha = 0.0;
+	double CarryFollow = 0.0;
 	double BodyAlpha = 0.0;
 	bool bWarp = true;
 	FVector RacketTargetComponent = FVector::ZeroVector;

@@ -149,6 +149,7 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	// target meets the ball on the contact tick); held a little in the ready stance.
 	ArmAlpha = Anim->WarpArmAlpha();
 	BodyAlpha = Anim->WarpBodyAlpha();
+	CarryFollow = Anim->WarpCarryFollow();
 	bWarp = Anim->bWarpThisBody;
 	FaceInHand = Anim->RacketFaceInHand;
 	WarpTuning = Anim->WarpTuning;
@@ -343,5 +344,6 @@ void FAnimNode_PadelPlayerPose::ApplyArmReach(FPoseContext& Output) const
 	In.FaceInHand = FaceInHand;
 	In.ArmAlpha = static_cast<float>(ArmAlpha);
 	In.BodyAlpha = static_cast<float>(BodyAlpha);
+	In.CarryFollow = static_cast<float>(CarryFollow);
 	PadelContactWarp::Apply(Output.Pose, WarpBones, In, WarpTuning);
 }

@@ -55,6 +55,7 @@ void FAnimNode_PadelMetaHumanWarp::PreUpdate(const UAnimInstance* InAnimInstance
 	Request.TargetCS = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
 	Request.FaceInHand = FaceInHand;
 	Request.ArmAlpha = Anim->WarpArmAlpha();
+	Request.CarryFollow = Anim->WarpCarryFollow();
 	Request.BodyAlpha = Anim->WarpBodyAlpha();
 	Tuning = Anim->WarpTuning;
 }

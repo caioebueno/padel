@@ -136,6 +136,14 @@ public:
 	 */
 	float WarpArmAlpha() const;
 
+	/**
+	 * How much of the hips' dip the carried racket follows down, 0..1:
+	 * WarpCarryFollowShare of the carry (not the swing's arc, which meets the ball), faded in
+	 * with speed as the clips take the legs (MocapLegFade*), so a standing stance keeps its
+	 * authored racket.
+	 */
+	float WarpCarryFollow() const;
+
 	/** The body's share, 0..1: ContactWarpWeight, but not over an imported swing clip. */
 	float WarpBodyAlpha() const { return SwingSequence ? 0.0f : ContactWarpWeight; }
 

@@ -2,7 +2,7 @@
 // (stand, accelerate to a run, run 3 m, stop, a 180° reversal, a sideways shuffle, stop) with
 // its anim ticked at 60 Hz, measuring what reads as floppy or robotic on screen: how often the
 // locomotion switches clip and how many clips blend at once, the angular jerk of the pelvis,
-// spine_03 and head, planted-foot slide, and the biggest bone turn in a frame.
+// spine_03 and head, planted-foot slide, and the biggest body and arm bone turns in a frame.
 //
 // Two drives: locomotion only (the path's own facing and trajectory, body dynamics off: what the
 // clips alone do), and the full stack (the animation model turns the body, leans it and looks at
@@ -37,6 +37,9 @@ namespace PadelMotionProbe
 		FString SlideByPhase;
 		double WorstBoneTurnDeg = 0.0;
 		FString WorstBoneTurnAt;
+		/** The same for the arms (clavicle, upper arm, forearm, hand, both sides): the racket arm's IK shows here. */
+		double WorstArmTurnDeg = 0.0;
+		FString WorstArmTurnAt;
 		int32 CoreBones = 0;
 		/** Each foot's contact point height (cm, world): 10th and 90th percentile, for the plant threshold. */
 		FString FootHeights;

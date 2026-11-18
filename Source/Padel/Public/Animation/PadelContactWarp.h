@@ -31,6 +31,24 @@ struct PADEL_API FPadelWarpBones
 	FCompactPoseBoneIndex Calf[2] = { FCompactPoseBoneIndex(INDEX_NONE), FCompactPoseBoneIndex(INDEX_NONE) };
 	FCompactPoseBoneIndex Foot[2] = { FCompactPoseBoneIndex(INDEX_NONE), FCompactPoseBoneIndex(INDEX_NONE) };
 	bool bLeftHanded = false;
+	/**
+	 * The racket shoulder's height in the reference pose (component space, Unreal units): what
+	 * "above the shoulder" means for an overhead, so a crouch lowering the live shoulder doesn't
+	 * turn a carried racket into an overhead.
+	 */
+	double StandingShoulderZ = 0.0;
+	/** The pelvis's height in the reference pose, the same way: what a dip is measured from. */
+	double StandingPelvisZ = 0.0;
+	/**
+	 * The racket arm's elbow hinge from the reference pose: each arm bone's direction (to its
+	 * child) and the hinge axis, in that bone's own space. The elbow is a hinge fixed in both
+	 * bones, so these give the solved arm its roll (all zero when the reference arm is straight).
+	 */
+	FVector UpperArmAlong = FVector::ZeroVector;
+	FVector UpperArmHinge = FVector::ZeroVector;
+	FVector LowerArmAlong = FVector::ZeroVector;
+	FVector LowerArmHinge = FVector::ZeroVector;
+	bool HasHinge() const { return !UpperArmHinge.IsNearlyZero() && !LowerArmHinge.IsNearlyZero(); }
 
 	/** Finds the UE5-mannequin-named bones (the placeholder and MetaHumans share the names). */
 	void Cache(const FBoneContainer& Bones, bool bInLeftHanded);
@@ -55,7 +73,10 @@ struct PADEL_API FPadelWarpTuning
 	double MaxTrunkTurnDeg = 50.0;
 	double KneeBendUnits = 20.0;
 	double ElbowBendUnits = 20.0;
+	double ElbowPoleSteadyUnits = 10.0;
 	double MaxReachShare = 0.98;
+	double MinReachShare = 0.45;
+	double CarryFollowShare = 1.0;
 	double OverheadBlendUnits = 40.0;
 	double TorsoClearanceUnits = 14.0;
 	double MaxToeRiseUnits = 12.0;
@@ -90,6 +111,11 @@ struct PADEL_API FPadelWarpInput
 	FVector FaceInHand = FVector::ZeroVector;
 	/** 0..1: how far the arm reaches for TargetCS (today's racket-target IK). */
 	float ArmAlpha = 0.0f;
+	/**
+	 * 0..1: how much of the pelvis's dip below its standing height the target follows down
+	 * (FPadelPlayerAnimInstance::WarpCarryFollow: the carried racket, while moving).
+	 */
+	float CarryFollow = 0.0f;
 	/** 0..1: how much of the reach the body takes (rises over the forward swing, peaks at contact). */
 	float BodyAlpha = 0.0f;
 };

@@ -244,8 +244,18 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpKneeBendM = 0.2;
 	/** How far out the arm IK aims the elbow (it keeps the current pose's bend). */
 	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpElbowBendM = 0.2;
+	/**
+	 * How firmly the elbow keeps a steady down-and-out bend when the animated arm is nearly
+	 * straight (a running arm swing): added to the pose's own elbow offset before the arm IK
+	 * reads its bend from it, so a straight arm can't flip the elbow from frame to frame.
+	 */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpElbowPoleSteadyM = 0.1;
 	/** Of the arm's length, the furthest the hand goes before the racket turns along the arm (never a locked elbow). */
 	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMaxReachShare = 0.98;
+	/** Of the arm's length, the closest the hand comes to the shoulder; nearer, the racket turns onto the target instead (a pivot past the carried racket). */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpMinReachShare = 0.45;
+	/** Of the hips' dip below standing (a clip's stop), how much the carried racket sinks with them while moving. */
+	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpCarryFollowShare = 1.0;
 	/** How far above the shoulder a target has to be for the full overhead arm (long arm, elbow up and out); blended in from the shoulder. */
 	UPROPERTY(EditAnywhere, Category = "ContactWarp") double WarpOverheadBlendM = 0.40;
 	/** How far the forearm keeps from the spine (pelvis up to the top spine bone) through a swing: the torso half-depth plus a margin. 0 turns the guard off. */

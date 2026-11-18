@@ -171,6 +171,15 @@ float UPadelPlayerAnimInstance::WarpArmAlpha() const
 	return FMath::Clamp(FMath::Max(RawSwingWeight, ArmCarryAlpha), 0.0f, 1.0f);
 }
 
+float UPadelPlayerAnimInstance::WarpCarryFollow() const
+{
+	const double From = LocomotionSet.MocapLegFadeFromMps;
+	const double Linear = FMath::Clamp((Speed / 100.0 - From) / FMath::Max(LocomotionSet.MocapLegFadeToMps - From, 0.01), 0.0, 1.0);
+	const double Moving = Linear * Linear * (3.0 - 2.0 * Linear);
+	const double Carry = 1.0 - FMath::Clamp(RawSwingWeight, 0.0f, 1.0f);
+	return static_cast<float>(WarpTuning.CarryFollowShare * Carry * Moving);
+}
+
 FAnimInstanceProxy* UPadelPlayerAnimInstance::CreateAnimInstanceProxy()
 {
 	return new FPadelPlayerAnimInstanceProxy(this, &PoseNode);
