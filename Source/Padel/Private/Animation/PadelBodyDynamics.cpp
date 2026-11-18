@@ -34,27 +34,6 @@ namespace PadelBodyDynamicsDetail
 			SetCS(CS, Bone, T);
 		}
 	}
-
-	/** Two-bone leg IK onto Effector, keeping the foot's rotation and the knee bending the way it already does. */
-	void SolveLeg(FCSPose<FCompactPose>& CS, FCompactPoseBoneIndex Thigh, FCompactPoseBoneIndex Calf, FCompactPoseBoneIndex Foot, const FVector& Effector)
-	{
-		FTransform TA = CS.GetComponentSpaceTransform(Thigh);
-		FTransform TB = CS.GetComponentSpaceTransform(Calf);
-		FTransform TC = CS.GetComponentSpaceTransform(Foot);
-		const FQuat FootRotation = TC.GetRotation();
-		FVector Bend = TB.GetLocation() - 0.5 * (TA.GetLocation() + TC.GetLocation());
-		if (Bend.SizeSquared() < 1.0)
-		{
-			Bend = FacingAxis * 10.0;
-		}
-		AnimationCore::SolveTwoBoneIK(TA, TB, TC, TB.GetLocation() + Bend, Effector, false, 1.0, 1.0);
-		TC.SetRotation(FootRotation);
-		TArray<FBoneTransform> Solved;
-		Solved.Add(FBoneTransform(Thigh, TA));
-		Solved.Add(FBoneTransform(Calf, TB));
-		Solved.Add(FBoneTransform(Foot, TC));
-		CS.LocalBlendCSBoneTransforms(Solved, 1.0f);
-	}
 }
 
 void FPadelBodyBones::Cache(const FBoneContainer& Bones)
@@ -90,6 +69,28 @@ void FPadelBodyBones::Cache(const FBoneContainer& Bones)
 
 namespace PadelBodyDynamics
 {
+	void SolveLeg(FCSPose<FCompactPose>& CS, FCompactPoseBoneIndex Thigh, FCompactPoseBoneIndex Calf, FCompactPoseBoneIndex Foot, const FVector& Effector)
+	{
+		using namespace PadelBodyDynamicsDetail;
+		// Two-bone IK, keeping the foot's rotation and the knee bending the way it already does.
+		FTransform TA = CS.GetComponentSpaceTransform(Thigh);
+		FTransform TB = CS.GetComponentSpaceTransform(Calf);
+		FTransform TC = CS.GetComponentSpaceTransform(Foot);
+		const FQuat FootRotation = TC.GetRotation();
+		FVector Bend = TB.GetLocation() - 0.5 * (TA.GetLocation() + TC.GetLocation());
+		if (Bend.SizeSquared() < 1.0)
+		{
+			Bend = FacingAxis * 10.0;
+		}
+		AnimationCore::SolveTwoBoneIK(TA, TB, TC, TB.GetLocation() + Bend, Effector, false, 1.0, 1.0);
+		TC.SetRotation(FootRotation);
+		TArray<FBoneTransform> Solved;
+		Solved.Add(FBoneTransform(Thigh, TA));
+		Solved.Add(FBoneTransform(Calf, TB));
+		Solved.Add(FBoneTransform(Foot, TC));
+		CS.LocalBlendCSBoneTransforms(Solved, 1.0f);
+	}
+
 	void Apply(FCompactPose& Pose, const FPadelBodyBones& Bones, const FPadelBodyDynamics& Body)
 	{
 		using namespace PadelBodyDynamicsDetail;
@@ -135,7 +136,7 @@ namespace PadelBodyDynamics
 					if (bLeg[Side])
 					{
 						const FVector Out = Right * (Side == 0 ? -0.5 : 0.5) * Widen;
-						SolveLeg(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side] + Out + FVector(0.0, 0.0, Lift));
+						PadelBodyDynamics::SolveLeg(CS, Bones.Thigh[Side], Bones.Calf[Side], Bones.Foot[Side], Feet[Side] + Out + FVector(0.0, 0.0, Lift));
 					}
 				}
 			}

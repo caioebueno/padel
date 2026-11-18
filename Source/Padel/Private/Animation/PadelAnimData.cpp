@@ -93,6 +93,12 @@ FPadelAnimData FPadelAnimData::Load()
 			M.RunFromUnits = Row->MotionMatchingRunFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
 			M.SprintFromUnits = Row->MotionMatchingSprintFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
 			M.GaitOverlap = Row->MotionMatchingGaitOverlap;
+			M.InertialHalfLifeS = Row->MotionMatchingInertialHalfLifeS;
+			M.SwitchCostMargin = Row->MotionMatchingSwitchCostMargin;
+			if (Row->MotionMatchingInertialHalfLifeS < 0.0 || Row->MotionMatchingSwitchCostMargin < 0.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingInertialHalfLifeS and MotionMatchingSwitchCostMargin must be 0 or more"));
+			}
 			if (M.RunFromUnits <= 0.0 || M.SprintFromUnits <= M.RunFromUnits || M.GaitOverlap < 0.0 || M.GaitOverlap >= 1.0)
 			{
 				Out.Errors.Add(TEXT("Animation.json: MotionMatchingSprintFromMps must be above MotionMatchingRunFromMps (above 0), MotionMatchingGaitOverlap 0 to below 1"));
@@ -114,6 +120,36 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.MocapLegFadeToMps = Row->MocapLegFadeToMps;
 		Out.MocapLegKeep = Row->MocapLegKeep;
 		Out.MocapLeanKeep = Row->MocapLeanKeep;
+		Out.MocapChestTwistKeep = Row->MocapChestTwistKeep;
+		Out.MocapHeadMaxTwistDeg = Row->MocapHeadMaxTwistDeg;
+		if (Row->MocapChestTwistKeep < 0.0 || Row->MocapChestTwistKeep > 1.0 || Row->MocapHeadMaxTwistDeg < 0.0)
+		{
+			Out.Errors.Add(TEXT("Animation.json: MocapChestTwistKeep must be 0 to 1 and MocapHeadMaxTwistDeg 0 or more"));
+		}
+		{
+			const double Unit = Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			FPadelLocomotionWarpTuning& W = Out.LocomotionWarp;
+			W.OrientationMaxDeg = Row->OrientationWarpMaxDeg;
+			W.OrientationHalfLifeS = Row->OrientationWarpHalfLifeS;
+			W.OrientationMinSpeedUnits = Row->OrientationWarpMinMps * Unit;
+			W.OrientationSpineCounter = Row->OrientationWarpSpineCounter;
+			W.StrideMin = Row->StrideWarpMin;
+			W.StrideMax = Row->StrideWarpMax;
+			W.StrideHalfLifeS = Row->StrideWarpHalfLifeS;
+			W.StrideMinSpeedUnits = Row->StrideWarpMinMps * Unit;
+			W.FootLockHeightUnits = Row->FootLockHeightM * Unit;
+			W.FootLockSpeedUnits = Row->FootLockSpeedMps * Unit;
+			W.FootLockReleaseHeightUnits = Row->FootLockReleaseHeightM * Unit;
+			W.FootLockReleaseSpeedUnits = Row->FootLockReleaseSpeedMps * Unit;
+			W.FootLockMaxDriftUnits = Row->FootLockMaxDriftM * Unit;
+			W.FootLockBlendOutS = Row->FootLockBlendOutS;
+			if (W.OrientationMaxDeg < 0.0 || W.OrientationMaxDeg > 90.0 || W.StrideMin <= 0.0 || W.StrideMin > 1.0 || W.StrideMax < 1.0
+				|| W.OrientationHalfLifeS < 0.0 || W.StrideHalfLifeS < 0.0 || W.FootLockHeightUnits < 0.0 || W.FootLockBlendOutS < 0.0
+				|| W.FootLockReleaseHeightUnits < W.FootLockHeightUnits || W.FootLockReleaseSpeedUnits < W.FootLockSpeedUnits || W.FootLockMaxDriftUnits <= 0.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: OrientationWarpMaxDeg 0 to 90, StrideWarpMin above 0 to 1, StrideWarpMax 1 or more, FootLock release limits at least the lock ones, FootLockMaxDriftM above 0, times 0 or more"));
+			}
+		}
 		if (Row->MocapLegFadeFromMps < 0.0 || Row->MocapLegFadeToMps <= Row->MocapLegFadeFromMps
 			|| Row->MocapLegKeep < 0.0 || Row->MocapLegKeep > 1.0 || Row->MocapLeanKeep < 0.0 || Row->MocapLeanKeep > 1.0)
 		{

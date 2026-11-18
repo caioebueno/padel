@@ -56,6 +56,9 @@ struct PADEL_API FPadelBodyDynamics
 
 namespace PadelBodyDynamics
 {
+	/** Two-bone leg IK onto Effector (component space), keeping the foot's rotation and the knee's bend direction. */
+	PADEL_API void SolveLeg(FCSPose<FCompactPose>& CS, FCompactPoseBoneIndex Thigh, FCompactPoseBoneIndex Calf, FCompactPoseBoneIndex Foot, const FVector& Effector);
+
 	/** Puts Body on Pose in place (component space maths, local pose out). */
 	PADEL_API void Apply(FCompactPose& Pose, const FPadelBodyBones& Bones, const FPadelBodyDynamics& Body);
 }

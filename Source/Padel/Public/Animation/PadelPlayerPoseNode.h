@@ -4,6 +4,7 @@
 #include "Animation/AnimNodeBase.h"
 #include "Animation/PadelBodyDynamics.h"
 #include "Animation/PadelContactWarp.h"
+#include "Animation/PadelLocomotionWarp.h"
 #include "Animation/PadelMotionMatching.h"
 #include "Animation/TrajectoryTypes.h"
 #include "PadelPlayerPoseNode.generated.h"
@@ -39,6 +40,11 @@ struct FPadelLocomotionSet
 	double MocapLegFadeToMps = 1.5;
 	double MocapLegKeep = 0.0;
 	double MocapLeanKeep = 0.5;
+	/** M2: at speed the chest's facing lead keeps this much of itself, and the head's turn from the chest is capped (Animation.json MocapChestTwistKeep, MocapHeadMaxTwistDeg). */
+	double MocapChestTwistKeep = 1.0;
+	double MocapHeadMaxTwistDeg = 180.0;
+	/** M2: orientation and stride warping and foot locking on the motion matched legs (Animation.json OrientationWarp*, StrideWarp*, FootLock*). */
+	FPadelLocomotionWarpTuning LocomotionWarp;
 
 	bool IsValid() const { return Idle != nullptr; }
 };
@@ -82,13 +88,15 @@ struct PADEL_API FAnimNode_PadelPlayerPose : public FAnimNode_Base
 	virtual bool HasPreUpdate() const override { return true; }
 	virtual void PreUpdate(const UAnimInstance* InAnimInstance) override;
 
+	/** M2: the locomotion warps, for tests and debugging. */
+	const FPadelLocomotionWarp& GetLocomotionWarp() const { return LocomotionWarp; }
 	/** M1: the motion matcher, for tests and debugging (its CurrentDatabase and CurrentClip). */
 	const FPadelMotionMatcher& GetMotionMatcher() const { return Matcher; }
 	/** True when the last evaluate played motion matching rather than the loop mix. */
 	bool IsMotionMatching() const { return bMotionMatched; }
 
 private:
-	bool SampleLocomotion(FPoseContext& Output) const;
+	bool SampleLocomotion(FPoseContext& Output);
 	bool SampleLoopMix(FPoseContext& Output) const;
 	void ApplyArmReach(FPoseContext& Output) const;
 
@@ -119,6 +127,10 @@ private:
 	FTransformTrajectory Trajectory;
 	UPROPERTY() FPadelMotionMatcher Matcher;
 	bool bMotionMatched = false;
+	/** M2: the simulation's ground velocity in component space (cm/s), for the warps, and the warps' state. */
+	FVector TravelVelocityComponent = FVector::ZeroVector;
+	FPadelLocomotionWarp LocomotionWarp;
+	double UpdateDeltaS = 0.0;
 
 	// Advanced in Update.
 	double CyclePhase = 0.0;

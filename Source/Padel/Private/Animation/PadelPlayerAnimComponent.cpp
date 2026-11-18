@@ -196,6 +196,9 @@ FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
 	Set.MocapLegFadeToMps = Data->MocapLegFadeToMps;
 	Set.MocapLegKeep = Data->MocapLegKeep;
 	Set.MocapLeanKeep = Data->MocapLeanKeep;
+	Set.MocapChestTwistKeep = Data->MocapChestTwistKeep;
+	Set.MocapHeadMaxTwistDeg = Data->MocapHeadMaxTwistDeg;
+	Set.LocomotionWarp = Data->LocomotionWarp;
 	return Set;
 }
 

@@ -166,6 +166,13 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") int32 MotionMatchingHistoryPoses = 10;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingHistorySamplingS = 0.04;
 	/**
+	 * M2: a switch by inertialization: the new clip plays alone at once, the difference from the
+	 * pose that was showing decaying on a spring of this half-life. 0 keeps the crossfade above.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingInertialHalfLifeS = 0.0;
+	/** M2: a new candidate must beat the continuing pose's search cost by this much to switch. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSwitchCostMargin = 0.0;
+	/**
 	 * With mocap legs (motion matching on), the procedural leg layers that fight the clips fade
 	 * with speed: the stance's crouch and feet widen, the pelvis drops (plant, bounce). Fully on
 	 * up to MocapLegFadeFromMps, down to MocapLegKeep of themselves from MocapLegFadeToMps.
@@ -175,6 +182,39 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLegFadeToMps = 1.5;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLegKeep = 0.0;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapLeanKeep = 0.5;
+	/**
+	 * M2: at speed the clips own the trunk. The chest's facing lead keeps MocapChestTwistKeep of
+	 * itself (its share of the look handed to the head), and the head turns at most
+	 * MocapHeadMaxTwistDeg from the chest. Same fade as the legs.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapChestTwistKeep = 1.0;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MocapHeadMaxTwistDeg = 180.0;
+	/**
+	 * M2 locomotion warping (PadelLocomotionWarp.h): the hips turn toward the simulation's travel
+	 * from the clip's by up to OrientationWarpMaxDeg (0: off) on OrientationWarpHalfLifeS, the
+	 * spine turning OrientationWarpSpineCounter of it back; both moving at least OrientationWarpMinMps.
+	 */
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double OrientationWarpMaxDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double OrientationWarpHalfLifeS = 0.08;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double OrientationWarpMinMps = 0.5;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double OrientationWarpSpineCounter = 1.0;
+	/** Each foot's reach along the travel scales by the simulation's speed over the clip's, within StrideWarpMin..Max (both 1: off). */
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpMin = 1.0;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpMax = 1.0;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpHalfLifeS = 0.08;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpMinMps = 0.5;
+	/**
+	 * Foot locking: an ankle within FootLockHeightM of its standing height (0: off) and slower than
+	 * FootLockSpeedMps in the clip's own world stays where it landed; it lets go above
+	 * FootLockReleaseHeightM or FootLockReleaseSpeedMps, or FootLockMaxDriftM from the clip's
+	 * foot, blending back over FootLockBlendOutS.
+	 */
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double FootLockHeightM = 0.0;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double FootLockSpeedMps = 0.3;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double FootLockReleaseHeightM = 0.06;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double FootLockReleaseSpeedMps = 0.6;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double FootLockMaxDriftM = 0.2;
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double FootLockBlendOutS = 0.12;
 
 	/**
 	 * Contact warp (movement plan N3, shots doc 4.2, PadelContactWarp.h): how the reach for the

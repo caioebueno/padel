@@ -13,6 +13,8 @@
 #include "PoseSearch/PoseSearchRole.h"
 #include "PoseSearch/PoseSearchSchema.h"
 
+#include <cmath>
+
 namespace PadelMotionMatchingDetail
 {
 	/** Smooth ease for a crossfade, so a new clip comes in without a velocity step. */
@@ -20,6 +22,29 @@ namespace PadelMotionMatchingDetail
 	{
 		const double C = FMath::Clamp(T, 0.0, 1.0);
 		return static_cast<float>(C * C * (3.0 - 2.0 * C));
+	}
+
+	/** A critically damped spring's offset decaying toward 0 over Dt, exactly (Holden's decay_spring_damper_exact). */
+	void Decay(FVector& X, FVector& V, double HalfLifeS, double Dt)
+	{
+		const double Y = 0.5 * (4.0 * 0.69314718056) / (HalfLifeS + 1e-5);
+		const FVector J1 = V + X * Y;
+		const double EyDt = std::exp(-Y * Dt);
+		X = EyDt * (X + J1 * Dt);
+		V = EyDt * (V - J1 * (Y * Dt));
+	}
+
+	/** The rotation from A to B (B = Delta * A) as a rotation vector, shortest way round. */
+	FVector RotationBetween(const FQuat& A, const FQuat& B)
+	{
+		FQuat Delta = B * A.Inverse();
+		Delta.EnforceShortestArcWith(FQuat::Identity);
+		return Delta.ToRotationVector();
+	}
+
+	double Wrap(double Time, double Length, bool bLoop)
+	{
+		return bLoop ? FMath::Fmod(Time + Length * 4.0, FMath::Max(Length, 1e-3)) : FMath::Clamp(Time, 0.0, Length);
 	}
 
 	bool Sample(const UAnimSequenceBase* Seq, double Time, bool bLoop, FPoseContext& Out)
@@ -75,6 +100,15 @@ void FPadelMotionMatcher::Reset()
 	Stack.Reset();
 	History.Reset();
 	SinceSearchS = 0.0;
+	Picks = 0;
+	RootVelocity = FVector::ZeroVector;
+	LastOut.Reset();
+	PrevOut.Reset();
+	OffRot.Reset();
+	OffRotVel.Reset();
+	OffPos.Reset();
+	OffPosVel.Reset();
+	bTransitionPending = false;
 	bHistoryReset = true;
 }
 
@@ -125,18 +159,23 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 		}
 		// Keep the newest pick matched to the simulation's speed as it changes.
 		Newest.PlayRate = MatchedPlayRate(Newest, SpeedUnits);
+		RootVelocity = MeasureRootVelocity(Newest);
 	}
 
 	SinceSearchS += Dt;
 	// The search reads the pose history, which RecordHistory fills after each evaluate.
-	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || SinceSearchS >= Tuning.SearchThrottleS))
+	// M2: a clip that doesn't loop, about to run out, searches now and may switch without beating
+	// the continuing pose by the margin: held on its last frame it would freeze and skate.
+	const bool bRunningOut = !Stack.IsEmpty() && !Stack.Last().bLoop
+		&& Stack.Last().Time >= Stack.Last().Clip->GetPlayLength() - FMath::Max(Tuning.SearchThrottleS, Dt) * Stack.Last().PlayRate;
+	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || SinceSearchS >= Tuning.SearchThrottleS))
 	{
 		SinceSearchS = 0.0;
-		Search(Context, Trajectory, SpeedUnits);
+		Search(Context, Trajectory, SpeedUnits, bRunningOut);
 	}
 }
 
-void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits)
+void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut)
 {
 	using namespace UE::PoseSearch;
 	History->SetTrajectory(Trajectory);
@@ -184,15 +223,47 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	const UObject* AnimContext = Context.AnimInstanceProxy->GetAnimInstanceObject();
 	const FRole SearchRole = DefaultRole;
 	const IPoseHistory* PoseHistory = History.Get();
-	const FSearchResult Result = UPoseSearchLibrary::MotionMatch(
+	// M2: keep the best result and the continuing pose's own, so a switch has to beat carrying on
+	// by SwitchCostMargin (the search alone picks a neighbour for any tiny gain, which reads as jitter).
+	FSearchResult Best;
+	FSearchResult ContinuingResult;
+	FSearchResults Results;
+	Results.UpdateWith = [&Best, &ContinuingResult](const FSearchResult& Candidate)
+	{
+		if (Candidate.bIsContinuingPoseSearch && Candidate.PoseCost < ContinuingResult.PoseCost)
+		{
+			ContinuingResult = Candidate;
+		}
+		if (Candidate.PoseCost < Best.PoseCost)
+		{
+			Best = Candidate;
+		}
+	};
+	Results.FinalizeResults = [&Best]()
+	{
+		if (Best.IsValid() && !Best.IsAssetTimeValid())
+		{
+			Best.SetAssetTime(Best.Database->GetNormalizedAssetTime(Best.PoseIdx));
+		}
+	};
+	Results.GetBestResult = [&Best]() { return Best; };
+	Results.IterateOverSearchResults = [&Best](const TFunctionRef<bool(FSearchResult&)> Function) { return Best.IsValid() && Function(Best); };
+PRAGMA_DISABLE_EXPERIMENTAL_WARNINGS
+	UPoseSearchLibrary::MotionMatch(
 		MakeArrayView(&AnimContext, 1), MakeArrayView(&SearchRole, 1), MakeArrayView(&PoseHistory, 1),
-		MakeArrayView(Assets.GetData(), Assets.Num()), Continuing, FPoseSearchFutureProperties(), FPoseSearchEvent());
-	if (!Result.IsValid())
+		MakeArrayView(Assets.GetData(), Assets.Num()), Continuing, FPoseSearchFutureProperties(), FPoseSearchEvent(), Results);
+PRAGMA_ENABLE_EXPERIMENTAL_WARNINGS
+	Results.FinalizeResults();
+	if (!Best.IsValid() || Best.bIsContinuingPoseSearch)
+	{
+		return;
+	}
+	if (!bRunningOut && ContinuingResult.IsValid() && static_cast<float>(Best.PoseCost) + Tuning.SwitchCostMargin >= static_cast<float>(ContinuingResult.PoseCost))
 	{
 		return;
 	}
 	FPoseSearchBlueprintResult Picked;
-	if (!Picked.InitFrom(Result, 1.0f) || Picked.bIsContinuingPoseSearch)
+	if (!Picked.InitFrom(Best, 1.0f) || Picked.bIsContinuingPoseSearch)
 	{
 		return;
 	}
@@ -201,10 +272,11 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	{
 		return;
 	}
+	const bool bInertial = Tuning.InertialHalfLifeS > 0.0;
 	if (!Stack.IsEmpty())
 	{
 		const FPlaying& Newest = Stack.Last();
-		if (Newest.BlendIn < Tuning.RepickAfterBlend)
+		if (!bInertial && Newest.BlendIn < Tuning.RepickAfterBlend)
 		{
 			return;
 		}
@@ -219,9 +291,17 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	Next.Database = Picked.SelectedDatabase.Get();
 	Next.Time = Picked.SelectedTime;
 	Next.bLoop = Picked.bLoop;
-	Next.BlendIn = Stack.IsEmpty() ? 1.0 : 0.0;
+	Next.BlendIn = Stack.IsEmpty() || bInertial ? 1.0 : 0.0;
 	Next.PlayRate = MatchedPlayRate(Next, SpeedUnits);
+	if (bInertial)
+	{
+		// M2: one clip plays; the switch's difference is carried as a decaying offset (Inertialize).
+		bTransitionPending = !Stack.IsEmpty();
+		Stack.Reset();
+	}
 	Stack.Add(Next);
+	RootVelocity = MeasureRootVelocity(Next);
+	++Picks;
 	while (Stack.Num() > FMath::Max(Tuning.MaxBlends, 1))
 	{
 		// Drop the clip that shows least (its weight is its own fade in times what every newer one
@@ -249,6 +329,22 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	}
 }
 
+FVector FPadelMotionMatcher::MeasureRootVelocity(const FPlaying& Playing) const
+{
+	constexpr double Window = 0.1;
+	const double Length = Playing.Clip ? Playing.Clip->GetPlayLength() : 0.0;
+	const double Start = FMath::Clamp(Playing.Time, 0.0, FMath::Max(Length - Window, 0.0));
+	const double End = FMath::Min(Start + Window, Length);
+	if (End - Start < 1e-3)
+	{
+		return FVector::ZeroVector;
+	}
+	const FTransform Motion = Playing.Clip->ExtractRootMotionFromRange(Start, End, FAnimExtractContext());
+	FVector Velocity = Motion.GetTranslation() / (End - Start) * Playing.PlayRate;
+	Velocity.Z = 0.0;
+	return Velocity;
+}
+
 double FPadelMotionMatcher::MatchedPlayRate(const FPlaying& Playing, double SpeedUnits) const
 {
 	// The clip's own root speed around its playhead (root motion is read even though the
@@ -272,7 +368,7 @@ double FPadelMotionMatcher::MatchedPlayRate(const FPlaying& Playing, double Spee
 	return FMath::Clamp(SpeedUnits / ClipSpeed, Tuning.PlayRateMin, Tuning.PlayRateMax);
 }
 
-bool FPadelMotionMatcher::Evaluate(FPoseContext& Output) const
+bool FPadelMotionMatcher::Evaluate(FPoseContext& Output)
 {
 	using namespace PadelMotionMatchingDetail;
 	bool bPosed = false;
@@ -294,7 +390,74 @@ bool FPadelMotionMatcher::Evaluate(FPoseContext& Output) const
 			Output.Pose.NormalizeRotations();
 		}
 	}
+	if (bPosed && Tuning.InertialHalfLifeS > 0.0)
+	{
+		Inertialize(Output);
+	}
 	return bPosed;
+}
+
+void FPadelMotionMatcher::Inertialize(FPoseContext& Output)
+{
+	// M2 (docs/animation/MOVEMENT_FLUENCY.md): Holden's offset inertialization. At a switch the
+	// difference between the pose shown last frame and the new clip at that same moment, and the
+	// difference of their velocities, become an offset that decays on a critically damped spring;
+	// the new clip plays under it at once. Unlike a crossfade, nothing of two clips ever averages
+	// (no floaty in-between pose) and the motion carries its velocity through the switch.
+	using namespace PadelMotionMatchingDetail;
+	const int32 NumBones = Output.Pose.GetNumBones();
+	const double Dt = FMath::Max(static_cast<double>(LastDeltaS), 1e-4);
+	if (OffRot.Num() != NumBones)
+	{
+		OffRot.Init(FVector::ZeroVector, NumBones);
+		OffRotVel.Init(FVector::ZeroVector, NumBones);
+		OffPos.Init(FVector::ZeroVector, NumBones);
+		OffPosVel.Init(FVector::ZeroVector, NumBones);
+		LastOut.Reset();
+		PrevOut.Reset();
+		bTransitionPending = false;
+	}
+	if (bTransitionPending && LastOut.Num() == NumBones && !Stack.IsEmpty())
+	{
+		// The new clip one frame back, at the instant LastOut showed, and now (for its velocity).
+		const FPlaying& Playing = Stack.Last();
+		FPoseContext Before(Output);
+		const double Length = Playing.Clip->GetPlayLength();
+		if (Sample(Playing.Clip, Wrap(Playing.Time - Dt * Playing.PlayRate, Length, Playing.bLoop), Playing.bLoop, Before))
+		{
+			const bool bPrev = PrevOut.Num() == NumBones;
+			for (const FCompactPoseBoneIndex Bone : Output.Pose.ForEachBoneIndex())
+			{
+				const int32 I = Bone.GetInt();
+				const FTransform& Src = Before.Pose[Bone];
+				const FTransform& Now = Output.Pose[Bone];
+				const FVector SrcRotVel = RotationBetween(Src.GetRotation(), Now.GetRotation()) / Dt;
+				const FVector SrcPosVel = (Now.GetTranslation() - Src.GetTranslation()) / Dt;
+				const FVector OutRotVel = bPrev ? RotationBetween(PrevOut[I].GetRotation(), LastOut[I].GetRotation()) / Dt : SrcRotVel;
+				const FVector OutPosVel = bPrev ? (LastOut[I].GetTranslation() - PrevOut[I].GetTranslation()) / Dt : SrcPosVel;
+				OffRot[I] = RotationBetween(Src.GetRotation(), LastOut[I].GetRotation());
+				OffRotVel[I] = OutRotVel - SrcRotVel;
+				OffPos[I] = LastOut[I].GetTranslation() - Src.GetTranslation();
+				OffPosVel[I] = OutPosVel - SrcPosVel;
+			}
+		}
+	}
+	bTransitionPending = false;
+	for (const FCompactPoseBoneIndex Bone : Output.Pose.ForEachBoneIndex())
+	{
+		const int32 I = Bone.GetInt();
+		Decay(OffRot[I], OffRotVel[I], Tuning.InertialHalfLifeS, Dt);
+		Decay(OffPos[I], OffPosVel[I], Tuning.InertialHalfLifeS, Dt);
+		FTransform& T = Output.Pose[Bone];
+		T.SetRotation((FQuat::MakeFromRotationVector(OffRot[I]) * T.GetRotation()).GetNormalized());
+		T.AddToTranslation(OffPos[I]);
+	}
+	PrevOut = MoveTemp(LastOut);
+	LastOut.SetNum(NumBones);
+	for (const FCompactPoseBoneIndex Bone : Output.Pose.ForEachBoneIndex())
+	{
+		LastOut[Bone.GetInt()] = Output.Pose[Bone];
+	}
 }
 
 void FPadelMotionMatcher::RecordHistory(const FPoseContext& Locomotion)
