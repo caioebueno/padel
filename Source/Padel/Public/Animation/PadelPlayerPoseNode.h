@@ -4,9 +4,12 @@
 #include "Animation/AnimNodeBase.h"
 #include "Animation/PadelBodyDynamics.h"
 #include "Animation/PadelContactWarp.h"
+#include "Animation/PadelMotionMatching.h"
+#include "Animation/TrajectoryTypes.h"
 #include "PadelPlayerPoseNode.generated.h"
 
 class UAnimSequenceBase;
+class UPoseSearchDatabase;
 
 /** Locomotion clips for the C++ pose: idle and a walk and jog cycle each way (forward, back, left, right). */
 USTRUCT()
@@ -27,6 +30,16 @@ struct FPadelLocomotionSet
 	double StrideRateMin = 0.75;
 	double StrideRateMax = 1.3;
 
+	/** M1: the motion matching databases (Animation.json MotionMatchingDatabases); empty keeps the loop mix. */
+	UPROPERTY() TArray<TObjectPtr<const UPoseSearchDatabase>> MotionMatchingDatabases;
+	TArray<EPadelMotionMatchingRole> MotionMatchingRoles;
+	FPadelMotionMatchingTuning MotionMatching;
+	/** M1: how the procedural leg layers fade with speed over mocap legs (Animation.json Mocap*). */
+	double MocapLegFadeFromMps = 0.3;
+	double MocapLegFadeToMps = 1.5;
+	double MocapLegKeep = 0.0;
+	double MocapLeanKeep = 0.5;
+
 	bool IsValid() const { return Idle != nullptr; }
 };
 
@@ -35,8 +48,11 @@ struct FPadelLocomotionSet
  * ABP_PadelPlayer isn't there: UPadelPlayerAnimInstance runs this as its root, so a body
  * moves with nothing but clips on disk. It does what 0005's AnimBP recipe does:
  *
- * 1. Locomotion: idle, and the walk and jog cycles blended by direction (relative to facing
- *    the net) and speed, one shared phase so the feet don't skip between clips.
+ * 1. Locomotion: M1 motion matching (PadelMotionMatching.h) over the Game Animation Sample's
+ *    starts, stops, pivots, loops, idles and turns in place, searched with the player's
+ *    trajectory. Until a search finds a pose, or without the databases (a clone without the
+ *    git-ignored assets), the loop mix: idle, and the walk and jog cycles blended by direction
+ *    (relative to facing the net) and speed, one shared phase so the feet don't skip.
  * 2. Swing: the swing clip at its explicit time (0005's contact-frame sync), over the upper
  *    body from spine_01, or the whole body by FullBodyAlpha.
  * 3. Celebration on top.
@@ -66,8 +82,14 @@ struct PADEL_API FAnimNode_PadelPlayerPose : public FAnimNode_Base
 	virtual bool HasPreUpdate() const override { return true; }
 	virtual void PreUpdate(const UAnimInstance* InAnimInstance) override;
 
+	/** M1: the motion matcher, for tests and debugging (its CurrentDatabase and CurrentClip). */
+	const FPadelMotionMatcher& GetMotionMatcher() const { return Matcher; }
+	/** True when the last evaluate played motion matching rather than the loop mix. */
+	bool IsMotionMatching() const { return bMotionMatched; }
+
 private:
 	bool SampleLocomotion(FPoseContext& Output) const;
+	bool SampleLoopMix(FPoseContext& Output) const;
 	void ApplyArmReach(FPoseContext& Output) const;
 
 	// Copied in PreUpdate.
@@ -92,6 +114,11 @@ private:
 	FPadelWarpTuning WarpTuning;
 	bool bLeftHanded = false;
 	FPadelBodyDynamics Body;
+
+	// M1: the trajectory (mesh component world space, cm) and the matcher that searches with it.
+	FTransformTrajectory Trajectory;
+	UPROPERTY() FPadelMotionMatcher Matcher;
+	bool bMotionMatched = false;
 
 	// Advanced in Update.
 	double CyclePhase = 0.0;

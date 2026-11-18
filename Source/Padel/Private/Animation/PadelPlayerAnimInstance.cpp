@@ -3,6 +3,8 @@
 #include "Animation/PadelContactWarp.h"
 
 #include "Animation/AnimSequenceBase.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/World.h"
 #include "Animation/Model/PlayerAnimModel.h"
 #include "Court/PadelCourtUnits.h"
 #include "Gameplay/PadelShotUnits.h"
@@ -30,6 +32,7 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	Stance.FeetWidenUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.StancePose.WidenM)).Z);
 	Body.HopLiftUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.HopLiftM)).Z);
 	Trajectory = InTrajectoryWorld;
+	BuildMotionTrajectory();
 
 	SwingSequence = InSwing;
 	SwingTime = static_cast<float>(Frame.ClipTimeS);
@@ -58,14 +61,105 @@ float UPadelPlayerAnimInstance::StanceKeep() const
 	return 1.0f - FMath::Clamp(RawSwingWeight, 0.0f, 1.0f);
 }
 
-FPadelBodyDynamics UPadelPlayerAnimInstance::PosedBody() const
+FPadelBodyDynamics UPadelPlayerAnimInstance::PosedBody(float LegKeep, float LeanKeep) const
 {
 	FPadelBodyDynamics Out = Body;
 	const float Keep = StanceKeep();
-	Out.LeanForwardDeg += Stance.LeanForwardDeg * Keep;
-	Out.PelvisDropUnits += Stance.PelvisDropUnits * Keep;
-	Out.FeetWidenUnits += Stance.FeetWidenUnits * Keep;
+	Out.LeanForwardDeg = (Out.LeanForwardDeg + Stance.LeanForwardDeg * Keep) * LeanKeep;
+	Out.LeanRightDeg *= LeanKeep;
+	Out.PelvisDropUnits = (Out.PelvisDropUnits + Stance.PelvisDropUnits * Keep) * LegKeep;
+	Out.FeetWidenUnits = (Out.FeetWidenUnits + Stance.FeetWidenUnits * Keep) * LegKeep;
 	return Out;
+}
+
+void UPadelPlayerAnimInstance::BuildMotionTrajectory()
+{
+	const USkeletalMeshComponent* Mesh = GetSkelMeshComponent();
+	const UWorld* World = GetWorld();
+	if (!Mesh || !World || Trajectory.Num() != TrajectoryTimes.Num())
+	{
+		MotionTrajectory.Samples.Reset();
+		return;
+	}
+	const double Now = World->GetTimeSeconds();
+	const FQuat Facing = Mesh->GetComponentQuat();
+	const double Height = Mesh->GetComponentLocation().Z;
+	const double Oldest = TrajectoryTimes.IsEmpty() ? 0.0 : FMath::Min(0.0, static_cast<double>(TrajectoryTimes[0]));
+	if (!FacingHistory.IsEmpty() && FacingHistory.Last().Key > Now)
+	{
+		FacingHistory.Reset(); // the clock went back: a new world
+	}
+	FacingHistory.Emplace(Now, Facing);
+	while (FacingHistory.Num() > 1 && FacingHistory[1].Key <= Now + Oldest)
+	{
+		FacingHistory.RemoveAt(0);
+	}
+	auto FacingAt = [this, &Facing](double Time)
+	{
+		// The latest recorded facing at or before Time (the oldest kept before the history fills).
+		FQuat Out = FacingHistory.IsEmpty() ? Facing : FacingHistory[0].Value;
+		for (const TPair<double, FQuat>& Entry : FacingHistory)
+		{
+			if (Entry.Key > Time)
+			{
+				break;
+			}
+			Out = Entry.Value;
+		}
+		return Out;
+	};
+	// The model's future is its velocity carried on: read the velocity from it, and the
+	// acceleration from how that velocity changed since last frame (smoothed over ~0.1 s).
+	int32 NowIndex = INDEX_NONE;
+	int32 NextIndex = INDEX_NONE;
+	for (int32 Index = 0; Index < TrajectoryTimes.Num(); ++Index)
+	{
+		if (NowIndex == INDEX_NONE && TrajectoryTimes[Index] >= 0.0f) { NowIndex = Index; }
+		else if (NowIndex != INDEX_NONE && NextIndex == INDEX_NONE && TrajectoryTimes[Index] > TrajectoryTimes[NowIndex]) { NextIndex = Index; }
+	}
+	FVector Velocity = FVector::ZeroVector;
+	if (NowIndex != INDEX_NONE && NextIndex != INDEX_NONE)
+	{
+		Velocity = (Trajectory[NextIndex] - Trajectory[NowIndex]) / (TrajectoryTimes[NextIndex] - TrajectoryTimes[NowIndex]);
+		Velocity.Z = 0.0;
+	}
+	const double SinceLast = Now - LastVelocityTime;
+	if (LastVelocityTime >= 0.0 && SinceLast > 1e-4 && SinceLast < 0.5)
+	{
+		const FVector Measured = (Velocity - LastVelocity) / SinceLast;
+		Acceleration = FMath::Lerp(Acceleration, Measured, static_cast<float>(FMath::Clamp(SinceLast / 0.1, 0.0, 1.0)));
+	}
+	else
+	{
+		Acceleration = FVector::ZeroVector;
+	}
+	LastVelocity = Velocity;
+	LastVelocityTime = Now;
+	// Braking (acceleration against the velocity) ends at rest; speeding up is carried on for at most half a second.
+	const double GroundSpeed = Velocity.Size2D();
+	const double Along = GroundSpeed > 1.0 ? FVector::DotProduct(Acceleration, Velocity / GroundSpeed) : 0.0;
+	const double StopIn = Along < -1.0 ? GroundSpeed / -Along : TNumericLimits<double>::Max();
+	auto Future = [&](double T)
+	{
+		if (StopIn < TNumericLimits<double>::Max())
+		{
+			const double U = FMath::Min(T, StopIn);
+			return Velocity * U + (Velocity / FMath::Max(GroundSpeed, 1.0)) * (0.5 * Along * U * U);
+		}
+		const double U = FMath::Min(T, 0.5);
+		return Velocity * T + Acceleration * (0.5 * U * U + U * (T - U));
+	};
+	const FVector NowPosition = NowIndex != INDEX_NONE ? Trajectory[NowIndex] : FVector::ZeroVector;
+	MotionTrajectory.Samples.SetNum(Trajectory.Num());
+	for (int32 Index = 0; Index < Trajectory.Num(); ++Index)
+	{
+		const double T = TrajectoryTimes[Index];
+		FTransformTrajectorySample& Sample = MotionTrajectory.Samples[Index];
+		Sample.TimeInSeconds = static_cast<float>(T);
+		const FVector Ground = T > 0.0 && NowIndex != INDEX_NONE ? NowPosition + Future(T) : Trajectory[Index];
+		Sample.Position = FVector(Ground.X, Ground.Y, Height);
+		Sample.Facing = T < 0.0 ? FacingAt(Now + T) : Facing;
+	}
 }
 
 float UPadelPlayerAnimInstance::WarpArmAlpha() const

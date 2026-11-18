@@ -103,10 +103,11 @@
 		"TrajectoryTimesS": [
 			-0.4,
 			-0.2,
+			-0.05,
 			0.0,
-			0.2,
-			0.4,
-			0.6
+			0.35,
+			0.7,
+			1.0
 		],
 		"CelebrateAssets": [
 			"/Game/Padel/Animations/Celebrations/A_Celebrate_FistPump",
@@ -147,6 +148,62 @@
 			"/Game/Padel/Animations/Locomotion/A_WalkUpright_Right"
 		],
 		"WalkClipSpeedMps": 1.65,
+		"MotionMatchingDatabases": [
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Loops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Starts",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Stops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Pivots",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Run_Loops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Run_Starts",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Run_Stops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Run_Pivots",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Loops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Starts",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Stops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Pivots",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Idles",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_TurnInPlace"
+		],
+		"MotionMatchingStillDatabases": [
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Idles"
+		],
+		"MotionMatchingStopDatabases": [
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Stops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Run_Stops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Stops"
+		],
+		"MotionMatchingStopAfterM": 0.2,
+		"MotionMatchingWalkDatabases": [
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Loops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Starts",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Pivots"
+		],
+		"MotionMatchingSprintDatabases": [
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Loops",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Starts",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Pivots"
+		],
+		"MotionMatchingRunFromMps": 2.5,
+		"MotionMatchingSprintFromMps": 5.0,
+		"MotionMatchingGaitOverlap": 0.2,
+		"MotionMatchingTurnInPlaceDatabases": [
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_TurnInPlace"
+		],
+		"MotionMatchingStillBelowMps": 1.0,
+		"MotionMatchingTurnInPlaceDeg": 30.0,
+		"MotionMatchingSearchThrottleS": 0.0,
+		"MotionMatchingBlendTimeS": 0.2,
+		"MotionMatchingPoseJumpThresholdS": 0.25,
+		"MotionMatchingPlayRateMin": 0.8,
+		"MotionMatchingPlayRateMax": 1.3,
+		"MotionMatchingMaxBlends": 4,
+		"MotionMatchingRepickAfterBlend": 0.5,
+		"MotionMatchingHistoryPoses": 10,
+		"MotionMatchingHistorySamplingS": 0.04,
+		"MocapLegFadeFromMps": 0.3,
+		"MocapLegFadeToMps": 1.5,
+		"MocapLegKeep": 0.0,
+		"MocapLeanKeep": 0.5,
 		"WarpPelvisDownShare": 1.0,
 		"WarpMaxPelvisDropM": 0.5,
 		"WarpPelvisForwardShare": 0.25,

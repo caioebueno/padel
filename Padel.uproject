@@ -29,6 +29,14 @@
 			"Enabled": true
 		},
 		{
+			"Name": "Chooser",
+			"Enabled": true
+		},
+		{
+			"Name": "AnimationWarping",
+			"Enabled": true
+		},
+		{
 			"Name": "PythonScriptPlugin",
 			"Enabled": true
 		},

@@ -18,6 +18,8 @@
 #include "PadelLog.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "PoseSearch/PoseSearchDatabase.h"
+#include "PoseSearch/PoseSearchSchema.h"
 #include "Retargeter/IKRetargeter.h"
 
 namespace PadelAnimComponentDetail
@@ -162,6 +164,38 @@ FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
 	Set.WalkMinMps = Data->Settings.WalkMinMps;
 	Set.StrideRateMin = Data->Settings.StrideRateMin;
 	Set.StrideRateMax = Data->Settings.StrideRateMax;
+	// M1: motion matching where its databases are on disk and on the clips' skeleton (all or
+	// none: a partial set would leave holes in the search); otherwise the loop mix above.
+	for (const FString& Path : Data->MotionMatchingDatabases)
+	{
+		const UPoseSearchDatabase* Database = LoadObject<UPoseSearchDatabase>(nullptr, *Path, nullptr, LOAD_Quiet | LOAD_NoWarn);
+		const UPoseSearchSchema* Schema = Database ? Database->Schema.Get() : nullptr;
+		if (!Schema || !Set.Idle || Schema->GetSkeleton(Schema->GetDefaultRole()) != Set.Idle->GetSkeleton())
+		{
+			Set.MotionMatchingDatabases.Reset();
+			Set.MotionMatchingRoles.Reset();
+			if (!Data->MotionMatchingDatabases.IsEmpty())
+			{
+				UE_LOG(LogPadel, Log, TEXT("Player animation: %s isn't built (Tools/AssetPipeline/unreal/animation_setup.py): locomotion uses the loop mix."), *Path);
+			}
+			break;
+		}
+		Set.MotionMatchingDatabases.Add(Database);
+		Set.MotionMatchingRoles.Add(Data->MotionMatchingStillDatabases.Contains(Path) ? EPadelMotionMatchingRole::Still
+			: Data->MotionMatchingStopDatabases.Contains(Path) ? EPadelMotionMatchingRole::Stop
+			: Data->MotionMatchingTurnInPlaceDatabases.Contains(Path) ? EPadelMotionMatchingRole::TurnInPlace
+			: Data->MotionMatchingWalkDatabases.Contains(Path) ? EPadelMotionMatchingRole::MovingWalk
+			: Data->MotionMatchingSprintDatabases.Contains(Path) ? EPadelMotionMatchingRole::MovingSprint : EPadelMotionMatchingRole::Moving);
+	}
+	if (Set.MotionMatchingDatabases.IsEmpty())
+	{
+		Set.MotionMatchingRoles.Reset();
+	}
+	Set.MotionMatching = Data->MotionMatching;
+	Set.MocapLegFadeFromMps = Data->MocapLegFadeFromMps;
+	Set.MocapLegFadeToMps = Data->MocapLegFadeToMps;
+	Set.MocapLegKeep = Data->MocapLegKeep;
+	Set.MocapLeanKeep = Data->MocapLeanKeep;
 	return Set;
 }
 

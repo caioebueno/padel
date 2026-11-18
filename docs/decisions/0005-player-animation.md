@@ -33,14 +33,14 @@ The native tests (`Tests/Native/PlayerAnimTests.cpp`) check this for every slice
 ## Feet
 
 - A swing drives the legs only while the player is slower than `PlantedMaxSpeedMps` (0.8 m/s). Above that the swing plays on the upper body (layered blend from `spine_01`) over the locomotion, so a swing on the run never drags planted feet. `FootSlideMps` reports the speed the feet would slide at; the tests keep it under the planted limit through every slice shot.
-- The run and sprint cycles play at `speed / authored speed` (clamped), so the stride matches the ground speed. Once mocap locomotion exists, Motion Matching takes over and stride matching becomes a fallback.
+- The run and sprint cycles play at `speed / authored speed` (clamped), so the stride matches the ground speed. With M1 motion matching (below) the picked clip plays at `speed / its root speed`, within `MotionMatchingPlayRateMin`..`Max`; the loop mix is the fallback.
 - 0004 already slows movement to the shot's `SwingMoveMult` during a swing, which keeps the player nearly planted.
 
 ## Locomotion
 
 `Idle` (between points), `Ready` (rally live, a ball coming within `ReadyBallWindowS`, or swinging), `Run`, `Sprint` (sprint held and fast), `SplitStep` (`FPlayerMotion::IsSplitHopping`). Direction is relative to facing the net: padel players shuffle sideways and backwards far more than they turn, so the body faces the net and the locomotion set needs strafes and backpedals.
 
-For Motion Matching the model gives a trajectory: the real past positions and the current velocity carried forward, at `TrajectoryTimesS` (−0.4 to +0.6 s). Facing is always the net.
+For Motion Matching the model gives a trajectory: the real past positions and the current velocity carried forward, at `TrajectoryTimesS` (−0.4 to +1.0 s, covering the Game Animation Sample schemas' samples at −0.05, 0, 0.35, 0.7 and 1.0 s). `UPadelPlayerAnimInstance` turns it into an `FTransformTrajectory` on the mesh component (its height, and its facing at each past time and now for the future), and the C++ pose searches with it (M1, `docs/animation/MOVEMENT_FLUENCY.md`).
 
 ## Placeholder body until clips exist
 
@@ -71,7 +71,7 @@ Parent class `UPadelPlayerAnimInstance`, skeleton `SK_PlayerPlaceholderA`'s. The
 4. **Celebration:** a third Sequence Evaluator on `CelebrationSequence` / `CelebrationTime`, blended on top by `CelebrationWeight`.
 5. **Output:** an `Inertialization` node before the output pose for state changes. It never touches the contact frame, because the swing time is set explicitly every frame.
 
-Motion Matching needs its trajectory as the engine's trajectory struct. `Trajectory` (world cm) and `TrajectoryTimes` are exposed as plain arrays so this PR does not depend on PoseSearch's C++ API, which has changed between 5.x releases. Converting them for the Motion Matching node is a one-function follow-up once it can be compiled on a Mac.
+Motion Matching needs its trajectory as the engine's trajectory struct: `MotionTrajectory` (an `FTransformTrajectory`, 5.8's type in the Engine module; PoseSearch's `FPoseSearchQueryTrajectory` is deprecated) is built from `Trajectory` and `TrajectoryTimes` in `ApplyFrame`. An AnimBP would feed it to a Pose History node's Trajectory pin; the C++ pose (0006) uses it directly.
 
 ## Motion capture
 
