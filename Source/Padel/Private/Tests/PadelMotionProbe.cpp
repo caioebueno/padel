@@ -424,7 +424,7 @@ namespace PadelMotionProbe
 		const Padel::Court::FVec3 Placed = Motion.GetPosition();
 		S.Position = Padel::ToWorld(Placed);
 		S.Position.Z = Ground;
-		auto Drive = [&](const Padel::Shots::FVec2& Stick)
+		auto Steer = [&](const Padel::Shots::FVec2& Stick)
 		{
 			for (int32 Sub = 0; Sub < 2; ++Sub)
 			{
@@ -526,26 +526,26 @@ namespace PadelMotionProbe
 		const Padel::Shots::FVec2 Forward{ 0.0, 1.0 };
 		const Padel::Shots::FVec2 Back{ 0.0, -1.0 };
 		const Padel::Shots::FVec2 Right{ 1.0, 0.0 };
-		for (int32 I = 0; I < 60; ++I) { Drive(Still); Tick(TEXT("stand")); }
-		for (int32 I = 0; I < 600 && Speed() < 3.9; ++I) { Drive(Forward); Tick(TEXT("start")); }
+		for (int32 I = 0; I < 60; ++I) { Steer(Still); Tick(TEXT("stand")); }
+		for (int32 I = 0; I < 600 && Speed() < 3.9; ++I) { Steer(Forward); Tick(TEXT("start")); }
 		const FVector RunFrom = S.Position;
-		for (int32 I = 0; I < 600 && FVector::Dist2D(S.Position, RunFrom) < 300.0; ++I) { Drive(Forward); Tick(TEXT("run")); }
-		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Drive(Still); Tick(TEXT("stop")); }
-		for (int32 I = 0; I < 60; ++I) { Drive(Still); Tick(TEXT("settle")); }
+		for (int32 I = 0; I < 600 && FVector::Dist2D(S.Position, RunFrom) < 300.0; ++I) { Steer(Forward); Tick(TEXT("run")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop")); }
+		for (int32 I = 0; I < 60; ++I) { Steer(Still); Tick(TEXT("settle")); }
 		// A 180° reversal out of a run: run back toward the glass (the hips turn to run),
 		// then reverse toward the net: the brake, the plant, the push off. The first run
 		// went toward the net, so this keeps the path clear of the margins.
 		const auto Toward = [&Motion, TeamSign](double NetSign) { return -Motion.GetVelocity().X * TeamSign * NetSign > 0.0; };
-		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(-1.0)); ++I) { Drive(Back); Tick(TEXT("start2")); }
-		for (int32 I = 0; I < 20; ++I) { Drive(Back); Tick(TEXT("run2")); }
-		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(1.0)); ++I) { Drive(Forward); Tick(TEXT("reverse")); }
-		for (int32 I = 0; I < 30; ++I) { Drive(Forward); Tick(TEXT("run back")); }
-		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Drive(Still); Tick(TEXT("stop2")); }
-		for (int32 I = 0; I < 30; ++I) { Drive(Still); Tick(TEXT("settle2")); }
+		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(-1.0)); ++I) { Steer(Back); Tick(TEXT("start2")); }
+		for (int32 I = 0; I < 20; ++I) { Steer(Back); Tick(TEXT("run2")); }
+		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(1.0)); ++I) { Steer(Forward); Tick(TEXT("reverse")); }
+		for (int32 I = 0; I < 30; ++I) { Steer(Forward); Tick(TEXT("run back")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop2")); }
+		for (int32 I = 0; I < 30; ++I) { Steer(Still); Tick(TEXT("settle2")); }
 		// A side shuffle, square to the net (short, so no crossover).
-		for (int32 I = 0; I < 45; ++I) { Drive(Right); Tick(TEXT("shuffle")); }
-		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Drive(Still); Tick(TEXT("stop3")); }
-		for (int32 I = 0; I < 45; ++I) { Drive(Still); Tick(TEXT("end")); }
+		for (int32 I = 0; I < 45; ++I) { Steer(Right); Tick(TEXT("shuffle")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop3")); }
+		for (int32 I = 0; I < 45; ++I) { Steer(Still); Tick(TEXT("end")); }
 
 		const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
 		Out.bRan = true;
