@@ -58,9 +58,12 @@ namespace PadelMotionProbe
 			USkeletalMeshComponent* Mesh = nullptr;
 			TArray<FVector> FootPath[2];
 			TArray<TArray<FQuat>> CoreRotations; // component space, for the per-frame turn
+			TArray<TArray<FQuat>> ArmRotations;
 			TMap<FString, TArray<FQuat>> World;  // world space, for jerk
 			TArray<int32> Core;
 			TArray<FString> CoreNames;
+			TArray<int32> Arm;
+			TArray<FString> ArmNames;
 		};
 
 		const TCHAR* const JerkBones[] = { TEXT("pelvis"), TEXT("spine_03"), TEXT("head") };
@@ -79,6 +82,16 @@ namespace PadelMotionProbe
 					Track.CoreNames.Add(Name);
 				}
 			}
+			for (const TCHAR* Name : { TEXT("clavicle_l"), TEXT("clavicle_r"), TEXT("upperarm_l"), TEXT("upperarm_r"),
+				TEXT("lowerarm_l"), TEXT("lowerarm_r"), TEXT("hand_l"), TEXT("hand_r") })
+			{
+				const int32 Index = Mesh->GetBoneIndex(FName(Name));
+				if (Index != INDEX_NONE)
+				{
+					Track.Arm.Add(Index);
+					Track.ArmNames.Add(Name);
+				}
+			}
 		}
 
 		void Record(FTrack& Track)
@@ -95,11 +108,14 @@ namespace PadelMotionProbe
 				const FVector Ball = bBall ? Mesh->GetSocketLocation(Balls[F]) : Ankle;
 				Track.FootPath[F].Add(Ball.Z < Ankle.Z ? Ball : Ankle);
 			}
-			TArray<FQuat>& Frame = Track.CoreRotations.AddDefaulted_GetRef();
 			const TArray<FTransform>& CS = Mesh->GetComponentSpaceTransforms();
-			for (const int32 B : Track.Core)
+			for (TPair<TArray<TArray<FQuat>>*, const TArray<int32>*> Set : { MakeTuple(&Track.CoreRotations, &Track.Core), MakeTuple(&Track.ArmRotations, &Track.Arm) })
 			{
-				Frame.Add(CS.IsValidIndex(B) ? CS[B].GetRotation() : FQuat::Identity);
+				TArray<FQuat>& Frame = Set.Key->AddDefaulted_GetRef();
+				for (const int32 B : *Set.Value)
+				{
+					Frame.Add(CS.IsValidIndex(B) ? CS[B].GetRotation() : FQuat::Identity);
+				}
 			}
 			for (const TCHAR* Name : JerkBones)
 			{
@@ -177,19 +193,24 @@ namespace PadelMotionProbe
 			}
 			M.SlideByPhase = FString::Join(Parts, TEXT(", "));
 
-			// The biggest turn of a body bone between two frames, component space.
-			for (int32 I = WarmUpFrames + 1; I < Track.CoreRotations.Num(); ++I)
+			// The biggest turn of a body (and an arm) bone between two frames, component space.
+			auto Worst = [&Phases](const TArray<TArray<FQuat>>& Rotations, const TArray<FString>& Names, double& OutDeg, FString& OutAt)
 			{
-				for (int32 B = 0; B < Track.Core.Num(); ++B)
+				for (int32 I = WarmUpFrames + 1; I < Rotations.Num(); ++I)
 				{
-					const double Deg = FMath::RadiansToDegrees(Track.CoreRotations[I][B].AngularDistance(Track.CoreRotations[I - 1][B]));
-					if (Deg > M.WorstBoneTurnDeg)
+					for (int32 B = 0; B < Names.Num(); ++B)
 					{
-						M.WorstBoneTurnDeg = Deg;
-						M.WorstBoneTurnAt = Track.CoreNames[B] + TEXT(", ") + Phases[I];
+						const double Deg = FMath::RadiansToDegrees(Rotations[I][B].AngularDistance(Rotations[I - 1][B]));
+						if (Deg > OutDeg)
+						{
+							OutDeg = Deg;
+							OutAt = Names[B] + TEXT(", ") + Phases[I];
+						}
 					}
 				}
-			}
+			};
+			Worst(Track.CoreRotations, Track.CoreNames, M.WorstBoneTurnDeg, M.WorstBoneTurnAt);
+			Worst(Track.ArmRotations, Track.ArmNames, M.WorstArmTurnDeg, M.WorstArmTurnAt);
 
 			// Angular jerk, world space: the angular velocity between frames, differenced twice.
 			for (const TPair<FString, TArray<FQuat>>& Bone : Track.World)
@@ -557,7 +578,8 @@ namespace PadelMotionProbe
 			Test.AddInfo(FString::Printf(TEXT("[%s %s] angular jerk deg/s^3: %s"), *Label, *Body->Name, *FString::Join(Jerk, TEXT("; "))));
 			Test.AddInfo(FString::Printf(TEXT("[%s %s] foot slide %.1f cm/s over %.1f s planted (steady %.1f, worst spell %.0f); by phase: %s; foot heights %s"),
 				*Label, *Body->Name, Body->SlideCmps, Body->PlantedS, Body->SteadySlideCmps, Body->WorstSlideSpellCmps, *Body->SlideByPhase, *Body->FootHeights));
-			Test.AddInfo(FString::Printf(TEXT("[%s %s] largest bone turn in a frame %.1f deg (%s)"), *Label, *Body->Name, Body->WorstBoneTurnDeg, *Body->WorstBoneTurnAt));
+			Test.AddInfo(FString::Printf(TEXT("[%s %s] largest bone turn in a frame %.1f deg (%s); arms %.1f deg (%s)"), *Label, *Body->Name,
+				Body->WorstBoneTurnDeg, *Body->WorstBoneTurnAt, Body->WorstArmTurnDeg, *Body->WorstArmTurnAt));
 		}
 		if (!Run.FollowRmsMaxLag.IsEmpty())
 		{

@@ -52,6 +52,19 @@ bool FPadelMotionMatchingTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("Full stack: under 1.6 switches a second (%.2f)"), Full.SwitchesPerS), Full.SwitchesPerS < 1.6);
 		TestTrue(FString::Printf(TEXT("Full stack: steady planted feet slide under 33 cm/s (%.1f)"), Full.Placeholder.SteadySlideCmps), Full.Placeholder.SteadySlideCmps < 33.0);
 		TestTrue(FString::Printf(TEXT("Full stack: no body bone turns over 20 deg in a frame (%.1f)"), Full.Placeholder.WorstBoneTurnDeg), Full.Placeholder.WorstBoneTurnDeg < 20.0);
+		// The racket arm's IK on whichever body shows it (the MetaHuman's own warp after the
+		// retarget). Before the arm-jump fix a MetaHuman arm bone turned 165.7 deg in a frame
+		// running (the upper arm 97.8); after it, 32.2 (the reverse pivot lunging the shoulder at
+		// the carried racket). Gated at today's level; the goal is 20 once the wrist/racket
+		// follow-up lands (docs/animation/MOVEMENT_FLUENCY.md).
+		for (const FBodyMetrics* Body : { &Full.Placeholder, &Full.MetaHuman })
+		{
+			if (Body->bValid)
+			{
+				TestTrue(FString::Printf(TEXT("Full stack: no %s arm bone turns over 35 deg in a frame (%.1f, %s)"), *Body->Name, Body->WorstArmTurnDeg, *Body->WorstArmTurnAt),
+					Body->WorstArmTurnDeg < 35.0);
+			}
+		}
 		for (const TPair<FString, FVector>& Bone : Full.FollowRmsMaxLag)
 		{
 			// A shown MetaHuman follows the placeholder with no frame lag (M2's retarget check).

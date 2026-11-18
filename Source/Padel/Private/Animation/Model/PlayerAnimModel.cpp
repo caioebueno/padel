@@ -697,7 +697,24 @@ namespace Padel::Animation
 		// The right-hander's keys mirror to the side being played.
 		const double RightSign = (Frame.Side == ESwingSide::Fore ? 1.0 : -1.0) * In.ForehandSign;
 		const FPlayerFrameVec Ready = Mirror(Frame.StancePose.Racket, In.ForehandSign);
-		FPlayerFrameVec Local = Ready;
+		const FVec3 NetForward = ForwardAxis(In.TeamSign);
+		const FVec3 CourtRight = RightAxis(In.TeamSign);
+		auto Place = [&In](const FPlayerFrameVec& V, const FVec3& Forward, const FVec3& Right)
+		{
+			FVec3 Out = Add(In.Position, Add(Scale(Right, V.RightM), Scale(Forward, V.ForwardM)));
+			Out.Z = V.UpM;
+			return Out;
+		};
+		// The ready carry goes with the body: facing the net that is the court's frame, but a
+		// body turned to run (back to the net on a run back) carried it on the court's frame
+		// beside or behind itself, and the arm IK swung round the torso to reach it. The
+		// swing's arc stays on the court's frame (its contact is where the ball is).
+		const double FacingRad = Frame.FacingYawDeg / RadToDeg;
+		const FVec3 BodyForward = Vec(std::cos(FacingRad), std::sin(FacingRad), 0.0);
+		const double Handed = DotProduct(Vec(-NetForward.Y, NetForward.X, 0.0), CourtRight) >= 0.0 ? 1.0 : -1.0;
+		const FVec3 BodyRight = Vec(-BodyForward.Y * Handed, BodyForward.X * Handed, 0.0);
+		const FVec3 Carried = Place(Ready, BodyForward, BodyRight);
+		FVec3 World = Carried;
 		if (Frame.Clip && Frame.SwingWeight > 0.0)
 		{
 			if (!bHasContactKey || In.Phase == ESwingPhase::Windup || In.Phase == ESwingPhase::Forward)
@@ -733,10 +750,9 @@ namespace Padel::Animation
 			{
 				Arc = LerpVec(ContactKey, Follow, Clamp(P - ContactP, 0.0, 1.0));
 			}
-			Local = LerpVec(Ready, Arc, Frame.SwingWeight);
+			const FVec3 Swung = Place(Arc, NetForward, CourtRight);
+			World = Add(Carried, Scale(Sub(Swung, Carried), Frame.SwingWeight));
 		}
-		FVec3 World = Add(In.Position, Add(Scale(RightAxis(In.TeamSign), Local.RightM), Scale(ForwardAxis(In.TeamSign), Local.ForwardM)));
-		World.Z = Local.UpM;
 		Frame.RacketPosition = World;
 	}
 

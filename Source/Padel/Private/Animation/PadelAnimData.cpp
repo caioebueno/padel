@@ -171,12 +171,15 @@ FPadelAnimData FPadelAnimData::Load()
 			W.MaxTrunkTurnDeg = Row->WarpMaxTrunkTurnDeg;
 			W.KneeBendUnits = Row->WarpKneeBendM * Cm;
 			W.ElbowBendUnits = Row->WarpElbowBendM * Cm;
+			W.ElbowPoleSteadyUnits = Row->WarpElbowPoleSteadyM * Cm;
 			W.MaxReachShare = Row->WarpMaxReachShare;
+			W.MinReachShare = Row->WarpMinReachShare;
+			W.CarryFollowShare = Row->WarpCarryFollowShare;
 			W.OverheadBlendUnits = Row->WarpOverheadBlendM * Cm;
 			W.TorsoClearanceUnits = Row->WarpTorsoClearanceM * Cm;
 			W.MaxToeRiseUnits = Row->WarpMaxToeRiseM * Cm;
 			W.MaxOverheadLeanDeg = Row->WarpMaxOverheadLeanDeg;
-			for (const double Share : { Row->WarpPelvisDownShare, Row->WarpPelvisForwardShare, Row->WarpSpineSideShare, Row->WarpSpineForwardShare,
+			for (const double Share : { Row->WarpCarryFollowShare, Row->WarpPelvisDownShare, Row->WarpPelvisForwardShare, Row->WarpSpineSideShare, Row->WarpSpineForwardShare,
 				Row->WarpSpineDownShare, Row->WarpTrunkTurnShare })
 			{
 				if (Share < 0.0 || Share > 1.0)
@@ -185,10 +188,14 @@ FPadelAnimData FPadelAnimData::Load()
 					break;
 				}
 			}
-			if (Row->WarpMaxPelvisDropM < 0.0 || Row->WarpMaxPelvisForwardM < 0.0 || Row->WarpKneeBendM < 0.0 || Row->WarpElbowBendM < 0.0 || Row->WarpOverheadBlendM <= 0.0 || Row->WarpTorsoClearanceM < 0.0 || Row->WarpMaxToeRiseM < 0.0 || Row->WarpMaxOverheadLeanDeg < 0.0 || Row->WarpMaxOverheadLeanDeg > 90.0
+			if (Row->WarpMaxPelvisDropM < 0.0 || Row->WarpMaxPelvisForwardM < 0.0 || Row->WarpKneeBendM < 0.0 || Row->WarpElbowBendM < 0.0 || Row->WarpElbowPoleSteadyM < 0.0 || Row->WarpOverheadBlendM <= 0.0 || Row->WarpTorsoClearanceM < 0.0 || Row->WarpMaxToeRiseM < 0.0 || Row->WarpMaxOverheadLeanDeg < 0.0 || Row->WarpMaxOverheadLeanDeg > 90.0
 				|| Row->WarpMaxSpineDeg < 0.0 || Row->WarpMaxSpineDeg > 90.0 || Row->WarpMaxTrunkTurnDeg < 0.0 || Row->WarpMaxTrunkTurnDeg > 90.0)
 			{
 				Out.Errors.Add(TEXT("Animation.json: Warp limits must be 0 or more (angles up to 90 degrees)"));
+			}
+			if (Row->WarpMinReachShare < 0.0 || Row->WarpMinReachShare >= Row->WarpMaxReachShare)
+			{
+				Out.Errors.Add(TEXT("Animation.json: WarpMinReachShare must be 0 or more and below WarpMaxReachShare"));
 			}
 			if (Row->WarpMaxReachShare <= 0.0 || Row->WarpMaxReachShare > 1.0)
 			{
