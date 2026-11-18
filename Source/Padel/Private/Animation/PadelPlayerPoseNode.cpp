@@ -8,6 +8,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "TwoBoneIK.h"
 
+#include <cmath>
+
 namespace PadelPlayerPoseDetail
 {
 	// Bone names of the UE5 mannequin layout the placeholders are rigged on (Tools/AssetPipeline/README.md).
@@ -94,6 +96,7 @@ void FAnimNode_PadelPlayerPose::Initialize_AnyThread(const FAnimationInitializeC
 	CyclePhase = 0.0;
 	IdleTime = 0.0;
 	Matcher.Reset();
+	LocomotionWarp.Reset();
 }
 
 void FAnimNode_PadelPlayerPose::CacheBones_AnyThread(const FAnimationCacheBonesContext& Context)
@@ -158,8 +161,20 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 		// (the clips bend their own knees and plant their own feet); the head look stays, the
 		// trunk lean lightens (the clips lean too).
 		const double From = Set.MocapLegFadeFromMps;
-		const double Moving = FMath::Clamp((SpeedMps - From) / FMath::Max(Set.MocapLegFadeToMps - From, 0.01), 0.0, 1.0);
+		// A smooth step, so the layers fade in and out with no kink in their speed (M2: a kink reads as a jolt).
+		const double Linear = FMath::Clamp((SpeedMps - From) / FMath::Max(Set.MocapLegFadeToMps - From, 0.01), 0.0, 1.0);
+		const double Moving = Linear * Linear * (3.0 - 2.0 * Linear);
 		Body = Anim->PosedBody(static_cast<float>(FMath::Lerp(1.0, Set.MocapLegKeep, Moving)), static_cast<float>(FMath::Lerp(1.0, Set.MocapLeanKeep, Moving)));
+		// M2: the clips own the trunk at speed (they turn and lean it themselves; a procedural twist
+		// on top reads as a loose spine). The head keeps looking where it did, the chest's share
+		// handed to the neck, within a cap while running.
+		const double ChestKeep = FMath::Lerp(1.0, Set.MocapChestTwistKeep, Moving);
+		const double Handed = Body.ChestTwistDeg * (1.0 - ChestKeep);
+		Body.ChestTwistDeg = static_cast<float>(Body.ChestTwistDeg * ChestKeep);
+		// A soft cap (tanh): the head slows into it rather than stopping dead.
+		const double HeadCap = FMath::Max(FMath::Lerp(180.0, Set.MocapHeadMaxTwistDeg, Moving), 1.0);
+		const double Head = Body.HeadTwistDeg + Handed;
+		Body.HeadTwistDeg = static_cast<float>(HeadCap * std::tanh(Head / HeadCap));
 	}
 	else
 	{
@@ -168,12 +183,14 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	if (const USkeletalMeshComponent* Mesh = Anim->GetSkelMeshComponent())
 	{
 		RacketTargetComponent = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
+		TravelVelocityComponent = Mesh->GetComponentTransform().InverseTransformVectorNoScale(Anim->GetTravelVelocity());
 	}
 }
 
 void FAnimNode_PadelPlayerPose::Update_AnyThread(const FAnimationUpdateContext& Context)
 {
 	const double Dt = Context.GetDeltaTime();
+	UpdateDeltaS = Dt;
 	IdleTime += Dt;
 	Matcher.Update(Context, Trajectory, SpeedMps * 100.0);
 	if (SpeedMps <= 0.0)
@@ -189,7 +206,7 @@ void FAnimNode_PadelPlayerPose::Update_AnyThread(const FAnimationUpdateContext& 
 	CyclePhase = FMath::Fmod(CyclePhase + Dt * Rate / Length, 1.0);
 }
 
-bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output) const
+bool FAnimNode_PadelPlayerPose::SampleLocomotion(FPoseContext& Output)
 {
 	// M1: motion matching once it has a pick; the loop mix until then and without databases.
 	return Matcher.Evaluate(Output) || SampleLoopMix(Output);
@@ -256,6 +273,21 @@ void FAnimNode_PadelPlayerPose::Evaluate_AnyThread(FPoseContext& Output)
 		Output.ResetToRefPose();
 	}
 	Matcher.RecordHistory(Output);
+	// M2: the warps fit the clip's legs to the simulation (after the history: the search compares clip poses).
+	if (bMotionMatched && Set.LocomotionWarp.Any())
+	{
+		FPadelLocomotionWarpInput Warp;
+		Warp.ComponentToWorld = Output.AnimInstanceProxy->GetComponentTransform();
+		Warp.SimVelocity = TravelVelocityComponent;
+		Warp.ClipRootVelocity = Matcher.ClipRootVelocity();
+		Warp.DeltaS = UpdateDeltaS;
+		Warp.Weight = (1.0 - FMath::Clamp(SwingWeight * FullBodyAlpha, 0.0, 1.0)) * (1.0 - FMath::Clamp(CelebrationWeight, 0.0, 1.0));
+		LocomotionWarp.Apply(Output.Pose, BodyBones, Warp, Set.LocomotionWarp);
+	}
+	else
+	{
+		LocomotionWarp.Reset();
+	}
 
 	if (Swing && SwingWeight > 0.0)
 	{

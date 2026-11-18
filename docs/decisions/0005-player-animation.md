@@ -33,7 +33,7 @@ The native tests (`Tests/Native/PlayerAnimTests.cpp`) check this for every slice
 ## Feet
 
 - A swing drives the legs only while the player is slower than `PlantedMaxSpeedMps` (0.8 m/s). Above that the swing plays on the upper body (layered blend from `spine_01`) over the locomotion, so a swing on the run never drags planted feet. `FootSlideMps` reports the speed the feet would slide at; the tests keep it under the planted limit through every slice shot.
-- The run and sprint cycles play at `speed / authored speed` (clamped), so the stride matches the ground speed. With M1 motion matching (below) the picked clip plays at `speed / its root speed`, within `MotionMatchingPlayRateMin`..`Max`; the loop mix is the fallback.
+- The run and sprint cycles play at `speed / authored speed` (clamped), so the stride matches the ground speed. With M1 motion matching (below) the picked clip plays at `speed / its root speed`, within `MotionMatchingPlayRateMin`..`Max`, and M2's stride warping scales the feet's reach for what's left (`StrideWarpMin`..`Max`) while foot locking holds planted feet; the loop mix is the fallback.
 - 0004 already slows movement to the shot's `SwingMoveMult` during a swing, which keeps the player nearly planted.
 
 ## Locomotion

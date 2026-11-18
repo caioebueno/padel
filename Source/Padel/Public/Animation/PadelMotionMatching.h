@@ -31,6 +31,14 @@ struct FPadelMotionMatchingTuning
 	double StillBelowUnits = 100.0;
 	/** Still and turned at least this far (degrees) over the trajectory's past: the turn-in-place databases too. */
 	double TurnInPlaceDeg = 30.0;
+	/**
+	 * M2: switches by inertialization (Animation.json MotionMatchingInertialHalfLifeS): the new
+	 * clip plays alone at once and the difference from the pose that was showing, and its
+	 * velocity, decay on a critically damped spring of this half-life. 0 keeps M1's crossfade.
+	 */
+	double InertialHalfLifeS = 0.0;
+	/** M2: a new candidate must beat the continuing pose's cost by this much to switch (MotionMatchingSwitchCostMargin). */
+	double SwitchCostMargin = 0.0;
 	/** Still, and the trajectory's past travelled at least this far (cm): the stop databases too. */
 	double StopAfterUnits = 20.0;
 	/** Gaits: the walk databases up to RunFromUnits, the run ones from there, the sprint ones from SprintFromUnits (cm/s, the current speed: the prediction overshoots while speeding up), each reaching GaitOverlap (a share) past its edges so a gait change can blend. */
@@ -60,11 +68,13 @@ enum class EPadelMotionMatchingRole : uint8
  * trajectory (past and predicted, from the animation model) and its own pose history, and
  * plays what it finds in place (the clips are root locked; the game moves the pawn).
  *
- * The node's own pose history replaces a history collector node, and a small blend stack
- * replaces FAnimNode_MotionMatching (whose settings are private): a new pick crossfades in
- * over BlendTimeS with a smooth ease, older picks keep playing under it until it's in. A
- * pick's play rate matches the clip's root speed to the simulation's (within PlayRateMin..Max),
- * so the feet don't slide where the speeds differ.
+ * The node's own pose history replaces a history collector node, and this replaces
+ * FAnimNode_MotionMatching (whose settings are private). M2: it searches every
+ * SearchThrottleS, switches only when a candidate beats the continuing pose by
+ * SwitchCostMargin, and switches by inertialization (InertialHalfLifeS): one clip plays, the
+ * difference from the pose shown decaying on a spring. With InertialHalfLifeS 0, M1's
+ * crossfade stack (BlendTimeS, MaxBlends). A pick's play rate matches the clip's root speed
+ * to the simulation's (within PlayRateMin..Max), so the feet don't slide where the speeds differ.
  *
  * Owned by FAnimNode_PadelPlayerPose; Update and Evaluate run on the anim worker thread.
  */
@@ -94,8 +104,8 @@ struct PADEL_API FPadelMotionMatcher
 	 */
 	void Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits);
 
-	/** Writes the blended clips into Output; false (Output untouched) with nothing picked yet. */
-	bool Evaluate(FPoseContext& Output) const;
+	/** Writes the locomotion pose into Output (the pick, inertialized or crossfaded); false (Output untouched) with nothing picked yet. */
+	bool Evaluate(FPoseContext& Output);
 
 	/**
 	 * Adds this frame's locomotion pose (the picks, or the loop mix before the first pick) to
@@ -108,6 +118,11 @@ struct PADEL_API FPadelMotionMatcher
 	FName CurrentDatabase() const;
 	const UAnimSequenceBase* CurrentClip() const;
 	double CurrentPlayRate() const { return Stack.IsEmpty() ? 1.0 : Stack.Last().PlayRate; }
+	/** M2 probes: how many picks since the last reset (each one a switch), and how many poses play at once now. */
+	int32 NumPicks() const { return Picks; }
+	int32 NumPlaying() const { return Stack.Num(); }
+	/** M2: the playing clip's own root velocity (cm/s, root space = component space, at its play rate), for the warps. */
+	FVector ClipRootVelocity() const { return RootVelocity; }
 
 private:
 	struct FPlaying
@@ -121,9 +136,11 @@ private:
 		bool bLoop = false;
 	};
 
-	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits);
+	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut);
 	double MatchedPlayRate(const FPlaying& Playing, double SpeedUnits) const;
 	void CacheHistoryBones();
+	FVector MeasureRootVelocity(const FPlaying& Playing) const;
+	void Inertialize(FPoseContext& Output);
 
 	UPROPERTY() TArray<TObjectPtr<const UPoseSearchDatabase>> Databases;
 	TArray<EPadelMotionMatchingRole> Roles;
@@ -132,6 +149,13 @@ private:
 	TArray<FBoneIndexType> HistoryBones;
 	TArray<FPlaying> Stack;
 	double SinceSearchS = 0.0;
+	int32 Picks = 0;
+	FVector RootVelocity = FVector::ZeroVector;
+	/** M2 inertialization: the pose shown last frame and the one before, and the decaying offset (rotation vectors and translations, per compact bone). */
+	TArray<FTransform> LastOut;
+	TArray<FTransform> PrevOut;
+	TArray<FVector> OffRot, OffRotVel, OffPos, OffPosVel;
+	bool bTransitionPending = false;
 	float LastDeltaS = 0.0f;
 	bool bHistoryReset = true;
 	bool bHistoryBonesCached = false;

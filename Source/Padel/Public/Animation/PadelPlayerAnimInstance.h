@@ -139,6 +139,9 @@ public:
 	/** The body's share, 0..1: ContactWarpWeight, but not over an imported swing clip. */
 	float WarpBodyAlpha() const { return SwingSequence ? 0.0f : ContactWarpWeight; }
 
+	/** M2: the simulation's ground velocity (world, cm/s), read off the trajectory each frame. */
+	FVector GetTravelVelocity() const { return LastVelocity; }
+
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	EPadelLocomotionState Locomotion = EPadelLocomotionState::Idle;
 

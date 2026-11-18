@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/PadelContactWarp.h"
+#include "Animation/PadelLocomotionWarp.h"
 #include "Animation/PadelMotionMatching.h"
 #include "Animation/Model/PlayerAnimTuning.h"
 #include "Data/PadelPlayerBodyRow.h"
@@ -48,6 +49,10 @@ struct PADEL_API FPadelAnimData
 	double MocapLegFadeToMps = 1.5;
 	double MocapLegKeep = 0.0;
 	double MocapLeanKeep = 0.5;
+	/** M2: the trunk at speed, and the locomotion warps (already in Unreal units). */
+	double MocapChestTwistKeep = 1.0;
+	double MocapHeadMaxTwistDeg = 180.0;
+	FPadelLocomotionWarpTuning LocomotionWarp;
 	/** Contact warp tuning (Animation.json Warp*), already in Unreal units. */
 	FPadelWarpTuning Warp;
 	bool bOk = false;
