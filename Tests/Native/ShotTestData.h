@@ -124,6 +124,7 @@ namespace ShotTestData
 		PADEL_READ(FatigueDrainPerHardAccelAt1); PADEL_READ(FatigueDrainPerHardAccelAt99); PADEL_READ(FatigueRallyStartS);
 		PADEL_READ(FatigueDrainPerRallySAt1); PADEL_READ(FatigueDrainPerRallySAt99); PADEL_READ(FatigueBetweenPointRestS);
 		PADEL_READ(FatigueTopSpeedLossAtZero);
+		PADEL_READ(AccelRiseS); PADEL_READ(PivotMinDeg); PADEL_READ(PivotSpeedMps); PADEL_READ(PivotPlantAt1S); PADEL_READ(PivotPlantAt99S);
 #undef PADEL_READ
 		return O;
 	}

@@ -6,6 +6,7 @@
 #include "Animation/PadelPlayerAnimInstance.h"
 #include "Animation/PadelPlayerPoseNode.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Data/PadelShotData.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Gameplay/PadelMatchDirector.h"
@@ -14,6 +15,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "PoseSearch/PoseSearchDatabase.h"
+#include "Shots/PlayerMotion.h"
 #include "UI/Model/PadelUiMatchSetup.h"
 
 #if WITH_EDITOR
@@ -37,13 +39,6 @@ namespace PadelMotionProbe
 			FVector Velocity = FVector::ZeroVector;
 			double FacingYawDeg = 0.0;
 		};
-
-		void Accelerate(FScript& S, const FVector& Want, double Accel)
-		{
-			const FVector Delta = Want - S.Velocity;
-			const double Step = Accel * Dt;
-			S.Velocity = Delta.Size() <= Step ? Want : S.Velocity + Delta.GetSafeNormal() * Step;
-		}
 
 		/** Turns the facing toward Yaw at the model's old constant rate (the locomotion-only drive). */
 		void Face(FScript& S, double YawDeg)
@@ -407,14 +402,48 @@ namespace PadelMotionProbe
 		FScript S;
 		S.Position = FVector(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y, Ground);
 		S.FacingYawDeg = Pawn->GetActorRotation().Yaw;
-		const FVector Ahead = FRotator(0.0, S.FacingYawDeg, 0.0).Vector();
-		const FVector Side = FRotator(0.0, S.FacingYawDeg + 90.0, 0.0).Vector();
-		const double RunSpeed = 400.0;
-		const double StartYaw = S.FacingYawDeg;
 		const double TeamSign = S.Position.X >= 0.0 ? 1.0 : -1.0;
 		// A ball to watch on the other side of the net, as in a rally.
 		const Padel::Court::FVec3 BallPosition{ -TeamSign * 6.0, 1.0, 1.8 };
 		Padel::EMovementMode Mode = Padel::EMovementMode::Adjust;
+
+		// The path is the game's own movement (PadelCore FPlayerMotion at 120 Hz, two steps
+		// a frame) driven by a stick, so the clips are measured against the motion players
+		// really make: the push and brake building over AccelRiseS, the pivot on the
+		// reversal (BIOMECHANICS_MOVEMENT 5.7).
+		const FPadelShotData ShotData = FPadelShotData::Load();
+		Padel::Shots::FPlayerRatings Ratings;
+		if (!ShotData.Errors.IsEmpty() || !FPadelShotData::LoadPlayer(TEXT("practice_default"), Ratings))
+		{
+			Out.SkipReason = TEXT("Data/Movement.json or Players.json didn't load");
+			Test.AddError(Out.SkipReason);
+			return Out;
+		}
+		const Padel::Court::FVec3 StartM = Padel::ToMetres(S.Position);
+		Padel::Shots::FPlayerMotion Motion(&Ratings, &ShotData.Movement, TeamSign, { StartM.X, StartM.Y, 0.0 });
+		const Padel::Court::FVec3 Placed = Motion.GetPosition();
+		S.Position = Padel::ToWorld(Placed);
+		S.Position.Z = Ground;
+		auto Drive = [&](const Padel::Shots::FVec2& Stick)
+		{
+			for (int32 Sub = 0; Sub < 2; ++Sub)
+			{
+				Motion.Step(Stick, false, 0.5 * Dt);
+			}
+			FVector Position = Padel::ToWorld(Motion.GetPosition());
+			Position.Z = Ground;
+			S.Velocity = Padel::ToWorld(Motion.GetVelocity());
+			S.Velocity.Z = 0.0;
+			// Advanced in Tick, as before.
+			S.Position = Position - S.Velocity * Dt;
+			Mode = Motion.GetMode();
+			// Clips alone: face the way the player runs once running, at the old constant rate.
+			if (Mode == Padel::EMovementMode::Run || Mode == Padel::EMovementMode::Sprint)
+			{
+				Face(S, FMath::RadiansToDegrees(FMath::Atan2(S.Velocity.Y, S.Velocity.X)));
+			}
+		};
+		const auto Speed = [&Motion]() { return Padel::Shots::LengthXY(Motion.GetVelocity()); };
 
 		TArray<FVector> Past;
 		int64 PlayingSum = 0;
@@ -491,41 +520,32 @@ namespace PadelMotionProbe
 			}
 		};
 
-		using Padel::EMovementMode;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 60; ++I) { Tick(TEXT("stand")); }
-		Mode = EMovementMode::Run;
-		while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start")); }
+		// Stand, run 3 m forward and stop; run again and reverse (a pivot); shuffle sideways
+		// square to the net and stop. Team frame: X the player's right, Y toward the net.
+		const Padel::Shots::FVec2 Still{ 0.0, 0.0 };
+		const Padel::Shots::FVec2 Forward{ 0.0, 1.0 };
+		const Padel::Shots::FVec2 Back{ 0.0, -1.0 };
+		const Padel::Shots::FVec2 Right{ 1.0, 0.0 };
+		for (int32 I = 0; I < 60; ++I) { Drive(Still); Tick(TEXT("stand")); }
+		for (int32 I = 0; I < 600 && Speed() < 3.9; ++I) { Drive(Forward); Tick(TEXT("start")); }
 		const FVector RunFrom = S.Position;
-		while (FVector::Dist2D(S.Position, RunFrom) < 300.0) { Tick(TEXT("run")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop")); }
-		S.Velocity = FVector::ZeroVector;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 60; ++I) { Tick(TEXT("settle")); }
-		// A 180° reversal out of a run: accelerate ahead, then turn back through zero.
-		Mode = EMovementMode::Run;
-		while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start2")); }
-		for (int32 I = 0; I < 30; ++I) { Tick(TEXT("run2")); }
-		while (FVector::DotProduct(S.Velocity, -Ahead) < RunSpeed - 1.0)
-		{
-			Accelerate(S, -Ahead * RunSpeed, 1200.0);
-			if (FVector::DotProduct(S.Velocity, Ahead) < 0.0)
-			{
-				Face(S, StartYaw + 180.0);
-			}
-			Tick(TEXT("reverse"));
-		}
-		for (int32 I = 0; I < 45; ++I) { Face(S, StartYaw + 180.0); Tick(TEXT("run back")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop2")); }
-		S.Velocity = FVector::ZeroVector;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 30; ++I) { Tick(TEXT("settle2")); }
-		// A side shuffle, square to the net.
-		Mode = EMovementMode::Shuffle;
-		for (int32 I = 0; I < 75; ++I) { Accelerate(S, Side * 200.0, 800.0); Tick(TEXT("shuffle")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop3")); }
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 45; ++I) { Tick(TEXT("end")); }
+		for (int32 I = 0; I < 600 && FVector::Dist2D(S.Position, RunFrom) < 300.0; ++I) { Drive(Forward); Tick(TEXT("run")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Drive(Still); Tick(TEXT("stop")); }
+		for (int32 I = 0; I < 60; ++I) { Drive(Still); Tick(TEXT("settle")); }
+		// A 180° reversal out of a run: run back toward the glass (the hips turn to run),
+		// then reverse toward the net: the brake, the plant, the push off. The first run
+		// went toward the net, so this keeps the path clear of the margins.
+		const auto Toward = [&Motion, TeamSign](double NetSign) { return -Motion.GetVelocity().X * TeamSign * NetSign > 0.0; };
+		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(-1.0)); ++I) { Drive(Back); Tick(TEXT("start2")); }
+		for (int32 I = 0; I < 20; ++I) { Drive(Back); Tick(TEXT("run2")); }
+		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(1.0)); ++I) { Drive(Forward); Tick(TEXT("reverse")); }
+		for (int32 I = 0; I < 30; ++I) { Drive(Forward); Tick(TEXT("run back")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Drive(Still); Tick(TEXT("stop2")); }
+		for (int32 I = 0; I < 30; ++I) { Drive(Still); Tick(TEXT("settle2")); }
+		// A side shuffle, square to the net (short, so no crossover).
+		for (int32 I = 0; I < 45; ++I) { Drive(Right); Tick(TEXT("shuffle")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Drive(Still); Tick(TEXT("stop3")); }
+		for (int32 I = 0; I < 45; ++I) { Drive(Still); Tick(TEXT("end")); }
 
 		const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
 		Out.bRan = true;

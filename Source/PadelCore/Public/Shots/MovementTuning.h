@@ -22,6 +22,18 @@ namespace Padel::Shots
 		// Acceleration falls as speed rises: a = a0 * (1 - AccelFalloff * v / vTop).
 		// 0 keeps it constant; 1 falls to nothing at top speed (BIOMECHANICS_MOVEMENT 5.1).
 		double AccelFalloff = 0.0;
+		// Human limits on how fast a push or a brake can build (BIOMECHANICS_MOVEMENT 2.6, 5.7).
+		// The acceleration rises to its full strength over AccelRiseS instead of in one tick,
+		// and the last of a change settles over the same time, so a start, a stop or a cut
+		// has a finite jerk the clips can follow. 0 keeps the old instant push.
+		double AccelRiseS = 0.0;
+		// A change of direction at least PivotMinDeg from the way the player is running, at
+		// more than SplitMaxSpeedMps, is a pivot: brake to PivotSpeedMps, plant for the
+		// time at GDD 6.1 Agility 1 and 99, then push off. 0 degrees turns pivots off.
+		double PivotMinDeg = 0.0;
+		double PivotSpeedMps = 0.0;
+		double PivotPlantAt1S = 0.0;
+		double PivotPlantAt99S = 0.0;
 
 		// GDD 6.3 Direction relative to the net (BIOMECHANICS_MOVEMENT 5.2). Fractions of
 		// top speed for a player square to the net; 1 = as fast as running forward.

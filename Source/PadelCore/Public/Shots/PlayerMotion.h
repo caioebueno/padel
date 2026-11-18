@@ -6,6 +6,7 @@
 #pragma once
 
 #include "PadelTypes.h"
+#include "Shots/AccelRamp.h"
 #include "Shots/HardEffortCounter.h"
 #include "Shots/MovementTuning.h"
 #include "Shots/PlayerRatings.h"
@@ -42,6 +43,15 @@ namespace Padel::Shots
 		double TopSpeed(bool bSprinting) const;
 		// GDD 6.1 Agility: the hip turn into a crossover or turn-and-run.
 		double TurnTimeS() const;
+		// GDD 6.1 Agility: how long the player plants in a pivot (Movement.json PivotMinDeg).
+		double PivotPlantS() const;
+		// Braking into or planted in a pivot, for animation and tests.
+		bool IsPivoting() const { return Pivot.Stage != AccelRamp::FPivot::EStage::None; }
+		bool IsPivotPlanted() const { return Pivot.Stage == AccelRamp::FPivot::EStage::Planted; }
+		// The pivot rule's numbers for this player (the AI's motion model steps the same).
+		AccelRamp::FPivotParams PivotParams() const;
+		// The acceleration applied last tick (m/s^2, court axes), for animation and tests.
+		FVec3 GetAppliedAccel() const { return Vec(Ramp.AX, Ramp.AY, 0.0); }
 		// GDD 6.3: the top-speed fraction for a team-relative unit direction while square
 		// to the net (1 forward, ShuffleSpeedFrac sideways, BackpedalSpeedFrac backwards).
 		double SquareSpeedFrac(const FVec2& UnitDir) const;
@@ -84,10 +94,15 @@ namespace Padel::Shots
 		void LimitAtMargins(FVec3& Desired, double Brake, double Dt) const;
 		// The most speed toward a margin Room away that whole ticks of Step can brake away.
 		static double MarginSpeed(double Room, double Step, double Dt);
-		void MarginBraking(double Brake, double Dt, bool& bX, bool& bY) const;
+		void MarginBraking(double Brake, double JerkMax, double Dt, bool& bX, bool& bY) const;
 		void OwnHalfLimits(double& Lo, double& Hi, double& Side) const;
 		void ClampToOwnHalf();
 		void UpdateFatigue(bool bEdgeStop, double Dt);
+		// With AccelRiseS: brake on an axis once the ramped stop (AccelRamp::StopDistance)
+		// would only just end at the glass or net margin; the other axis holds its speed.
+		void RampMarginBraking(FVec3& Desired, double Brake, double JerkMax, double Dt);
+		// The share of Brake an axis moving at AxisSpeed gets when the player stops.
+		double AxisBrake(double Brake, double AxisSpeed) const;
 
 		const FPlayerRatings* Ratings = nullptr;
 		const FMovementTuning* Tuning = nullptr;
@@ -114,5 +129,10 @@ namespace Padel::Shots
 		int HardEffortCount = 0;
 		ERally Rally = ERally::Unknown;
 		double RallyS = 0.0;
+		AccelRamp::FState Ramp;
+		AccelRamp::FPivot Pivot;
+		// Braking into a margin on that axis, until stopped or the stick turns away.
+		bool bMarginBrakeX = false;
+		bool bMarginBrakeY = false;
 	};
 }
