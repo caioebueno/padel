@@ -424,6 +424,17 @@ namespace PadelMotionProbe
 		const Padel::Court::FVec3 Placed = Motion.GetPosition();
 		S.Position = Padel::ToWorld(Placed);
 		S.Position.Z = Ground;
+		// The path keeps M2's speeds (a 4 m/s run, a 2 m/s shuffle) so the gates measure the
+		// same moves: the stick is held part way, as a player jogging would. A full stick runs
+		// at the rating's top speed (about 6 m/s here), past the run clips.
+		const double RunMps = 4.0;
+		const double ShuffleMps = 2.0;
+		const double Top = Motion.TopSpeed(false);
+		const auto Held = [Top](const Padel::Shots::FVec2& Dir, double WantMps, double GaitFrac)
+		{
+			const double Share = Top * GaitFrac > 0.0 ? FMath::Min(1.0, WantMps / (Top * GaitFrac)) : 1.0;
+			return Padel::Shots::FVec2{ Dir.X * Share, Dir.Y * Share };
+		};
 		auto Steer = [&](const Padel::Shots::FVec2& Stick)
 		{
 			for (int32 Sub = 0; Sub < 2; ++Sub)
@@ -523,11 +534,13 @@ namespace PadelMotionProbe
 		// Stand, run 3 m forward and stop; run again and reverse (a pivot); shuffle sideways
 		// square to the net and stop. Team frame: X the player's right, Y toward the net.
 		const Padel::Shots::FVec2 Still{ 0.0, 0.0 };
-		const Padel::Shots::FVec2 Forward{ 0.0, 1.0 };
-		const Padel::Shots::FVec2 Back{ 0.0, -1.0 };
-		const Padel::Shots::FVec2 Right{ 1.0, 0.0 };
+		// Forward, and back once the hips have turned to run, both reach the full gait top.
+		const Padel::Shots::FVec2 Forward = Held({ 0.0, 1.0 }, RunMps, 1.0);
+		const Padel::Shots::FVec2 Back = Held({ 0.0, -1.0 }, RunMps, 1.0);
+		const Padel::Shots::FVec2 Right = Held({ 1.0, 0.0 }, ShuffleMps, ShotData.Movement.ShuffleSpeedFrac);
+		const double Running = 0.97 * RunMps;
 		for (int32 I = 0; I < 60; ++I) { Steer(Still); Tick(TEXT("stand")); }
-		for (int32 I = 0; I < 600 && Speed() < 3.9; ++I) { Steer(Forward); Tick(TEXT("start")); }
+		for (int32 I = 0; I < 600 && Speed() < Running; ++I) { Steer(Forward); Tick(TEXT("start")); }
 		const FVector RunFrom = S.Position;
 		for (int32 I = 0; I < 600 && FVector::Dist2D(S.Position, RunFrom) < 300.0; ++I) { Steer(Forward); Tick(TEXT("run")); }
 		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop")); }
@@ -536,9 +549,9 @@ namespace PadelMotionProbe
 		// then reverse toward the net: the brake, the plant, the push off. The first run
 		// went toward the net, so this keeps the path clear of the margins.
 		const auto Toward = [&Motion, TeamSign](double NetSign) { return -Motion.GetVelocity().X * TeamSign * NetSign > 0.0; };
-		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(-1.0)); ++I) { Steer(Back); Tick(TEXT("start2")); }
+		for (int32 I = 0; I < 600 && !(Speed() >= Running && Toward(-1.0)); ++I) { Steer(Back); Tick(TEXT("start2")); }
 		for (int32 I = 0; I < 20; ++I) { Steer(Back); Tick(TEXT("run2")); }
-		for (int32 I = 0; I < 600 && !(Speed() >= 3.9 && Toward(1.0)); ++I) { Steer(Forward); Tick(TEXT("reverse")); }
+		for (int32 I = 0; I < 600 && !(Speed() >= Running && Toward(1.0)); ++I) { Steer(Forward); Tick(TEXT("reverse")); }
 		for (int32 I = 0; I < 30; ++I) { Steer(Forward); Tick(TEXT("run back")); }
 		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop2")); }
 		for (int32 I = 0; I < 30; ++I) { Steer(Still); Tick(TEXT("settle2")); }
