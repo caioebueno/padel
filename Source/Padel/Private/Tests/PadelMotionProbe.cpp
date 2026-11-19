@@ -13,6 +13,8 @@
 #include "Gameplay/PadelPlayerPawn.h"
 #include "Gameplay/PadelShotUnits.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 #include "PoseSearch/PoseSearchDatabase.h"
 #include "Shots/PlayerMotion.h"
@@ -457,6 +459,7 @@ namespace PadelMotionProbe
 		const auto Speed = [&Motion]() { return Padel::Shots::LengthXY(Motion.GetVelocity()); };
 
 		TArray<FVector> Past;
+		TArray<FString> Trace{ TEXT("frame,phase,speed_mps,mode,facing_deg,travel_deg,direction_deg,database,clip,play_rate,clip_root_cms,lock_l,lock_r,foot_l_x,foot_l_y,foot_l_z,foot_r_x,foot_r_y,foot_r_z,pos_x,pos_y") };
 		int64 PlayingSum = 0;
 		int32 LockedFrames[2] = { 0, 0 };
 		auto Tick = [&](const FString& Phase)
@@ -516,6 +519,20 @@ namespace PadelMotionProbe
 				Shown->RefreshBoneTransforms();
 			}
 			const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
+			{
+				// A per-frame trace for working on the motion (Saved/MotionProbe/*.csv); not gated.
+				const UAnimSequenceBase* Clip = Matcher.CurrentClip();
+				const FVector FootL = Driver->GetSocketLocation(TEXT("foot_l"));
+				const FVector FootR = Driver->GetSocketLocation(TEXT("foot_r"));
+				const FVector ClipVel = Matcher.ClipRootVelocity();
+				Trace.Add(FString::Printf(TEXT("%d,%s,%.3f,%d,%.1f,%.1f,%.1f,%s,%s,%.3f,%.1f,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f"),
+					Out.Phases.Num(), *Phase, S.Velocity.Size2D() / 100.0, static_cast<int32>(Mode),
+					bFull ? Frame.FacingYawDeg : S.FacingYawDeg,
+					FMath::RadiansToDegrees(FMath::Atan2(S.Velocity.Y, S.Velocity.X)), Frame.DirectionDeg,
+					*Matcher.CurrentDatabase().ToString(), Clip ? *Clip->GetName() : TEXT("none"), Matcher.CurrentPlayRate(), ClipVel.Size2D(),
+					Anim->GetPoseNode().GetLocomotionWarp().IsLocked(0) ? 1 : 0, Anim->GetPoseNode().GetLocomotionWarp().IsLocked(1) ? 1 : 0,
+					FootL.X, FootL.Y, FootL.Z, FootR.X, FootR.Y, FootR.Z, S.Position.X, S.Position.Y));
+			}
 			Out.Phases.Add(Phase);
 			Out.PickPerFrame.Add(Matcher.CurrentDatabase());
 			Out.MaxPlaying = FMath::Max(Out.MaxPlaying, Matcher.NumPlaying());
@@ -583,6 +600,7 @@ namespace PadelMotionProbe
 			if (Seen.IsEmpty() || Seen.Last() != Pick) { Seen.Add(Pick); }
 		}
 		Out.Picks = FString::Join(Seen, TEXT(", "));
+		FFileHelper::SaveStringArrayToFile(Trace, *FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("MotionProbe"), bFull ? TEXT("full_stack.csv") : TEXT("clips_only.csv")));
 		return Out;
 	}
 
