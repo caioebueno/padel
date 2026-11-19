@@ -6,14 +6,18 @@
 #include "Animation/PadelPlayerAnimInstance.h"
 #include "Animation/PadelPlayerPoseNode.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Data/PadelShotData.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Gameplay/PadelMatchDirector.h"
 #include "Gameplay/PadelPlayerPawn.h"
 #include "Gameplay/PadelShotUnits.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 #include "PoseSearch/PoseSearchDatabase.h"
+#include "Shots/PlayerMotion.h"
 #include "UI/Model/PadelUiMatchSetup.h"
 
 #if WITH_EDITOR
@@ -37,13 +41,6 @@ namespace PadelMotionProbe
 			FVector Velocity = FVector::ZeroVector;
 			double FacingYawDeg = 0.0;
 		};
-
-		void Accelerate(FScript& S, const FVector& Want, double Accel)
-		{
-			const FVector Delta = Want - S.Velocity;
-			const double Step = Accel * Dt;
-			S.Velocity = Delta.Size() <= Step ? Want : S.Velocity + Delta.GetSafeNormal() * Step;
-		}
 
 		/** Turns the facing toward Yaw at the model's old constant rate (the locomotion-only drive). */
 		void Face(FScript& S, double YawDeg)
@@ -407,16 +404,62 @@ namespace PadelMotionProbe
 		FScript S;
 		S.Position = FVector(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y, Ground);
 		S.FacingYawDeg = Pawn->GetActorRotation().Yaw;
-		const FVector Ahead = FRotator(0.0, S.FacingYawDeg, 0.0).Vector();
-		const FVector Side = FRotator(0.0, S.FacingYawDeg + 90.0, 0.0).Vector();
-		const double RunSpeed = 400.0;
-		const double StartYaw = S.FacingYawDeg;
 		const double TeamSign = S.Position.X >= 0.0 ? 1.0 : -1.0;
 		// A ball to watch on the other side of the net, as in a rally.
 		const Padel::Court::FVec3 BallPosition{ -TeamSign * 6.0, 1.0, 1.8 };
 		Padel::EMovementMode Mode = Padel::EMovementMode::Adjust;
 
+		// The path is the game's own movement (PadelCore FPlayerMotion at 120 Hz, two steps
+		// a frame) driven by a stick, so the clips are measured against the motion players
+		// really make: the push and brake building over AccelRiseS, the pivot on the
+		// reversal (BIOMECHANICS_MOVEMENT 5.7).
+		const FPadelShotData ShotData = FPadelShotData::Load();
+		Padel::Shots::FPlayerRatings Ratings;
+		if (!ShotData.Errors.IsEmpty() || !FPadelShotData::LoadPlayer(TEXT("practice_default"), Ratings))
+		{
+			Out.SkipReason = TEXT("Data/Movement.json or Players.json didn't load");
+			Test.AddError(Out.SkipReason);
+			return Out;
+		}
+		const Padel::Court::FVec3 StartM = Padel::ToMetres(S.Position);
+		Padel::Shots::FPlayerMotion Motion(&Ratings, &ShotData.Movement, TeamSign, { StartM.X, StartM.Y, 0.0 });
+		const Padel::Court::FVec3 Placed = Motion.GetPosition();
+		S.Position = Padel::ToWorld(Placed);
+		S.Position.Z = Ground;
+		// The path keeps M2's speeds (a 4 m/s run, a 2 m/s shuffle) so the gates measure the
+		// same moves: the stick is held part way, as a player jogging would. A full stick runs
+		// at the rating's top speed (about 6 m/s here), past the run clips.
+		const double RunMps = 4.0;
+		const double ShuffleMps = 2.0;
+		const double Top = Motion.TopSpeed(false);
+		const auto Held = [Top](const Padel::Shots::FVec2& Dir, double WantMps, double GaitFrac)
+		{
+			const double Share = Top * GaitFrac > 0.0 ? FMath::Min(1.0, WantMps / (Top * GaitFrac)) : 1.0;
+			return Padel::Shots::FVec2{ Dir.X * Share, Dir.Y * Share };
+		};
+		auto Steer = [&](const Padel::Shots::FVec2& Stick)
+		{
+			for (int32 Sub = 0; Sub < 2; ++Sub)
+			{
+				Motion.Step(Stick, false, 0.5 * Dt);
+			}
+			FVector Position = Padel::ToWorld(Motion.GetPosition());
+			Position.Z = Ground;
+			S.Velocity = Padel::ToWorld(Motion.GetVelocity());
+			S.Velocity.Z = 0.0;
+			// Advanced in Tick, as before.
+			S.Position = Position - S.Velocity * Dt;
+			Mode = Motion.GetMode();
+			// Clips alone: face the way the player runs once running, at the old constant rate.
+			if (Mode == Padel::EMovementMode::Run || Mode == Padel::EMovementMode::Sprint)
+			{
+				Face(S, FMath::RadiansToDegrees(FMath::Atan2(S.Velocity.Y, S.Velocity.X)));
+			}
+		};
+		const auto Speed = [&Motion]() { return Padel::Shots::LengthXY(Motion.GetVelocity()); };
+
 		TArray<FVector> Past;
+		TArray<FString> Trace{ TEXT("frame,phase,speed_mps,mode,facing_deg,travel_deg,direction_deg,database,clip,play_rate,clip_root_cms,lock_l,lock_r,foot_l_x,foot_l_y,foot_l_z,foot_r_x,foot_r_y,foot_r_z,pos_x,pos_y") };
 		int64 PlayingSum = 0;
 		int32 LockedFrames[2] = { 0, 0 };
 		auto Tick = [&](const FString& Phase)
@@ -476,6 +519,20 @@ namespace PadelMotionProbe
 				Shown->RefreshBoneTransforms();
 			}
 			const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
+			{
+				// A per-frame trace for working on the motion (Saved/MotionProbe/*.csv); not gated.
+				const UAnimSequenceBase* Clip = Matcher.CurrentClip();
+				const FVector FootL = Driver->GetSocketLocation(TEXT("foot_l"));
+				const FVector FootR = Driver->GetSocketLocation(TEXT("foot_r"));
+				const FVector ClipVel = Matcher.ClipRootVelocity();
+				Trace.Add(FString::Printf(TEXT("%d,%s,%.3f,%d,%.1f,%.1f,%.1f,%s,%s,%.3f,%.1f,%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f"),
+					Out.Phases.Num(), *Phase, S.Velocity.Size2D() / 100.0, static_cast<int32>(Mode),
+					bFull ? Frame.FacingYawDeg : S.FacingYawDeg,
+					FMath::RadiansToDegrees(FMath::Atan2(S.Velocity.Y, S.Velocity.X)), Frame.DirectionDeg,
+					*Matcher.CurrentDatabase().ToString(), Clip ? *Clip->GetName() : TEXT("none"), Matcher.CurrentPlayRate(), ClipVel.Size2D(),
+					Anim->GetPoseNode().GetLocomotionWarp().IsLocked(0) ? 1 : 0, Anim->GetPoseNode().GetLocomotionWarp().IsLocked(1) ? 1 : 0,
+					FootL.X, FootL.Y, FootL.Z, FootR.X, FootR.Y, FootR.Z, S.Position.X, S.Position.Y));
+			}
 			Out.Phases.Add(Phase);
 			Out.PickPerFrame.Add(Matcher.CurrentDatabase());
 			Out.MaxPlaying = FMath::Max(Out.MaxPlaying, Matcher.NumPlaying());
@@ -491,41 +548,34 @@ namespace PadelMotionProbe
 			}
 		};
 
-		using Padel::EMovementMode;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 60; ++I) { Tick(TEXT("stand")); }
-		Mode = EMovementMode::Run;
-		while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start")); }
+		// Stand, run 3 m forward and stop; run again and reverse (a pivot); shuffle sideways
+		// square to the net and stop. Team frame: X the player's right, Y toward the net.
+		const Padel::Shots::FVec2 Still{ 0.0, 0.0 };
+		// Forward, and back once the hips have turned to run, both reach the full gait top.
+		const Padel::Shots::FVec2 Forward = Held({ 0.0, 1.0 }, RunMps, 1.0);
+		const Padel::Shots::FVec2 Back = Held({ 0.0, -1.0 }, RunMps, 1.0);
+		const Padel::Shots::FVec2 Right = Held({ 1.0, 0.0 }, ShuffleMps, ShotData.Movement.ShuffleSpeedFrac);
+		const double Running = 0.97 * RunMps;
+		for (int32 I = 0; I < 60; ++I) { Steer(Still); Tick(TEXT("stand")); }
+		for (int32 I = 0; I < 600 && Speed() < Running; ++I) { Steer(Forward); Tick(TEXT("start")); }
 		const FVector RunFrom = S.Position;
-		while (FVector::Dist2D(S.Position, RunFrom) < 300.0) { Tick(TEXT("run")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop")); }
-		S.Velocity = FVector::ZeroVector;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 60; ++I) { Tick(TEXT("settle")); }
-		// A 180° reversal out of a run: accelerate ahead, then turn back through zero.
-		Mode = EMovementMode::Run;
-		while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start2")); }
-		for (int32 I = 0; I < 30; ++I) { Tick(TEXT("run2")); }
-		while (FVector::DotProduct(S.Velocity, -Ahead) < RunSpeed - 1.0)
-		{
-			Accelerate(S, -Ahead * RunSpeed, 1200.0);
-			if (FVector::DotProduct(S.Velocity, Ahead) < 0.0)
-			{
-				Face(S, StartYaw + 180.0);
-			}
-			Tick(TEXT("reverse"));
-		}
-		for (int32 I = 0; I < 45; ++I) { Face(S, StartYaw + 180.0); Tick(TEXT("run back")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop2")); }
-		S.Velocity = FVector::ZeroVector;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 30; ++I) { Tick(TEXT("settle2")); }
-		// A side shuffle, square to the net.
-		Mode = EMovementMode::Shuffle;
-		for (int32 I = 0; I < 75; ++I) { Accelerate(S, Side * 200.0, 800.0); Tick(TEXT("shuffle")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop3")); }
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 45; ++I) { Tick(TEXT("end")); }
+		for (int32 I = 0; I < 600 && FVector::Dist2D(S.Position, RunFrom) < 300.0; ++I) { Steer(Forward); Tick(TEXT("run")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop")); }
+		for (int32 I = 0; I < 60; ++I) { Steer(Still); Tick(TEXT("settle")); }
+		// A 180° reversal out of a run: run back toward the glass (the hips turn to run),
+		// then reverse toward the net: the brake, the plant, the push off. The first run
+		// went toward the net, so this keeps the path clear of the margins.
+		const auto Toward = [&Motion, TeamSign](double NetSign) { return -Motion.GetVelocity().X * TeamSign * NetSign > 0.0; };
+		for (int32 I = 0; I < 600 && !(Speed() >= Running && Toward(-1.0)); ++I) { Steer(Back); Tick(TEXT("start2")); }
+		for (int32 I = 0; I < 20; ++I) { Steer(Back); Tick(TEXT("run2")); }
+		for (int32 I = 0; I < 600 && !(Speed() >= Running && Toward(1.0)); ++I) { Steer(Forward); Tick(TEXT("reverse")); }
+		for (int32 I = 0; I < 30; ++I) { Steer(Forward); Tick(TEXT("run back")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop2")); }
+		for (int32 I = 0; I < 30; ++I) { Steer(Still); Tick(TEXT("settle2")); }
+		// A side shuffle, square to the net (short, so no crossover).
+		for (int32 I = 0; I < 45; ++I) { Steer(Right); Tick(TEXT("shuffle")); }
+		for (int32 I = 0; I < 600 && Speed() > 0.0; ++I) { Steer(Still); Tick(TEXT("stop3")); }
+		for (int32 I = 0; I < 45; ++I) { Steer(Still); Tick(TEXT("end")); }
 
 		const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
 		Out.bRan = true;
@@ -550,6 +600,7 @@ namespace PadelMotionProbe
 			if (Seen.IsEmpty() || Seen.Last() != Pick) { Seen.Add(Pick); }
 		}
 		Out.Picks = FString::Join(Seen, TEXT(", "));
+		FFileHelper::SaveStringArrayToFile(Trace, *FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("MotionProbe"), bFull ? TEXT("full_stack.csv") : TEXT("clips_only.csv")));
 		return Out;
 	}
 

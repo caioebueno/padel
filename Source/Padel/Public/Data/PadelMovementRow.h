@@ -37,6 +37,11 @@ struct PADEL_API FPadelMovementRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Tuning") double WallMarginM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double NetMarginM = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double AccelFalloff = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double AccelRiseS = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double PivotMinDeg = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double PivotSpeedMps = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double PivotPlantAt1S = 0.0;
+	UPROPERTY(EditAnywhere, Category = "Tuning") double PivotPlantAt99S = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double ShuffleSpeedFrac = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double BackpedalSpeedFrac = 0.0;
 	UPROPERTY(EditAnywhere, Category = "Tuning") double TurnToRunAt1S = 0.0;

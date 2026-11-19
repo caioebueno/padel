@@ -315,12 +315,7 @@ FAiIntent FAiTeamController::MoveTo(int Slot, const FAiVec& From, const FAiVec& 
 	if (Motion[Slot].IsValid())
 	{
 		// The same arrival the planner timed (AiMotionModel).
-		const double StopFrac = AiMotionModel::StopSpeedFrac(Motion[Slot], Distance);
-		if (StopFrac < Speed)
-		{
-			Speed = StopFrac;
-			Intent.bSprint = false;
-		}
+		AiMotionModel::LimitToStop(Motion[Slot], Distance, Speed, Intent.bSprint);
 	}
 	else if (BrakeMult > 0.0 && AccelTime > 0.0 && Top > 0.0)
 	{

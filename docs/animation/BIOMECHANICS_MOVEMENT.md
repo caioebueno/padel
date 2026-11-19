@@ -272,6 +272,15 @@ Add a small drain for each hard acceleration and for each second of rally over a
 
 Report the section 4 metrics from `Padel.Soak` next to shots per point and the off-the-glass share, so changes to movement are measured.
 
+### 5.7 Human limits on starting, stopping and turning (Gameplay, `FPlayerMotion`, done)
+
+A body can't reach its full push or brake at once: the force builds over the first contact (about 0.1 s), eases off as the change is made, and a runner reversing has to brake, plant the outside foot and turn the hips before pushing back (2.6). With an instant push the movement is right in time and distance but impossible to animate: no clip starts, stops or pivots like it, so the feet skate. `Data/Movement.json`:
+
+- `AccelRiseS` (0.08 s): the push and the brake build to full strength over this time (a jerk limit of the brake over the rise time), and the last of a change eases off at the same jerk rather than ending in a tick (`Shots/AccelRamp`). 0 is the old instant push.
+- `PivotMinDeg` (120°), `PivotSpeedMps` (0.6), `PivotPlantAt1S` / `At99S` (0.16 / 0.06 s): a change of direction at least `PivotMinDeg` from the way the player is running, faster than `SplitMaxSpeedMps`, brakes to `PivotSpeedMps`, plants for the Agility time, then pushes off. 0° turns pivots off.
+
+Braking at the glass and net plans the build-up, and the AI's motion model steps the same rules, so the AI's arrival times still match the run. A paced 1 to 8 m move takes about 0.05 s longer than with the instant push.
+
 ## 6. Proposals for animation
 
 ### 6.1 Locomotion set

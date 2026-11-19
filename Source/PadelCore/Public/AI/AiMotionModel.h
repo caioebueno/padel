@@ -9,6 +9,7 @@
 #include "PadelCoreApi.h"
 
 #include "AI/AiMath.h"
+#include "Shots/AccelRamp.h"
 
 namespace Padel::Shots
 {
@@ -31,6 +32,13 @@ namespace Padel::AI
 		double TurnTimeS = 0.0;
 		double CrossoverMinDistM = 0.0;
 		double TurnBackMinDistM = 0.0;
+		// BIOMECHANICS_MOVEMENT 5.7: the push and brake build-up, and the pivot.
+		double AccelRiseS = 0.0;
+		Shots::AccelRamp::FPivotParams Pivot;
+		// The acceleration the player is applying now (FPlayerMotion::GetAppliedAccel), so a
+		// plan starts from the push already under way.
+		double AppliedAccelX = 0.0;
+		double AppliedAccelY = 0.0;
 
 		// Tests and old callers that leave it empty get the profile-based estimate.
 		bool IsValid() const { return TopSpeedMps > 0.0 && TimeToTopS > 0.0; }
@@ -56,6 +64,12 @@ namespace Padel::AI
 
 		// The AI's arrival rule (MoveTo): no faster than the player can still stop in.
 		PADELCORE_API double StopSpeedFrac(const FAiMotionParams& P, double DistanceM);
+
+		// MoveTo's arrival on a stick: lowers Stick (and drops the sprint) so the player
+		// runs no faster than they can still stop in DistanceM. A sprinting player keeps the
+		// sprint while the stop speed is above their running top speed, so the cap holds
+		// from sprint speed down too.
+		PADELCORE_API void LimitToStop(const FAiMotionParams& P, double DistanceM, double& Stick, bool& bSprint);
 
 		// Seconds from now until the player is within ArriveRadiusM of To, chasing flat out.
 		PADELCORE_API double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Query);
