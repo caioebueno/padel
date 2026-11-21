@@ -174,7 +174,8 @@ FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
 	};
 	const auto RoleOf = [this](const FString& Path)
 	{
-		return Data->MotionMatchingStillDatabases.Contains(Path) ? EPadelMotionMatchingRole::Still
+		return Data->MotionMatchingReadyDatabases.Contains(Path) ? EPadelMotionMatchingRole::Ready
+			: Data->MotionMatchingStillDatabases.Contains(Path) ? EPadelMotionMatchingRole::Still
 			: Data->MotionMatchingStopDatabases.Contains(Path) ? EPadelMotionMatchingRole::Stop
 			: Data->MotionMatchingTurnInPlaceDatabases.Contains(Path) ? EPadelMotionMatchingRole::TurnInPlace
 			: Data->MotionMatchingWalkDatabases.Contains(Path) ? EPadelMotionMatchingRole::MovingWalk

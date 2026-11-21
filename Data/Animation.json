@@ -179,9 +179,12 @@
 		"MotionMatchingWalkDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Loops",
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Starts",
-			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Pivots",
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Pivots"
+		],
+		"MotionMatchingReadyDatabases": [
 			"/Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork"
 		],
+		"MotionMatchingShuffleSideShare": 0.6,
 		"MotionMatchingSprintDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Loops",
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Starts",

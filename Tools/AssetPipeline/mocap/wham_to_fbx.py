@@ -32,6 +32,9 @@ import numpy as np
 from scipy.signal import butter, filtfilt
 from scipy.spatial.transform import Rotation as R, Slerp
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from footwork_moves import find_moves, mirror_track, slice_rig  # noqa: E402
+
 SMPL_NAMES = ["Pelvis", "L_Hip", "R_Hip", "Spine1", "L_Knee", "R_Knee", "Spine2",
               "L_Ankle", "R_Ankle", "Spine3", "L_Foot", "R_Foot", "Neck",
               "L_Collar", "R_Collar", "Head", "L_Shoulder", "R_Shoulder",
@@ -444,14 +447,19 @@ def main():
         res = joblib.load(pkl)
         n = max(int(v["frame_ids"][-1]) + 1 for v in res.values())
         for side, k in pick_near_players(res, n).items():
-            rig, J_rest, verts, contacts, quality, _ = clean_track(res[k], smpl, a.fps)
-            name = f"{clip}_near{side}"
-            write_fbx(os.path.join(a.out, name + ".fbx"), rig, J_rest, verts, smpl)
-            quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]))
-            with open(os.path.join(a.out, name + ".json"), "w") as f:
-                json.dump({"quality": quality, "contacts": contacts}, f)
-            report[name] = quality
-            print(name, quality, flush=True)
+            for mirrored in (False, True):
+                track = mirror_track(res[k]) if mirrored else res[k]
+                rig, J_rest, verts, contacts, quality, _ = clean_track(track, smpl, a.fps)
+                track_name = f"{clip}_near{side}" + ("_mirror" if mirrored else "")
+                quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]), mirrored=mirrored)
+                for i, (s, e, label) in enumerate(find_moves(rig, OUT_FPS)):
+                    name = f"{track_name}_{label}_{i:02d}"
+                    write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e, J_rest[0]), J_rest, verts, smpl)
+                    move = dict(quality, frames=int(e - s), from_frame=int(s), label=label)
+                    with open(os.path.join(a.out, name + ".json"), "w") as f:
+                        json.dump({"quality": move, "contacts": {f_: c[s:e] for f_, c in contacts.items()}}, f)
+                    report[name] = move
+                    print(name, move["frames"], label, flush=True)
     with open(os.path.join(a.out, "report.json"), "w") as f:
         json.dump(report, f, indent=1)
 

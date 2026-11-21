@@ -70,7 +70,7 @@ That command does three things:
 Footwork for motion matching, taken from match video ([0012](../../docs/decisions/0012-video-footwork.md)). Nothing it makes is committed, because the clips carry the SMPL body.
 
 1. `mocap/run_wham.sh` runs WHAM on a rented GPU, one main-camera clip per rally. It writes `wham_results.tar.gz`.
-2. `python3.11 mocap/wham_to_fbx.py <unpacked results> SourceArt/_incoming/Footwork` cleans up each near player's motion (30 fps, filtered, feet planted with leg IK) and writes it as FBX, with mannequin bone names and a root bone. This needs `pip install bpy==4.2.0 numpy scipy joblib`.
+2. `python3.11 mocap/wham_to_fbx.py <unpacked results> SourceArt/_incoming/Footwork` cleans up each near player's motion (30 fps, filtered, feet planted with leg IK), mirrors it, cuts out the side shuffles (`mocap/footwork_moves.py`) and writes each as FBX, with mannequin bone names and a root bone. This needs `pip install bpy==4.2.0 numpy scipy joblib`.
 3. In the editor, run `unreal/footwork_setup.py` after `unreal/animation_setup.py`. It retargets the clips onto the placeholder and builds `PSD_Padel_Footwork`, with the search costs in `config/footwork.json`.
 
 ## Setup

@@ -64,6 +64,7 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.MotionMatchingStillDatabases = Row->MotionMatchingStillDatabases;
 		Out.MotionMatchingStopDatabases = Row->MotionMatchingStopDatabases;
 		Out.MotionMatchingWalkDatabases = Row->MotionMatchingWalkDatabases;
+		Out.MotionMatchingReadyDatabases = Row->MotionMatchingReadyDatabases;
 		Out.MotionMatchingSprintDatabases = Row->MotionMatchingSprintDatabases;
 		Out.MotionMatchingTurnInPlaceDatabases = Row->MotionMatchingTurnInPlaceDatabases;
 		for (const FString& Path : Row->MotionMatchingExtraDatabases)
@@ -74,7 +75,7 @@ FPadelAnimData FPadelAnimData::Load()
 			}
 		}
 		for (const TArray<FString>* Subset : { &Row->MotionMatchingStillDatabases, &Row->MotionMatchingStopDatabases, &Row->MotionMatchingTurnInPlaceDatabases,
-			&Row->MotionMatchingWalkDatabases, &Row->MotionMatchingSprintDatabases })
+			&Row->MotionMatchingWalkDatabases, &Row->MotionMatchingSprintDatabases, &Row->MotionMatchingReadyDatabases })
 		{
 			for (const FString& Path : *Subset)
 			{
@@ -101,6 +102,11 @@ FPadelAnimData FPadelAnimData::Load()
 			M.RunFromUnits = Row->MotionMatchingRunFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
 			M.SprintFromUnits = Row->MotionMatchingSprintFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
 			M.GaitOverlap = Row->MotionMatchingGaitOverlap;
+			M.ShuffleSideShare = Row->MotionMatchingShuffleSideShare;
+			if (M.ShuffleSideShare < 0.0 || M.ShuffleSideShare > 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingShuffleSideShare must be 0 to 1"));
+			}
 			M.InertialHalfLifeS = Row->MotionMatchingInertialHalfLifeS;
 			M.SwitchCostMargin = Row->MotionMatchingSwitchCostMargin;
 			if (Row->MotionMatchingInertialHalfLifeS < 0.0 || Row->MotionMatchingSwitchCostMargin < 0.0)

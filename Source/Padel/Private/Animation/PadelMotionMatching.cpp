@@ -134,7 +134,7 @@ void FPadelMotionMatcher::CacheHistoryBones()
 	bHistoryBonesCached = true;
 }
 
-void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits)
+void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bInRally)
 {
 	const double Dt = Context.GetDeltaTime();
 	LastDeltaS = static_cast<float>(Dt);
@@ -171,11 +171,11 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || SinceSearchS >= Tuning.SearchThrottleS))
 	{
 		SinceSearchS = 0.0;
-		Search(Context, Trajectory, SpeedUnits, bRunningOut);
+		Search(Context, Trajectory, SpeedUnits, bRunningOut, bInRally);
 	}
 }
 
-void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut)
+void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bInRally)
 {
 	using namespace UE::PoseSearch;
 	History->SetTrajectory(Trajectory);
@@ -202,6 +202,19 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	const bool bTurning = FMath::RadiansToDegrees(Now.Facing.AngularDistance(Oldest.Facing)) >= Tuning.TurnInPlaceDeg;
 	// Stopping: still coming, the player still moving (once at rest, an idle takes over).
 	const bool bStopping = FVector::Dist2D(Now.Position, Oldest.Position) >= Tuning.StopAfterUnits && SpeedUnits >= 10.0;
+	// Shuffling: in a point, moving in the walk band and mostly sideways to the body (the mesh
+	// faces +Y). The footwork alone is searched then: alongside the sample's clips it lost every
+	// shuffle by about ten times (docs/decisions/0012-video-footwork.md), and the sample has no strafing.
+	const FVector Travel = (Soon.Position - Now.Position) * FVector(1.0, 1.0, 0.0);
+	const FVector Side = Now.Facing.RotateVector(FVector::CrossProduct(FVector::UpVector, FVector(0.0, 1.0, 0.0)));
+	const bool bShuffling = bInRally && !bStill && SpeedUnits < Tuning.RunFromUnits * (1.0 + Tuning.GaitOverlap)
+		&& FMath::Abs(FVector::DotProduct(Travel, Side)) >= Tuning.ShuffleSideShare * Travel.Size();
+	bool bHasReady = false;
+	for (int32 Index = 0; Index < Databases.Num(); ++Index)
+	{
+		bHasReady |= Databases[Index] && Roles.IsValidIndex(Index) && Roles[Index] == EPadelMotionMatchingRole::Ready;
+	}
+	const bool bFootworkOnly = bShuffling && bHasReady;
 	TArray<const UObject*, TInlineAllocator<16>> Assets;
 	for (int32 Index = 0; Index < Databases.Num(); ++Index)
 	{
@@ -209,10 +222,13 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 		const double Gait = SpeedUnits; // the prediction overshoots while speeding up
 		const double Over = 1.0 + Tuning.GaitOverlap;
 		const double Under = 1.0 - Tuning.GaitOverlap;
-		const bool bUse = Role == EPadelMotionMatchingRole::MovingWalk ? !bStill && Gait < Tuning.RunFromUnits * Over
+		const bool bUse = bFootworkOnly ? Role == EPadelMotionMatchingRole::Ready
+			: Role == EPadelMotionMatchingRole::MovingWalk ? !bStill && Gait < Tuning.RunFromUnits * Over
 			: Role == EPadelMotionMatchingRole::Moving ? !bStill && Gait >= Tuning.RunFromUnits * Under && Gait < Tuning.SprintFromUnits * Over
 			: Role == EPadelMotionMatchingRole::MovingSprint ? !bStill && Gait >= Tuning.SprintFromUnits * Under
 			: Role == EPadelMotionMatchingRole::Still ? bStill
+			// Footwork plays only in the shuffle (above); standing, it won as an idle and slid.
+			: Role == EPadelMotionMatchingRole::Ready ? false
 			: Role == EPadelMotionMatchingRole::Stop ? bStill && bStopping
 			: bStill && bTurning;
 		if (Databases[Index] && bUse)

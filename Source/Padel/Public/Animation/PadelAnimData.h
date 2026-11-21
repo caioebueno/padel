@@ -45,6 +45,7 @@ struct PADEL_API FPadelAnimData
 	TArray<FString> MotionMatchingStopDatabases;
 	TArray<FString> MotionMatchingWalkDatabases;
 	TArray<FString> MotionMatchingSprintDatabases;
+	TArray<FString> MotionMatchingReadyDatabases;
 	TArray<FString> MotionMatchingTurnInPlaceDatabases;
 	FPadelMotionMatchingTuning MotionMatching;
 	double MocapLegFadeFromMps = 0.3;

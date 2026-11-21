@@ -106,6 +106,8 @@ private:
 	double JogStridePlayRate = 1.0;
 	/** Ready stance or split-step (a rally on): the idle mixes in the crouched Ready clip. */
 	bool bReadyStance = false;
+	/** In a point (not the between-points Idle): the motion matcher's Ready databases join the search. */
+	bool bInRally = false;
 	double CrouchAlpha = 1.0;
 	double SwingTime = 0.0;
 	double PrevSwingTime = 0.0;
