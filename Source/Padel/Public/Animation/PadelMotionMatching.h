@@ -45,6 +45,8 @@ struct FPadelMotionMatchingTuning
 	double RunFromUnits = 250.0;
 	double SprintFromUnits = 500.0;
 	double GaitOverlap = 0.2;
+	/** Shuffling (Animation.json MotionMatchingShuffleSideShare): in a point, in the walk band, the sideways share of the coming travel at least this (0..1); only the Ready databases are searched then. */
+	double ShuffleSideShare = 0.6;
 };
 
 /** Which databases a search may use (the Game Animation Sample picks them with a chooser table; this is it in C++). */

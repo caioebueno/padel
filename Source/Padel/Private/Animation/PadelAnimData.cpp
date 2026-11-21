@@ -102,6 +102,11 @@ FPadelAnimData FPadelAnimData::Load()
 			M.RunFromUnits = Row->MotionMatchingRunFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
 			M.SprintFromUnits = Row->MotionMatchingSprintFromMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
 			M.GaitOverlap = Row->MotionMatchingGaitOverlap;
+			M.ShuffleSideShare = Row->MotionMatchingShuffleSideShare;
+			if (M.ShuffleSideShare < 0.0 || M.ShuffleSideShare > 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingShuffleSideShare must be 0 to 1"));
+			}
 			M.InertialHalfLifeS = Row->MotionMatchingInertialHalfLifeS;
 			M.SwitchCostMargin = Row->MotionMatchingSwitchCostMargin;
 			if (Row->MotionMatchingInertialHalfLifeS < 0.0 || Row->MotionMatchingSwitchCostMargin < 0.0)
