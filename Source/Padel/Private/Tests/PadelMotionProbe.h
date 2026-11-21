@@ -20,6 +20,8 @@ namespace PadelMotionProbe
 	{
 		LocomotionOnly,
 		FullStack,
+		/** LocomotionOnly in the ready stance, as in a rally: the footwork (0012) joins the search. */
+		ReadyStance,
 	};
 
 	/** One body's numbers over the path. */

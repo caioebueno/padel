@@ -193,7 +193,7 @@ void FAnimNode_PadelPlayerPose::Update_AnyThread(const FAnimationUpdateContext& 
 	const double Dt = Context.GetDeltaTime();
 	UpdateDeltaS = Dt;
 	IdleTime += Dt;
-	Matcher.Update(Context, Trajectory, SpeedMps * 100.0);
+	Matcher.Update(Context, Trajectory, SpeedMps * 100.0, bReadyStance);
 	if (SpeedMps <= 0.0)
 	{
 		return;

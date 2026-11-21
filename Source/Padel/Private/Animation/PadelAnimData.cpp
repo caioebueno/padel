@@ -64,6 +64,7 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.MotionMatchingStillDatabases = Row->MotionMatchingStillDatabases;
 		Out.MotionMatchingStopDatabases = Row->MotionMatchingStopDatabases;
 		Out.MotionMatchingWalkDatabases = Row->MotionMatchingWalkDatabases;
+		Out.MotionMatchingReadyDatabases = Row->MotionMatchingReadyDatabases;
 		Out.MotionMatchingSprintDatabases = Row->MotionMatchingSprintDatabases;
 		Out.MotionMatchingTurnInPlaceDatabases = Row->MotionMatchingTurnInPlaceDatabases;
 		for (const FString& Path : Row->MotionMatchingExtraDatabases)
@@ -74,7 +75,7 @@ FPadelAnimData FPadelAnimData::Load()
 			}
 		}
 		for (const TArray<FString>* Subset : { &Row->MotionMatchingStillDatabases, &Row->MotionMatchingStopDatabases, &Row->MotionMatchingTurnInPlaceDatabases,
-			&Row->MotionMatchingWalkDatabases, &Row->MotionMatchingSprintDatabases })
+			&Row->MotionMatchingWalkDatabases, &Row->MotionMatchingSprintDatabases, &Row->MotionMatchingReadyDatabases })
 		{
 			for (const FString& Path : *Subset)
 			{

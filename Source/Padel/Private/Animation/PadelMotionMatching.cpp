@@ -134,7 +134,7 @@ void FPadelMotionMatcher::CacheHistoryBones()
 	bHistoryBonesCached = true;
 }
 
-void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits)
+void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bReadyStance)
 {
 	const double Dt = Context.GetDeltaTime();
 	LastDeltaS = static_cast<float>(Dt);
@@ -171,11 +171,11 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || SinceSearchS >= Tuning.SearchThrottleS))
 	{
 		SinceSearchS = 0.0;
-		Search(Context, Trajectory, SpeedUnits, bRunningOut);
+		Search(Context, Trajectory, SpeedUnits, bRunningOut, bReadyStance);
 	}
 }
 
-void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut)
+void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bReadyStance)
 {
 	using namespace UE::PoseSearch;
 	History->SetTrajectory(Trajectory);
@@ -213,6 +213,9 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 			: Role == EPadelMotionMatchingRole::Moving ? !bStill && Gait >= Tuning.RunFromUnits * Under && Gait < Tuning.SprintFromUnits * Over
 			: Role == EPadelMotionMatchingRole::MovingSprint ? !bStill && Gait >= Tuning.SprintFromUnits * Under
 			: Role == EPadelMotionMatchingRole::Still ? bStill
+			// Footwork belongs to the rally: adjustments and shuffles in the ready stance, from
+			// standing to the walk band's top (most of it is under 1 m/s, where bStill holds).
+			: Role == EPadelMotionMatchingRole::Ready ? bReadyStance && (bStill || Gait < Tuning.RunFromUnits * Over)
 			: Role == EPadelMotionMatchingRole::Stop ? bStill && bStopping
 			: bStill && bTurning;
 		if (Databases[Index] && bUse)

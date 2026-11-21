@@ -457,7 +457,8 @@ namespace PadelMotionProbe
 					Trajectory.Add(T < 0.0f ? Past[Past.Num() - 1 - Back] : S.Position + S.Velocity * T);
 				}
 				Frame.SpeedMps = S.Velocity.Size2D() / 100.0;
-				Frame.Locomotion = Frame.SpeedMps < 0.3 ? Padel::Animation::ELocomotionState::Idle : Padel::Animation::ELocomotionState::Run;
+				Frame.Locomotion = Drive == EDrive::ReadyStance ? Padel::Animation::ELocomotionState::Ready
+					: Frame.SpeedMps < 0.3 ? Padel::Animation::ELocomotionState::Idle : Padel::Animation::ELocomotionState::Run;
 				const double TravelYaw = FMath::RadiansToDegrees(FMath::Atan2(S.Velocity.Y, S.Velocity.X));
 				Frame.DirectionDeg = FMath::FindDeltaAngleDegrees(S.FacingYawDeg, TravelYaw);
 			}
