@@ -73,6 +73,12 @@ def import_fbx(fbx: Path, skeleton: unreal.Skeleton | None) -> None:
     ui.set_editor_property("import_materials", False)
     ui.set_editor_property("import_textures", False)
     ui.set_editor_property("import_animations", True)
+    # The clips are 29.97 fps (NTSC video). UE 5.8's Interchange FBX import reads that as 29 fps
+    # and rejects any clip whose length isn't a whole number of frames, so resample to 30 and snap.
+    anim = ui.get_editor_property("anim_sequence_import_data")
+    anim.set_editor_property("use_default_sample_rate", False)
+    anim.set_editor_property("custom_sample_rate", 30)
+    anim.set_editor_property("snap_to_closest_frame_boundary", True)
     if skeleton is None:
         ui.set_editor_property("import_mesh", True)
         ui.set_editor_property("mesh_type_to_import", unreal.FBXImportType.FBXIT_SKELETAL_MESH)
@@ -116,6 +122,8 @@ def import_clips(fbxs: list[Path]) -> tuple[unreal.SkeletalMesh | None, list[unr
         import_fbx(fbx, skeleton)
     clips = [a for a in find_assets(SOURCE_DIR, unreal.AnimSequence) if a.get_skeleton() == skeleton]
     log(f"{len(clips)} clip(s) on {mesh.get_name()} ({len(todo)} imported now)")
+    if not clips:
+        fail(f"no animation imported from {INCOMING} (see the import errors above)")
     return mesh, clips
 
 
