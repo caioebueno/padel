@@ -166,26 +166,44 @@ FPadelLocomotionSet UPadelPlayerAnimComponent::LoadLocomotionSet() const
 	Set.StrideRateMax = Data->Settings.StrideRateMax;
 	// M1: motion matching where its databases are on disk and on the clips' skeleton (all or
 	// none: a partial set would leave holes in the search); otherwise the loop mix above.
-	for (const FString& Path : Data->MotionMatchingDatabases)
+	const auto LoadDatabase = [&Set](const FString& Path) -> const UPoseSearchDatabase*
 	{
 		const UPoseSearchDatabase* Database = LoadObject<UPoseSearchDatabase>(nullptr, *Path, nullptr, LOAD_Quiet | LOAD_NoWarn);
 		const UPoseSearchSchema* Schema = Database ? Database->Schema.Get() : nullptr;
-		if (!Schema || !Set.Idle || Schema->GetSkeleton(Schema->GetDefaultRole()) != Set.Idle->GetSkeleton())
-		{
-			Set.MotionMatchingDatabases.Reset();
-			Set.MotionMatchingRoles.Reset();
-			if (!Data->MotionMatchingDatabases.IsEmpty())
-			{
-				UE_LOG(LogPadel, Log, TEXT("Player animation: %s isn't built (Tools/AssetPipeline/unreal/animation_setup.py): locomotion uses the loop mix."), *Path);
-			}
-			break;
-		}
-		Set.MotionMatchingDatabases.Add(Database);
-		Set.MotionMatchingRoles.Add(Data->MotionMatchingStillDatabases.Contains(Path) ? EPadelMotionMatchingRole::Still
+		return Schema && Set.Idle && Schema->GetSkeleton(Schema->GetDefaultRole()) == Set.Idle->GetSkeleton() ? Database : nullptr;
+	};
+	const auto RoleOf = [this](const FString& Path)
+	{
+		return Data->MotionMatchingStillDatabases.Contains(Path) ? EPadelMotionMatchingRole::Still
 			: Data->MotionMatchingStopDatabases.Contains(Path) ? EPadelMotionMatchingRole::Stop
 			: Data->MotionMatchingTurnInPlaceDatabases.Contains(Path) ? EPadelMotionMatchingRole::TurnInPlace
 			: Data->MotionMatchingWalkDatabases.Contains(Path) ? EPadelMotionMatchingRole::MovingWalk
-			: Data->MotionMatchingSprintDatabases.Contains(Path) ? EPadelMotionMatchingRole::MovingSprint : EPadelMotionMatchingRole::Moving);
+			: Data->MotionMatchingSprintDatabases.Contains(Path) ? EPadelMotionMatchingRole::MovingSprint : EPadelMotionMatchingRole::Moving;
+	};
+	for (const FString& Path : Data->MotionMatchingDatabases)
+	{
+		const UPoseSearchDatabase* Database = LoadDatabase(Path);
+		if (!Database)
+		{
+			Set.MotionMatchingDatabases.Reset();
+			Set.MotionMatchingRoles.Reset();
+			UE_LOG(LogPadel, Log, TEXT("Player animation: %s isn't built (Tools/AssetPipeline/unreal/animation_setup.py): locomotion uses the loop mix."), *Path);
+			break;
+		}
+		Set.MotionMatchingDatabases.Add(Database);
+		Set.MotionMatchingRoles.Add(RoleOf(Path));
+	}
+	// The extras (the video footwork, 0012) join a working set, one by one: each is optional.
+	for (const FString& Path : Data->MotionMatchingExtraDatabases)
+	{
+		const UPoseSearchDatabase* Database = Set.MotionMatchingDatabases.IsEmpty() ? nullptr : LoadDatabase(Path);
+		if (!Database)
+		{
+			UE_LOG(LogPadel, Log, TEXT("Player animation: extra database %s isn't built (Tools/AssetPipeline/unreal/footwork_setup.py): searching without it."), *Path);
+			continue;
+		}
+		Set.MotionMatchingDatabases.Add(Database);
+		Set.MotionMatchingRoles.Add(RoleOf(Path));
 	}
 	if (Set.MotionMatchingDatabases.IsEmpty())
 	{

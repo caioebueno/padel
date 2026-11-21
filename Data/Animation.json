@@ -164,6 +164,9 @@
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Idles",
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_TurnInPlace"
 		],
+		"MotionMatchingExtraDatabases": [
+			"/Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork"
+		],
 		"MotionMatchingStillDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Idles"
 		],
@@ -176,7 +179,8 @@
 		"MotionMatchingWalkDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Loops",
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Starts",
-			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Pivots"
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Pivots",
+			"/Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork"
 		],
 		"MotionMatchingSprintDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Loops",
