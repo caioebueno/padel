@@ -23,6 +23,7 @@ Three steps, all scripts in the repo:
    - plants the feet: during each foot contact the ankle holds one position and heading, reached with two-bone leg IK and blended in and out over 0.13 s; the heel and toe still roll, and the IK eases off before the leg straightens
    - adds a `root` bone under the pelvis, on the floor and facing the pelvis's heading smoothed to 0.5 Hz (the game's body stays square to the net, so the search's query keeps one facing)
    - names the bones like the Unreal mannequin
+   - mirrors every track, then cuts out only the side shuffles (`mocap/footwork_moves.py`: sideways over 0.7 m/s and faster than forwards for at least 0.4 s, with 0.4 s either side, at most 3 s), one FBX per move, named `<rally>_near<L|R>[_mirror]_shuffle_<left|right>_<n>`. Whole-rally clips lost in the search, and their standing stretches slid; the first cut gives 96 shuffles, 142 s, half of them mirrored
    - writes a JSON next to the FBX with the foot contacts and quality numbers
 3. **Build the database in Unreal:** `Tools/AssetPipeline/unreal/footwork_setup.py`, run after `animation_setup.py`:
    - imports the FBXs
