@@ -65,6 +65,14 @@ That command does three things:
 - **Material** (`unreal/racket_material.py`). `M_PadelRacketFace` lays the paint, the accent and the ink over a dark carbon base, with the weave showing through, and the grit normal and roughness over it. The grit and weave fade out between 1.5 m and 8 m, where they would only shimmer. The face, the frame and the grip are instances of it, each with its own masks texture (palette `"masks"`) and tiling; the other slots are plain `M_PadelOpaque` instances.
 - **Preview.** `pipeline.py preview-racket out.png [--shot hero|closeup|lods]` renders it in Cycles with the same textures.
 
+## Video footwork
+
+Footwork for motion matching, taken from match video ([0012](../../docs/decisions/0012-video-footwork.md)). Nothing it makes is committed, because the clips carry the SMPL body.
+
+1. `mocap/run_wham.sh` runs WHAM on a rented GPU, one main-camera clip per rally. It writes `wham_results.tar.gz`.
+2. `python3.11 mocap/wham_to_fbx.py <unpacked results> SourceArt/_incoming/Footwork` cleans up each near player's motion (30 fps, filtered, feet planted with leg IK) and writes it as FBX, with mannequin bone names and a root bone. This needs `pip install bpy==4.2.0 numpy scipy joblib`.
+3. In the editor, run `unreal/footwork_setup.py` after `unreal/animation_setup.py`. It retargets the clips onto the placeholder and builds `PSD_Padel_Footwork`, with the search costs in `config/footwork.json`.
+
 ## Setup
 
 - **Python 3.11+** on your PATH. The pipeline itself needs only the standard library. `pip install -r Tools/AssetPipeline/requirements.txt` adds `requests`, which only `generate` needs.

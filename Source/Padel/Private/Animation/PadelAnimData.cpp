@@ -60,19 +60,27 @@ FPadelAnimData FPadelAnimData::Load()
 		Out.WalkUprightAssets = Row->WalkUprightAssets;
 		Out.WalkClipSpeedMps = Row->WalkClipSpeedMps;
 		Out.MotionMatchingDatabases = Row->MotionMatchingDatabases;
+		Out.MotionMatchingExtraDatabases = Row->MotionMatchingExtraDatabases;
 		Out.MotionMatchingStillDatabases = Row->MotionMatchingStillDatabases;
 		Out.MotionMatchingStopDatabases = Row->MotionMatchingStopDatabases;
 		Out.MotionMatchingWalkDatabases = Row->MotionMatchingWalkDatabases;
 		Out.MotionMatchingSprintDatabases = Row->MotionMatchingSprintDatabases;
 		Out.MotionMatchingTurnInPlaceDatabases = Row->MotionMatchingTurnInPlaceDatabases;
+		for (const FString& Path : Row->MotionMatchingExtraDatabases)
+		{
+			if (Row->MotionMatchingDatabases.Contains(Path))
+			{
+				Out.Errors.Add(FString::Printf(TEXT("Animation.json: %s is in both MotionMatchingDatabases and MotionMatchingExtraDatabases"), *Path));
+			}
+		}
 		for (const TArray<FString>* Subset : { &Row->MotionMatchingStillDatabases, &Row->MotionMatchingStopDatabases, &Row->MotionMatchingTurnInPlaceDatabases,
 			&Row->MotionMatchingWalkDatabases, &Row->MotionMatchingSprintDatabases })
 		{
 			for (const FString& Path : *Subset)
 			{
-				if (!Row->MotionMatchingDatabases.Contains(Path))
+				if (!Row->MotionMatchingDatabases.Contains(Path) && !Row->MotionMatchingExtraDatabases.Contains(Path))
 				{
-					Out.Errors.Add(FString::Printf(TEXT("Animation.json: %s isn't in MotionMatchingDatabases"), *Path));
+					Out.Errors.Add(FString::Printf(TEXT("Animation.json: %s isn't in MotionMatchingDatabases or MotionMatchingExtraDatabases"), *Path));
 				}
 			}
 		}
