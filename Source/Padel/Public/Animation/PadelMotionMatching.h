@@ -60,6 +60,9 @@ enum class EPadelMotionMatchingRole : uint8
 	Stop,
 	/** Turns in place: searched while still and turning. */
 	TurnInPlace,
+	/** Padel footwork (0012): split steps, adjustments and shuffles, searched while still and in the
+	 *  walk band. A database listed in both the still and the walk lists takes this role. */
+	StillOrWalk,
 };
 
 /**

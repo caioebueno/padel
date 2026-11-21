@@ -65,6 +65,10 @@ CONTACT_SPEED_M_S = 0.5
 CONTACT_GAP_S = 0.1
 CONTACT_MIN_S = 0.13
 PLANT_BLEND_S = 0.13
+# The root's heading follows the pelvis slowly. In the game the body stays square to the net and
+# the motion matching query keeps one facing, so a root that swings with every hip turn (2 Hz)
+# matched it badly; the hips' quicker turns stay in the pose.
+ROOT_HEADING_CUTOFF_HZ = 0.5
 SOFT_REACH = 0.96            # share of the leg's length past which leg IK eases off its target
 LEG_CHAINS = {"L": (1, 4, 7), "R": (2, 5, 8)}   # hip, knee, ankle
 
@@ -327,7 +331,7 @@ def clean_track(v, smpl, src_fps, fps=OUT_FPS):
     # Root bone: the pelvis on the floor, facing the pelvis's smoothed heading (SMPL faces +z).
     pelvis_rot = R.from_quat(q[:, 0])
     fwd = pelvis_rot.apply([0.0, 0.0, 1.0])
-    heading = lowpass(np.unwrap(np.arctan2(fwd[:, 0], fwd[:, 2])), cutoff=2.0, fps=fps)
+    heading = lowpass(np.unwrap(np.arctan2(fwd[:, 0], fwd[:, 2])), cutoff=ROOT_HEADING_CUTOFF_HZ, fps=fps)
     root_rot = R.from_euler("y", heading[:, None])
     root_pos = np.stack([P[:, 0, 0], np.zeros(len(P)), P[:, 0, 2]], 1)
     pelvis_local_rot = (root_rot.inv() * pelvis_rot).as_quat()

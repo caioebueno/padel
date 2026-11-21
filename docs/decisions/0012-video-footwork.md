@@ -21,7 +21,7 @@ Three steps, all scripts in the repo:
    - low-pass filters it, the torso hardest (3 Hz) and the legs least (6 Hz)
    - pins the lowest foot to the floor (WHAM's height drifts by up to 0.7 m over a rally)
    - plants the feet: during each foot contact the ankle holds one position and heading, reached with two-bone leg IK and blended in and out over 0.13 s; the heel and toe still roll, and the IK eases off before the leg straightens
-   - adds a `root` bone under the pelvis, on the floor and facing the pelvis's heading
+   - adds a `root` bone under the pelvis, on the floor and facing the pelvis's heading smoothed to 0.5 Hz (the game's body stays square to the net, so the search's query keeps one facing)
    - names the bones like the Unreal mannequin
    - writes a JSON next to the FBX with the foot contacts and quality numbers
 3. **Build the database in Unreal:** `Tools/AssetPipeline/unreal/footwork_setup.py`, run after `animation_setup.py`:
@@ -33,7 +33,7 @@ Three steps, all scripts in the repo:
 
 ## The data contract
 
-`Data/Animation.json` gains `MotionMatchingExtraDatabases`: databases searched with `MotionMatchingDatabases` when they're built, and skipped with one log line when they aren't. The main list stays all-or-none, because the sample set needs every database. The footwork database is listed there, and in `MotionMatchingWalkDatabases` for its role.
+`Data/Animation.json` gains `MotionMatchingExtraDatabases`: databases searched with `MotionMatchingDatabases` when they're built, and skipped with one log line when they aren't. The main list stays all-or-none, because the sample set needs every database. The footwork database is listed there, and in both `MotionMatchingStillDatabases` and `MotionMatchingWalkDatabases`: a database in both lists takes the `StillOrWalk` role and is searched while still and in the walk band. About three quarters of the footwork is under 1 m/s (adjustments, split steps), where the chooser counts the body as still, so in the walk band alone it was never picked.
 
 A clone without the footwork keeps working exactly as before. `FPadelAnimData` checks that the chooser lists name only main or extra databases, and that no database is in both lists.
 

@@ -168,7 +168,8 @@
 			"/Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork"
 		],
 		"MotionMatchingStillDatabases": [
-			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Idles"
+			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Idles",
+			"/Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork"
 		],
 		"MotionMatchingStopDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Walk_Stops",
