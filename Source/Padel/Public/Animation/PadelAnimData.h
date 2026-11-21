@@ -38,7 +38,9 @@ struct PADEL_API FPadelAnimData
 	double WalkClipSpeedMps = 0.0;
 	/** M1 motion matching: the database paths and the search tuning, and the leg layers' fade over mocap legs. */
 	TArray<FString> MotionMatchingDatabases;
-	/** The chooser: which of MotionMatchingDatabases are searched still, and turning in place (the rest moving). */
+	/** Searched with them when built, skipped when not (the video footwork). */
+	TArray<FString> MotionMatchingExtraDatabases;
+	/** The chooser: which of MotionMatchingDatabases and the extras are searched still, and turning in place (the rest moving). */
 	TArray<FString> MotionMatchingStillDatabases;
 	TArray<FString> MotionMatchingStopDatabases;
 	TArray<FString> MotionMatchingWalkDatabases;

@@ -127,6 +127,14 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	 */
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingDatabases;
 	/**
+	 * Databases searched alongside MotionMatchingDatabases when they're built, skipped (one log
+	 * line) when they aren't: the padel footwork from video (docs/decisions/0012-video-footwork.md)
+	 * is made only on a machine that has the WHAM results and its SMPL licence, so a clone without
+	 * it keeps the full set above instead of dropping to the loop mix. The chooser lists below may
+	 * name them too.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingExtraDatabases;
+	/**
 	 * The chooser (the sample's chooser table, as data): below MotionMatchingStillBelowMps and not
 	 * speeding up, the search uses MotionMatchingStillDatabases (idles), the stop ones when the
 	 * trajectory's past travelled MotionMatchingStopAfterM, and the turn-in-place ones once the

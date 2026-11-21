@@ -1,0 +1,60 @@
+# 0012: Padel footwork from match video
+
+**Date:** 2026-11-21 · **Status:** proposed · Builds on [0005](0005-player-animation.md), [0006](0006-metahuman-players.md) and `docs/animation/MOVEMENT_FLUENCY.md` (M1/M2 motion matching)
+
+## Decision
+
+The players' footwork gets a motion matching database of real padel movement: split steps, side shuffles, recovery steps, lunges and the pair moving together. It's taken from video of a professional match, recorded by the project owner with the players' authorization. That gives about 13 minutes of footwork, enough for a first database, without a capture session.
+
+The Game Animation Sample databases stay. The footwork database is searched next to them, in the walk band (under `MotionMatchingRunFromMps`), where nearly all padel footwork happens.
+
+## Pipeline
+
+Three steps, all scripts in the repo:
+
+1. **Video to 3D motion:** `Tools/AssetPipeline/mocap/run_wham.sh` runs [WHAM](https://github.com/yohanshin/WHAM) (MIT licence) on a rented GPU (vast.ai, RTX 3090, about 2 hours for 32 rallies).
+   - The input is one clip per rally from the main broadcast camera at 1080p. That camera doesn't move or cut, so WHAM's camera tracking is skipped (`--estimate_local_only`).
+   - WHAM tracks everyone in the frame. For each person it writes SMPL body poses and a world path, using foot contacts to keep the path steady.
+2. **Clean up and export to FBX:** `Tools/AssetPipeline/mocap/wham_to_fbx.py`, in Python with Blender's `bpy`, writes one FBX per near player per rally into `SourceArt/_incoming/Footwork/`. For each clip it:
+   - keeps the longest on-court track in each half of the near court; the far pair is too small and too broken up to use
+   - trims the track's ends and low-pass filters it
+   - pins the lowest foot to the floor (WHAM's height drifts by up to 0.7 m over a rally)
+   - adds a `root` bone under the pelvis, on the floor and facing the pelvis's heading
+   - names the bones like the Unreal mannequin
+   - writes a JSON next to the FBX with the foot contacts and quality numbers
+3. **Build the database in Unreal:** `Tools/AssetPipeline/unreal/footwork_setup.py`, run after `animation_setup.py`:
+   - imports the FBXs
+   - builds `IK_PadelFootwork` (auto chains, which match `IK_PadelPlaceholder`'s one to one because the bone names match, and both are T-poses) and `RTG_Footwork_To_Placeholder`
+   - retargets the clips onto the placeholder skeleton (root motion on, root locked, like the sample's clips)
+   - builds `PSD_Padel_Footwork` on the walk loops' schema and settings
+   - rebuilds the normalization set and the indexes over every database
+
+## The data contract
+
+`Data/Animation.json` gains `MotionMatchingExtraDatabases`: databases searched with `MotionMatchingDatabases` when they're built, and skipped with one log line when they aren't. The main list stays all-or-none, because the sample set needs every database. The footwork database is listed there, and in `MotionMatchingWalkDatabases` for its role.
+
+A clone without the footwork keeps working exactly as before. `FPadelAnimData` checks that the chooser lists name only main or extra databases, and that no database is in both lists.
+
+## Quality, measured on the first full run
+
+- 63 clips, 13.0 minutes.
+- Bodies about 1.70 m tall. Each player covers 2 to 19 m per rally, at up to about 2.3 m/s.
+- A planted foot still slides about 15 cm/s on average. The runtime foot locking from M2 (`FootLock*`) pins it.
+- On a skeleton drawn every 40 frames, stances, shuffles, lunges and reaches read as human. Moments where two players overlap, or where a track starts or ends, can show an odd pose; the 0.3 s trim takes most of them.
+- What's still missing: sampling exclusions for the bad stretches, mirroring, and the far pair.
+
+## Rights and licences
+
+- **The footage:** recorded by the project owner, with the players' authorization, which is kept with the project records. Nothing from the video is committed.
+- **Likeness** (CLAUDE.md hard rules): the motion drives the game's own invented MetaHumans (0006). Nothing identifies the players: no names, faces, bodies, kit, or signature celebrations or moves. The footwork is generic padel movement.
+- **SMPL:** WHAM's output is SMPL body parameters, and the SMPL model's licence is non-commercial. So:
+  - the FBXs (which carry the SMPL body), the WHAM results and every Unreal asset made from them stay git-ignored, on the machine that made them, like the MetaHumans
+  - **before anything made from this ships in a commercial build, the project needs a commercial SMPL licence from Meshcapade**, or the motion must be re-captured another way (for example, a capture session with our own performers, `docs/animation/MOCAP_SHOT_LIST.md`)
+- **GVHMR** was considered and rejected: its code licence bans commercial use.
+
+## Re-running
+
+1. Cut the main-camera rallies (one still shot each, no replays).
+2. Run `run_wham.sh` on a GPU and download `wham_results.tar.gz`. It's about 50 MB with the vertices dropped.
+3. Unpack it and run `python3.11 Tools/AssetPipeline/mocap/wham_to_fbx.py <results> SourceArt/_incoming/Footwork`.
+4. In the editor, run `animation_setup.py`, then `footwork_setup.py`.

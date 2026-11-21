@@ -39,3 +39,10 @@ __pycache__/
 # Epic's UE5 mannequin, copied from the engine's Third Person template by
 # Tools/AssetPipeline/unreal/animation_setup.py as the source of the locomotion clips.
 /Content/Characters/
+# Video footwork (docs/decisions/0012-video-footwork.md): built from the WHAM results with the
+# SMPL body, under SMPL's licence, so it stays on the machine that made it like the source in
+# SourceArt/_incoming/Footwork/. Animation.json lists the database as an extra: a clone
+# without it keeps the Game Animation Sample set.
+/Content/Padel/Animations/MotionMatching/Footwork/
+/Content/Padel/Animations/Retarget/IK_PadelFootwork.uasset
+/Content/Padel/Animations/Retarget/RTG_Footwork_To_Placeholder.uasset
