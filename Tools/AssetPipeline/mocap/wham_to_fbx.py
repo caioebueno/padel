@@ -371,8 +371,11 @@ def write_fbx(path, rig, J_rest, verts, smpl, fps=OUT_FPS):
     sc.collection.objects.link(obj)
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.mode_set(mode="EDIT")
+    # The root bone points +Y with no roll, so its rest frame is the world's, like the
+    # mannequin's root: Unreal then sees an unrotated root. (Pointing +Z like the others gave
+    # it a 90-degree roll, and the retargeter scrambled the pelvis by tens of metres.)
     root = arm.edit_bones.new("root")
-    root.head = (0, 0, 0); root.tail = (0, 0, 0.1)
+    root.head = (0, 0, 0); root.tail = (0, 0.1, 0); root.roll = 0
     names = [UE_NAMES[n] for n in SMPL_NAMES]
     for j, name in enumerate(names):
         eb = arm.edit_bones.new(name)
@@ -398,8 +401,12 @@ def write_fbx(path, rig, J_rest, verts, smpl, fps=OUT_FPS):
     for b in obj.pose.bones: b.rotation_mode = "QUATERNION"
     pbs = [obj.pose.bones[name] for name in names]
     rb, pelvis = obj.pose.bones["root"], obj.pose.bones["pelvis"]
+    # The root's keys are in Blender's (z-up) axes; every other bone's rest frame is Y2Z, so its
+    # keys stay in WHAM's axes.
+    y2z = Y2Z.to_quaternion()
     for t in range(n):
-        rb.rotation_quaternion = quat(rig["root_q"][t]); rb.location = Vector(rig["root_pos"][t])
+        rb.rotation_quaternion = y2z @ quat(rig["root_q"][t]) @ y2z.inverted()
+        rb.location = Y2Z @ Vector(rig["root_pos"][t])
         rb.keyframe_insert("rotation_quaternion", frame=t); rb.keyframe_insert("location", frame=t)
         for j, pb in enumerate(pbs):
             pb.rotation_quaternion = quat(rig["q"][t, j])

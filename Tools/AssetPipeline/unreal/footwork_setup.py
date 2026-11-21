@@ -143,6 +143,11 @@ def auto_rig(path: str, mesh: unreal.SkeletalMesh) -> unreal.IKRigDefinition | N
         fail(f"{path}: could not generate retarget chains for {mesh.get_path_name()}")
         return None
     ctrl.apply_auto_fbik()
+    # The retargeter scales the body by the retarget root's height, so it must be the pelvis,
+    # never the floor-level root.
+    if hasattr(ctrl, "set_retarget_root") and not ctrl.set_retarget_root("pelvis"):
+        fail(f"{path}: could not make pelvis the retarget root")
+        return None
     ASSETS.save_loaded_asset(rig)
     log(f"built {path}")
     return rig
@@ -209,7 +214,32 @@ def retarget(clips, source_mesh, target_mesh, rtg) -> list[unreal.AnimSequence]:
         seq.set_editor_property("force_root_lock", True)
         ASSETS.save_asset(f"{CLIPS_DIR}/{name}", only_if_is_dirty=False)
         out.append(seq)
+    check_pelvis(out)
     return out
+
+
+def check_pelvis(clips: list[unreal.AnimSequence]) -> None:
+    """A retargeted clip must stand on the placeholder: pelvis about a metre over the root.
+
+    A broken retarget (a rolled source root once put the pelvis tens of metres off) still
+    imports and indexes, so without this the database builds and simply never gets picked.
+    """
+    lib = unreal.AnimationLibrary
+    if not hasattr(lib, "get_bone_pose_for_time"):
+        log("can't read bone poses in this engine version: pelvis height not checked")
+        return
+    bad = []
+    for seq in clips:
+        length = seq.get_play_length()
+        for t in (0.25 * length, 0.5 * length, 0.75 * length):
+            z = lib.get_bone_pose_for_time(seq, "pelvis", t, False).translation.z
+            if not 50.0 < z < 130.0:                      # cm; the placeholder's pelvis is ~90
+                bad.append(f"{seq.get_name()} at {t:.1f} s: pelvis {z:.0f} cm up")
+                break
+    if bad:
+        fail(f"{len(bad)} retargeted clip(s) don't stand on the placeholder, e.g. {'; '.join(bad[:3])}")
+    else:
+        log(f"pelvis height checked on {len(clips)} clip(s)")
 
 
 def build_database(settings: dict, clips: list[unreal.AnimSequence]) -> None:
