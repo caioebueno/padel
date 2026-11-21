@@ -14,10 +14,15 @@ holding wham_slim.pkl. For every rally it writes
 
 Cleanup, in order:
   1. keep the two near players (the longest on-court track in each half of the near court)
-  2. drop TRIM_S from each end of a track, low-pass the rotations and the path (one camera's jitter)
-  3. pin the lowest foot to the floor (WHAM's height drifts by up to ~0.7 m over a rally)
-  4. put a root bone under the pelvis, on the floor, facing the pelvis's smoothed heading
-  5. find foot contacts; the game's foot locking pins planted feet at runtime
+  2. drop TRIM_S from each end of a track and resample it to OUT_FPS (UE 5.8's FBX import
+     misreads 29.97 fps as 29)
+  3. low-pass the rotations and the path (one camera's jitter): the torso hardest, the legs least
+  4. pin the lowest foot to the floor (WHAM's height drifts by up to ~0.7 m over a rally)
+  5. find foot contacts and plant them: during a contact the ankle holds one position and
+     orientation, reached with two-bone leg IK and blended in and out over PLANT_BLEND_S.
+     Unplanted, WHAM's planted feet slide 7-24 cm/s, which the motion matching quality test
+     (Padel.Animation.MotionMatching) can't pass
+  6. put a root bone under the pelvis, on the floor, facing the pelvis's smoothed heading
 
 The output carries the SMPL body (its own licence, non-commercial unless licensed from
 Meshcapade), so it stays in the git-ignored SourceArt/_incoming/Footwork/.
@@ -25,7 +30,7 @@ Meshcapade), so it stays in the git-ignored SourceArt/_incoming/Footwork/.
 import argparse, glob, json, os, pickle, sys
 import numpy as np
 from scipy.signal import butter, filtfilt
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R, Slerp
 
 SMPL_NAMES = ["Pelvis", "L_Hip", "R_Hip", "Spine1", "L_Knee", "R_Knee", "Spine2",
               "L_Ankle", "R_Ankle", "Spine3", "L_Foot", "R_Foot", "Neck",
@@ -45,6 +50,23 @@ PARENTS = [-1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18,
 FOOT_JOINTS = {"L": (7, 10), "R": (8, 11)}   # ankle, ball of foot
 FOOT_JOINT_HEIGHT_M = 0.03   # the ankle/ball joints sit about this far above the sole
 TRIM_S = 0.3                 # dropped from each end of a track
+OUT_FPS = 30.0               # every clip is written at this rate
+# Rotation low-pass cutoffs (Hz) per joint group. WHAM's single-camera jitter is worst on the
+# torso, which moves slowly anyway; the legs keep the most detail for quick steps.
+TORSO = {0, 3, 6, 9, 12, 15}
+LEGS = {1, 2, 4, 5, 7, 8, 10, 11}
+CUTOFF_HZ = {"torso": 3.0, "legs": 6.0, "arms": 4.0}
+PATH_CUTOFF_HZ = 2.5
+# A foot is planted while its lowest joint is under CONTACT_HEIGHT_M and its ball moves slower
+# than CONTACT_SPEED_M_S; gaps shorter than CONTACT_GAP_S are filled, plants shorter than
+# CONTACT_MIN_S dropped.
+CONTACT_HEIGHT_M = 0.12
+CONTACT_SPEED_M_S = 0.5
+CONTACT_GAP_S = 0.1
+CONTACT_MIN_S = 0.13
+PLANT_BLEND_S = 0.13
+SOFT_REACH = 0.96            # share of the leg's length past which leg IK eases off its target
+LEG_CHAINS = {"L": (1, 4, 7), "R": (2, 5, 8)}   # hip, knee, ankle
 
 
 # --- SMPL loading without chumpy --------------------------------------------
@@ -81,20 +103,38 @@ def lowpass(x, cutoff, fps, axis=0):
     return filtfilt(b, a, x, axis=axis)
 
 
-def smooth_rotations(aa, cutoff, fps):
-    """aa: T x J x 3 axis-angle. Low-pass in quaternion space, sign-aligned."""
-    T, J, _ = aa.shape
-    q = R.from_rotvec(aa.reshape(-1, 3)).as_quat().reshape(T, J, 4)
-    for t in range(1, T):
+def sign_align(q):
+    """q: T x J x 4. Flip quaternions so neighbouring frames are in the same hemisphere."""
+    for t in range(1, len(q)):
         flip = (q[t] * q[t - 1]).sum(-1) < 0
         q[t, flip] *= -1
-    q = lowpass(q, cutoff, fps)
-    q /= np.linalg.norm(q, axis=-1, keepdims=True)
-    return q  # x y z w
+    return q
 
 
-def forward_kinematics(q, root_t, J_rest):
-    """q: T x 24 x 4 local rotations, root_t: T x 3, J_rest: 24 x 3. Returns T x 24 x 3."""
+def smooth_rotations(q, fps):
+    """q: T x 24 x 4 (x y z w). Low-pass in quaternion space, per joint group (CUTOFF_HZ)."""
+    q = sign_align(q.copy())
+    for j in range(q.shape[1]):
+        group = "torso" if j in TORSO else "legs" if j in LEGS else "arms"
+        q[:, j] = lowpass(q[:, j], CUTOFF_HZ[group], fps)
+    return q / np.linalg.norm(q, axis=-1, keepdims=True)
+
+
+def resample(aa, trans, src_fps, dst_fps):
+    """aa: T x 24 x 3 axis-angle, trans: T x 3, at src_fps. Returns quaternions and trans at dst_fps."""
+    T = len(aa)
+    t_src = np.arange(T) / src_fps
+    t_dst = np.arange(int(np.floor(t_src[-1] * dst_fps)) + 1) / dst_fps
+    q = np.zeros((len(t_dst), 24, 4))
+    for j in range(24):
+        q[:, j] = Slerp(t_src, R.from_rotvec(aa[:, j]))(t_dst).as_quat()
+    tr = np.stack([np.interp(t_dst, t_src, trans[:, i]) for i in range(3)], 1)
+    return q, tr
+
+
+def forward_kinematics(q, root_t, J_rest, with_rotations=False):
+    """q: T x 24 x 4 local rotations, root_t: T x 3, J_rest: 24 x 3.
+    Returns joint positions T x 24 x 3 (and global rotation matrices T x 24 x 3 x 3)."""
     T = q.shape[0]
     rots = R.from_quat(q.reshape(-1, 4)).as_matrix().reshape(T, 24, 3, 3)
     G = np.zeros((T, 24, 3, 3)); P = np.zeros((T, 24, 3))
@@ -105,7 +145,126 @@ def forward_kinematics(q, root_t, J_rest):
         else:
             G[:, j] = G[:, p] @ rots[:, j]
             P[:, j] = P[:, p] + np.einsum("tij,j->ti", G[:, p], J_rest[j] - J_rest[p])
-    return P
+    return (P, G) if with_rotations else P
+
+
+def rotation_between(a, b):
+    """Smallest rotation matrix taking direction a to direction b (both 3-vectors)."""
+    a = a / np.linalg.norm(a); b = b / np.linalg.norm(b)
+    axis = np.cross(a, b); s = np.linalg.norm(axis); c = float(np.clip(a @ b, -1, 1))
+    if s < 1e-9:
+        return np.eye(3)
+    return R.from_rotvec(axis / s * np.arctan2(s, c)).as_matrix()
+
+
+def contact_mask(h, speed, fps):
+    """Planted frames: low and slow, short gaps filled, short plants dropped."""
+    c = (h < CONTACT_HEIGHT_M) & (speed < CONTACT_SPEED_M_S)
+    gap, shortest = int(round(CONTACT_GAP_S * fps)), int(round(CONTACT_MIN_S * fps))
+    segments = segments_of(c)
+    for (s0, e0), (s1, _) in zip(segments, segments[1:]):
+        if s1 - e0 <= gap:
+            c[e0:s1] = True
+    for s0, e0 in segments_of(c):
+        if e0 - s0 < shortest:
+            c[s0:e0] = False
+    return c
+
+
+def segments_of(mask):
+    """[(start, end)) runs of True."""
+    d = np.diff(np.concatenate([[0], mask.astype(int), [0]]))
+    return list(zip(np.nonzero(d == 1)[0], np.nonzero(d == -1)[0]))
+
+
+def plant_feet(q, trans, J_rest, contacts, fps):
+    """Hold each planted ankle at one position and orientation, by two-bone leg IK.
+
+    q: T x 24 x 4 local rotations (changed in place for the hips, knees and ankles).
+    The plant blends in and out over PLANT_BLEND_S, so the step itself is untouched.
+    """
+    T = len(q)
+    blend = max(1, int(round(PLANT_BLEND_S * fps)))
+    P, G = forward_kinematics(q, trans, J_rest, with_rotations=True)
+    for side, (hip, knee, ankle) in LEG_CHAINS.items():
+        # The plant holds the foot's position and its yaw; the heel and toe still roll, which
+        # is how a foot really leaves the floor and keeps the release from snapping the ankle.
+        foot_yaw = yaw_of(G[:, ankle])
+        weight = np.zeros(T); target_p = P[:, ankle].copy(); target_yaw = foot_yaw.copy()
+        for s0, e0 in segments_of(contacts[side]):
+            p = np.median(P[s0:e0, ankle], 0)
+            yaw = np.unwrap(foot_yaw[s0:e0]).mean()
+            yaw = foot_yaw[s0] + np.angle(np.exp(1j * (yaw - foot_yaw[s0])))
+            for t in range(max(0, s0 - blend), min(T, e0 + blend)):
+                w = 1.0 if s0 <= t < e0 else (1 - (s0 - t) / (blend + 1) if t < s0 else 1 - (t - e0 + 1) / (blend + 1))
+                w = 0.5 - 0.5 * np.cos(np.pi * w)               # ease in and out
+                # Blend over what earlier plants left, so overlapping ramps (two quick steps)
+                # hand over smoothly instead of jumping between the two targets.
+                weight[t] = max(weight[t], w)
+                target_p[t] = (1 - w) * target_p[t] + w * p
+                target_yaw[t] += w * np.angle(np.exp(1j * (yaw - target_yaw[t])))
+        a = np.linalg.norm(J_rest[knee] - J_rest[hip]); b = np.linalg.norm(J_rest[ankle] - J_rest[knee])
+        for t in np.nonzero(weight > 0)[0]:
+            H, K, A, Tg = P[t, hip], P[t, knee], P[t, ankle], target_p[t]
+            # Soft reach: past SOFT_REACH of the leg's length the ankle eases off its target
+            # instead of snapping the knee straight (the body has moved off a plant it is lifting).
+            d = soft_reach(np.linalg.norm(Tg - H), a + b)
+            d = max(d, abs(a - b) + 1e-4)
+            u = (Tg - H) / max(np.linalg.norm(Tg - H), 1e-9)
+            # Bend toward where the knee points (SMPL's knee faces +z at rest), which stays
+            # steady when the leg is nearly straight, unlike the knee's offset from the hip-ankle line.
+            pole = G[t, knee] @ np.array([0.0, 0.0, 1.0])
+            v = pole - (pole @ u) * u
+            v = v / max(np.linalg.norm(v), 1e-9)
+            cos_a = (a * a + d * d - b * b) / (2 * a * d)
+            K_new = H + a * (cos_a * u + np.sqrt(max(0.0, 1 - cos_a * cos_a)) * v)
+            D1 = rotation_between(K - H, K_new - H)
+            G_hip = D1 @ G[t, hip]
+            D2 = rotation_between(D1 @ (A - K), H + u * d - K_new)
+            G_knee = D2 @ D1 @ G[t, knee]
+            G_parent = G[t, PARENTS[hip]]
+            turn = R.from_euler("y", target_yaw[t] - foot_yaw[t]).as_matrix()
+            solved = R.from_matrix([G_parent.T @ G_hip, G_hip.T @ G_knee, G_knee.T @ turn @ G[t, ankle]])
+            # The solve puts the knee in the pole's plane, a little off WHAM's knee even with the
+            # target on the ankle, so the result fades in with the plant's weight too.
+            for i, joint in enumerate((hip, knee, ankle)):
+                before = R.from_quat(q[t, joint])
+                q[t, joint] = Slerp([0, 1], R.concatenate([before, solved[i]]))(weight[t]).as_quat()
+    return sign_align(q)
+
+
+def yaw_of(G):
+    """Heading (radians about +y) of each frame's +z axis; SMPL's feet point +z at rest."""
+    fwd = G[..., :, 2]
+    return np.arctan2(fwd[..., 0], fwd[..., 2])
+
+
+def soft_reach(d, length):
+    """Distance the IK actually reaches for a target d away, never quite straightening the leg."""
+    soft = SOFT_REACH * length
+    if d <= soft:
+        return d
+    return soft + (length - soft) * (1 - np.exp(-(d - soft) / (length - soft)))
+
+
+def planted_slide(P, contacts, fps):
+    """Mean of each foot's median ball speed (m/s) over its planted frames."""
+    out = []
+    for side, (a, b) in FOOT_JOINTS.items():
+        c = contacts[side]
+        if c.any():
+            vel = np.linalg.norm(np.gradient(P[:, b][:, [0, 2]], axis=0), axis=1) * fps
+            out.append(np.median(vel[c]))
+    return float(np.mean(out)) if out else None
+
+
+def find_contacts(P, fps):
+    contacts = {}
+    for side, (a, b) in FOOT_JOINTS.items():
+        h = P[:, [a, b], 1].min(1)
+        speed = np.linalg.norm(np.gradient(P[:, b][:, [0, 2]], axis=0), axis=1) * fps
+        contacts[side] = contact_mask(h, speed, fps)
+    return contacts
 
 
 def rolling_min(x, w):
@@ -137,7 +296,7 @@ def pick_near_players(res, n_frames, width=1920, height=1080):
     return best
 
 
-def clean_track(v, smpl, fps):
+def clean_track(v, smpl, src_fps, fps=OUT_FPS):
     betas = np.median(v["betas"], 0)
     verts = smpl["v_template"] + smpl["shapedirs"][:, :, :len(betas)] @ betas
     J_rest = smpl["J_regressor"] @ verts
@@ -147,11 +306,11 @@ def clean_track(v, smpl, fps):
     verts = verts - offset
     J_rest = J_rest - offset
 
-    trim = int(round(TRIM_S * fps))                             # track starts and ends wobble
+    trim = int(round(TRIM_S * src_fps))                         # track starts and ends wobble
     sl = slice(trim, len(v["pose_world"]) - trim)
-    aa = v["pose_world"][sl].reshape(-1, 24, 3)
-    q = smooth_rotations(aa, cutoff=6.0, fps=fps)
-    trans = lowpass(v["trans_world"][sl].copy(), cutoff=3.0, fps=fps)
+    q, trans = resample(v["pose_world"][sl].reshape(-1, 24, 3), v["trans_world"][sl], src_fps, fps)
+    q = smooth_rotations(q, fps)
+    trans = lowpass(trans, cutoff=PATH_CUTOFF_HZ, fps=fps)
 
     P = forward_kinematics(q, trans, J_rest)                    # y up (WHAM)
     feet = P[:, [7, 8, 10, 11], 1]
@@ -159,6 +318,11 @@ def clean_track(v, smpl, fps):
     floor = lowpass(floor, cutoff=0.5, fps=fps) - FOOT_JOINT_HEIGHT_M
     trans[:, 1] -= floor
     P[:, :, 1] -= floor[:, None]
+
+    contacts = find_contacts(P, fps)
+    slide_before = planted_slide(P, contacts, fps)
+    q = plant_feet(q, trans, J_rest, contacts, fps)
+    P = forward_kinematics(q, trans, J_rest)
 
     # Root bone: the pelvis on the floor, facing the pelvis's smoothed heading (SMPL faces +z).
     pelvis_rot = R.from_quat(q[:, 0])
@@ -171,23 +335,19 @@ def clean_track(v, smpl, fps):
     rig = {"q": q.copy(), "root_q": root_rot.as_quat(), "root_pos": root_pos, "pelvis_pos": pelvis_local_pos}
     rig["q"][:, 0] = pelvis_local_rot
 
-    contacts, slide = {}, []
-    for side, (a, b) in FOOT_JOINTS.items():
-        h = P[:, [a, b], 1].min(1)
-        vel = np.linalg.norm(np.gradient(P[:, b][:, [0, 2]], axis=0), axis=1) * fps
-        c = (h < 0.10) & (vel < 0.6)
-        contacts[side] = c.astype(int).tolist()
-        if c.any(): slide.append(np.median(vel[c]))
+    slide = planted_slide(P, contacts, fps)
+    cm = lambda x: round(x * 100, 1) if x is not None else None
     quality = {
-        "frames": int(len(q)), "first_frame_trimmed": trim, "body_height_m": round(float(np.ptp(verts[:, 1])), 2),
+        "frames": int(len(q)), "fps": fps, "first_frame_trimmed": trim, "body_height_m": round(float(np.ptp(verts[:, 1])), 2),
         "travel_m": round(float(np.linalg.norm(np.diff(root_pos[:, [0, 2]], axis=0), axis=1).sum()), 1),
-        "planted_slide_cm_s": round(float(np.mean(slide)) * 100, 1) if slide else None,
+        "planted_slide_cm_s": cm(slide), "planted_slide_before_ik_cm_s": cm(slide_before),
+        "planted_share": round(float(np.mean([c.mean() for c in contacts.values()])), 2),
     }
-    return rig, J_rest, verts, contacts, quality, P
+    return rig, J_rest, verts, {k: c.astype(int).tolist() for k, c in contacts.items()}, quality, P
 
 
 # --- Blender ------------------------------------------------------------------
-def write_fbx(path, rig, J_rest, verts, smpl, fps):
+def write_fbx(path, rig, J_rest, verts, smpl, fps=OUT_FPS):
     """SMPL skeleton under a `root` bone (pelvis on the floor, the pelvis's heading), skinned body, baked keys.
 
     The armature object is named "Armature" so Unreal's FBX import doesn't add it as an extra bone.
@@ -255,7 +415,8 @@ def write_fbx(path, rig, J_rest, verts, smpl, fps):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("results"); ap.add_argument("out"); ap.add_argument("--fps", type=float, default=29.97)
+    ap.add_argument("results"); ap.add_argument("out")
+    ap.add_argument("--fps", type=float, default=29.97, help="the source video's frame rate")
     a = ap.parse_args()
     import joblib
     smpl = load_smpl(os.path.join(a.results, "SMPL_NEUTRAL.pkl"))
@@ -268,7 +429,7 @@ def main():
         for side, k in pick_near_players(res, n).items():
             rig, J_rest, verts, contacts, quality, _ = clean_track(res[k], smpl, a.fps)
             name = f"{clip}_near{side}"
-            write_fbx(os.path.join(a.out, name + ".fbx"), rig, J_rest, verts, smpl, a.fps)
+            write_fbx(os.path.join(a.out, name + ".fbx"), rig, J_rest, verts, smpl)
             quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]))
             with open(os.path.join(a.out, name + ".json"), "w") as f:
                 json.dump({"quality": quality, "contacts": contacts}, f)

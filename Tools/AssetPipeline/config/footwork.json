@@ -1,0 +1,9 @@
+{
+  "_doc": "The video footwork database (docs/decisions/0012-video-footwork.md). Read by unreal/footwork_setup.py, which builds PSD_Padel_Footwork with the walk loops' settings from SourceArt/_incoming/GASP/motion_matching.json and then applies database_overrides on top.",
+  "database_overrides": {
+    "_doc": "Pose Search costs. The clips are one camera's estimate, noisier than the sample's captured loops, so footwork costs a little more to jump into (base_cost_bias > 0) and a little less to stay in (continuing_pose_cost_bias < 0): fewer clip switches. The clips are cut from rallies, not loops, so their first and last 0.3 s, whose future trajectory is cut short, are never picked (exclude_from_database_parameters, seconds; max counts back from the end). Tune against Padel.Animation.MotionMatching.",
+    "base_cost_bias": 0.05,
+    "continuing_pose_cost_bias": -0.03,
+    "exclude_from_database_parameters": {"min": 0.3, "max": -0.3}
+  }
+}

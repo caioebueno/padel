@@ -17,8 +17,10 @@ Three steps, all scripts in the repo:
    - WHAM tracks everyone in the frame. For each person it writes SMPL body poses and a world path, using foot contacts to keep the path steady.
 2. **Clean up and export to FBX:** `Tools/AssetPipeline/mocap/wham_to_fbx.py`, in Python with Blender's `bpy`, writes one FBX per near player per rally into `SourceArt/_incoming/Footwork/`. For each clip it:
    - keeps the longest on-court track in each half of the near court; the far pair is too small and too broken up to use
-   - trims the track's ends and low-pass filters it
+   - trims the track's ends and resamples it to 30 fps (UE 5.8's FBX import misreads 29.97 fps as 29 and drops the clip)
+   - low-pass filters it, the torso hardest (3 Hz) and the legs least (6 Hz)
    - pins the lowest foot to the floor (WHAM's height drifts by up to 0.7 m over a rally)
+   - plants the feet: during each foot contact the ankle holds one position and heading, reached with two-bone leg IK and blended in and out over 0.13 s; the heel and toe still roll, and the IK eases off before the leg straightens
    - adds a `root` bone under the pelvis, on the floor and facing the pelvis's heading
    - names the bones like the Unreal mannequin
    - writes a JSON next to the FBX with the foot contacts and quality numbers
@@ -26,7 +28,7 @@ Three steps, all scripts in the repo:
    - imports the FBXs
    - builds `IK_PadelFootwork` (auto chains, which match `IK_PadelPlaceholder`'s one to one because the bone names match, and both are T-poses) and `RTG_Footwork_To_Placeholder`
    - retargets the clips onto the placeholder skeleton (root motion on, root locked, like the sample's clips)
-   - builds `PSD_Padel_Footwork` on the walk loops' schema and settings
+   - builds `PSD_Padel_Footwork` on the walk loops' schema and settings, with the cost overrides in `Tools/AssetPipeline/config/footwork.json` (a little dearer to jump into, cheaper to stay in, clip ends never picked)
    - rebuilds the normalization set and the indexes over every database
 
 ## The data contract
@@ -39,7 +41,7 @@ A clone without the footwork keeps working exactly as before. `FPadelAnimData` c
 
 - 63 clips, 13.0 minutes.
 - Bodies about 1.70 m tall. Each player covers 2 to 19 m per rally, at up to about 2.3 m/s.
-- A planted foot still slides about 15 cm/s on average. The runtime foot locking from M2 (`FootLock*`) pins it.
+- Straight from WHAM, a planted foot slides about 15 cm/s. With the first clips in the search, `Padel.Animation.MotionMatching` failed: 72 to 75 cm/s of planted-foot slide, 2.07 clip switches a second and about 30% more pelvis and spine jerk than its limits. The leg IK plants bring the clips' own slide to about 2 cm/s, and the torso filter cuts pelvis jerk about three times; the cost overrides take on the switching.
 - On a skeleton drawn every 40 frames, stances, shuffles, lunges and reaches read as human. Moments where two players overlap, or where a track starts or ends, can show an odd pose; the 0.3 s trim takes most of them.
 - What's still missing: sampling exclusions for the bad stretches, mirroring, and the far pair.
 

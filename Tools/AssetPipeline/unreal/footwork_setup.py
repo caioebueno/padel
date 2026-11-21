@@ -36,6 +36,7 @@ import unreal
 PROJECT = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())).resolve()
 INCOMING = PROJECT / "SourceArt" / "_incoming" / "Footwork"
 GASP_MANIFEST = PROJECT / "SourceArt" / "_incoming" / "GASP" / "motion_matching.json"
+CONFIG = PROJECT / "Tools" / "AssetPipeline" / "config" / "footwork.json"
 SOURCE_DIR = "/Game/Characters/Footwork"
 RETARGET_DIR = "/Game/Padel/Animations/Retarget"
 SOURCE_RIG = f"{RETARGET_DIR}/IK_PadelFootwork"
@@ -226,8 +227,11 @@ def build_database(settings: dict, clips: list[unreal.AnimSequence]) -> None:
     if source is None:
         fail(f"motion_matching.json has no settings for {TEMPLATE_DATABASE}")
         return
+    db_settings = dict(source["settings"])
+    overrides = json.loads(CONFIG.read_text(encoding="utf-8"))["database_overrides"]
+    db_settings.update({k: v for k, v in overrides.items() if not k.startswith("_")})
     db = builder.find_or_create_asset(unreal.PoseSearchDatabase, DATABASE)
-    error = builder.build_database(db, template.get_editor_property("schema"), normalization, clips, json.dumps(source["settings"])) if db else f"could not make {DATABASE}"
+    error = builder.build_database(db, template.get_editor_property("schema"), normalization, clips, json.dumps(db_settings)) if db else f"could not make {DATABASE}"
     if error:
         fail(f"{DATABASE}: {error}")
         return
