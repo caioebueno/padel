@@ -356,6 +356,11 @@ def write_fbx(path, rig, J_rest, verts, smpl, fps=OUT_FPS):
     from mathutils import Matrix, Quaternion, Vector
     bpy.ops.wm.read_factory_settings(use_empty=True)
     sc = bpy.context.scene
+    # Built in centimetres in a centimetre scene, like bl_common.export_fbx: in metres, UE 5.8
+    # drops the "Armature" node and moves its 100x unit scale onto `root`, which the retargeter
+    # turns into a body tens of metres off.
+    sc.unit_settings.scale_length = 0.01
+    cm = 100.0
     # 29.97 is NTSC (30/1.001), which FBX stores exactly; other rates as-is.
     if abs(fps - 29.97) < 0.01: sc.render.fps, sc.render.fps_base = 30, 1.001
     else: sc.render.fps, sc.render.fps_base = round(fps), round(fps) / fps
@@ -375,17 +380,17 @@ def write_fbx(path, rig, J_rest, verts, smpl, fps=OUT_FPS):
     # mannequin's root: Unreal then sees an unrotated root. (Pointing +Z like the others gave
     # it a 90-degree roll, and the retargeter scrambled the pelvis by tens of metres.)
     root = arm.edit_bones.new("root")
-    root.head = (0, 0, 0); root.tail = (0, 0.1, 0); root.roll = 0
+    root.head = (0, 0, 0); root.tail = (0, 10, 0); root.roll = 0
     names = [UE_NAMES[n] for n in SMPL_NAMES]
     for j, name in enumerate(names):
         eb = arm.edit_bones.new(name)
-        head = Y2Z @ Vector(J_rest[j])
-        eb.head = head; eb.tail = head + Vector((0, 0, 0.08))
+        head = Y2Z @ Vector(J_rest[j] * cm)
+        eb.head = head; eb.tail = head + Vector((0, 0, 8))
         eb.parent = arm.edit_bones[names[PARENTS[j]]] if PARENTS[j] >= 0 else root
     bpy.ops.object.mode_set(mode="OBJECT")
 
     me = bpy.data.meshes.new("SMPL_Body")
-    me.from_pydata([tuple(Y2Z @ Vector(p)) for p in verts], [], [tuple(int(i) for i in f) for f in smpl["f"]])
+    me.from_pydata([tuple(Y2Z @ Vector(p * cm)) for p in verts], [], [tuple(int(i) for i in f) for f in smpl["f"]])
     body = bpy.data.objects.new("SMPL_Body", me)
     sc.collection.objects.link(body); body.parent = obj
     for j, name in enumerate(names):
@@ -406,18 +411,19 @@ def write_fbx(path, rig, J_rest, verts, smpl, fps=OUT_FPS):
     y2z = Y2Z.to_quaternion()
     for t in range(n):
         rb.rotation_quaternion = y2z @ quat(rig["root_q"][t]) @ y2z.inverted()
-        rb.location = Y2Z @ Vector(rig["root_pos"][t])
+        rb.location = Y2Z @ Vector(rig["root_pos"][t] * cm)
         rb.keyframe_insert("rotation_quaternion", frame=t); rb.keyframe_insert("location", frame=t)
         for j, pb in enumerate(pbs):
             pb.rotation_quaternion = quat(rig["q"][t, j])
             pb.keyframe_insert("rotation_quaternion", frame=t)
-        pelvis.location = Vector(rig["pelvis_pos"][t])
+        pelvis.location = Vector(rig["pelvis_pos"][t] * cm)
         pelvis.keyframe_insert("location", frame=t)
 
     bpy.ops.export_scene.fbx(filepath=path, use_selection=False, object_types={"ARMATURE", "MESH"},
                              add_leaf_bones=False, bake_anim=True, bake_anim_use_all_actions=False,
                              bake_anim_use_nla_strips=False, bake_anim_simplify_factor=0.0,
-                             axis_forward="-Y", axis_up="Z")
+                             axis_forward="-Y", axis_up="Z", apply_unit_scale=True,
+                             apply_scale_options="FBX_SCALE_NONE")
 
 
 def main():
