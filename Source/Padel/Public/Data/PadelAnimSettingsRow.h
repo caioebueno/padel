@@ -180,6 +180,8 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingInertialHalfLifeS = 0.0;
 	/** M2: a new candidate must beat the continuing pose's search cost by this much to switch. */
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSwitchCostMargin = 0.0;
+	/** M3: a playing clip whose root speed is this far (m/s) from the simulation's searches soon and switches without the margin; 0 off. */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSpeedMismatchMps = 0.0;
 	/**
 	 * With mocap legs (motion matching on), the procedural leg layers that fight the clips fade
 	 * with speed: the stance's crouch and feet widen, the pelvis drops (plant, bounce). Fully on
