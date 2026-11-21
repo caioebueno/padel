@@ -152,8 +152,8 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingWalkDatabases;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingSprintDatabases;
 	/**
-	 * Padel footwork (docs/decisions/0012-video-footwork.md): searched only in the ready stance
-	 * and the split step (a rally, knees bent), still or up to the walk band's top. Between points
+	 * Padel footwork (docs/decisions/0012-video-footwork.md): searched only in a point (any
+	 * locomotion state but the between-points Idle), still or up to the walk band's top. Between points
 	 * the relaxed sample clips play alone.
 	 */
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingReadyDatabases;

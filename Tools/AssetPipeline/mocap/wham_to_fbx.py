@@ -454,7 +454,7 @@ def main():
                 quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]), mirrored=mirrored)
                 for i, (s, e, label) in enumerate(find_moves(rig, OUT_FPS)):
                     name = f"{track_name}_{label}_{i:02d}"
-                    write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e), J_rest, verts, smpl)
+                    write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e, J_rest[0]), J_rest, verts, smpl)
                     move = dict(quality, frames=int(e - s), from_frame=int(s), label=label)
                     with open(os.path.join(a.out, name + ".json"), "w") as f:
                         json.dump({"quality": move, "contacts": {f_: c[s:e] for f_, c in contacts.items()}}, f)

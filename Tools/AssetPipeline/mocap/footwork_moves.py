@@ -20,7 +20,7 @@ SHUFFLE_MIN_MPS = 0.7
 SHUFFLE_SIDE_RATIO = 1.2
 SHUFFLE_MIN_S = 0.4
 SHUFFLE_GAP_S = 0.15
-MOVE_PAD_S = 0.4
+MOVE_PAD_S = 0.3   # = the database's exclusion, so the near-still lead-in is never picked
 MOVE_MAX_S = 3.0
 
 
@@ -82,5 +82,24 @@ def find_moves(rig, fps):
     return moves
 
 
-def slice_rig(rig, s, e):
-    return {k: v[s:e] for k, v in rig.items()}
+def slice_rig(rig, s, e, pelvis_rest):
+    """Frames s..e of a rig, with the root holding one heading (the move's mean).
+
+    In the game the body stays square to the net through a shuffle and the search's query keeps
+    one facing; a root that turned with the hips (about 70 degrees over a shuffle) made every
+    footwork pose lose the trajectory cost by about ten times. The pelvis keeps its own turn.
+    pelvis_rest: the pelvis joint's rest position (J_rest[0]).
+    """
+    from scipy.spatial.transform import Rotation as R
+    out = {k: v[s:e].copy() for k, v in rig.items()}
+    old = R.from_quat(out["root_q"])
+    yaw = old.as_rotvec()[:, 1]
+    mean = np.arctan2(np.sin(yaw).mean(), np.cos(yaw).mean())
+    new = R.from_euler("y", np.full(len(yaw), mean)[:, None])
+    turn = new.inv() * old
+    q = out["q"].copy()
+    q[:, 0] = (turn * R.from_quat(q[:, 0])).as_quat()
+    out["q"] = q
+    out["pelvis_pos"] = turn.apply(out["pelvis_pos"] + pelvis_rest) - pelvis_rest
+    out["root_q"] = new.as_quat()
+    return out

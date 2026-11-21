@@ -132,6 +132,8 @@ void FAnimNode_PadelPlayerPose::PreUpdate(const UAnimInstance* InAnimInstance)
 	SpeedMps = Anim->Speed / 100.0;
 	DirectionDeg = Anim->Direction;
 	bReadyStance = Anim->Locomotion == EPadelLocomotionState::Ready || Anim->Locomotion == EPadelLocomotionState::SplitStep;
+	// A shuffle in a point is Run, not Ready: the footwork follows the point, not the stance.
+	bInRally = Anim->Locomotion != EPadelLocomotionState::Idle;
 	CrouchAlpha = Anim->CrouchAlpha * Anim->StanceKeep();
 	JogStridePlayRate = Anim->StridePlayRate;
 	Swing = Anim->SwingSequence;
@@ -193,7 +195,7 @@ void FAnimNode_PadelPlayerPose::Update_AnyThread(const FAnimationUpdateContext& 
 	const double Dt = Context.GetDeltaTime();
 	UpdateDeltaS = Dt;
 	IdleTime += Dt;
-	Matcher.Update(Context, Trajectory, SpeedMps * 100.0, bReadyStance);
+	Matcher.Update(Context, Trajectory, SpeedMps * 100.0, bInRally);
 	if (SpeedMps <= 0.0)
 	{
 		return;

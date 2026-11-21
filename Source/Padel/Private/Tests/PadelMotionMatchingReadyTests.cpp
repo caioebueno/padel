@@ -49,7 +49,8 @@ bool FPadelMotionMatchingReadyTest::RunTest(const FString& Parameters)
 		ByPhase += FString::Printf(TEXT("%s %d; "), *Phase.Key, Phase.Value);
 	}
 	AddInfo(FString::Printf(TEXT("ready: footwork picked in %d of %d frames (%s)"), Total, Ready.PickPerFrame.Num(), *ByPhase));
-	TestTrue(TEXT("The ready stance picks the footwork"), Total > 0);
+	// The side shuffle is the footwork's job (the sample has no strafing): it has to play there.
+	TestTrue(FString::Printf(TEXT("The side shuffle picks the footwork (%d frames)"), FootworkFrames.FindRef(TEXT("shuffle"))), FootworkFrames.FindRef(TEXT("shuffle")) > 0);
 
 	// The same gates as the sample's clips alone (Padel.Animation.MotionMatching, clips run).
 	const FBodyMetrics& P = Ready.Placeholder;

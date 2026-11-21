@@ -60,7 +60,7 @@ enum class EPadelMotionMatchingRole : uint8
 	Stop,
 	/** Turns in place: searched while still and turning. */
 	TurnInPlace,
-	/** Padel footwork (0012): searched in the ready stance and split step, still or in the walk band. */
+	/** Padel footwork (0012): searched in a point (not between points), still or in the walk band. */
 	Ready,
 };
 
@@ -102,10 +102,10 @@ struct PADEL_API FPadelMotionMatcher
 	/**
 	 * Advances the clips playing and searches. Trajectory is in the skeletal mesh component's
 	 * world space (cm), the sample at time 0 the current one. SpeedUnits is the simulation's
-	 * ground speed (cm/s), for the play rate. bReadyStance: the player is in the ready stance or
-	 * a split step, where the Ready databases join the search.
+	 * ground speed (cm/s), for the play rate. bInRally: the player is in a point (any locomotion
+	 * state but the between-points Idle), where the Ready databases join the search.
 	 */
-	void Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bReadyStance = false);
+	void Update(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bInRally = false);
 
 	/** Writes the locomotion pose into Output (the pick, inertialized or crossfaded); false (Output untouched) with nothing picked yet. */
 	bool Evaluate(FPoseContext& Output);
@@ -139,7 +139,7 @@ private:
 		bool bLoop = false;
 	};
 
-	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bReadyStance);
+	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bInRally);
 	double MatchedPlayRate(const FPlaying& Playing, double SpeedUnits) const;
 	void CacheHistoryBones();
 	FVector MeasureRootVelocity(const FPlaying& Playing) const;
