@@ -29,7 +29,7 @@ Three steps, all scripts in the repo:
    - builds `IK_PadelFootwork` (auto chains, which match `IK_PadelPlaceholder`'s one to one because the bone names match, and both are T-poses) and `RTG_Footwork_To_Placeholder`
    - retargets the clips onto the placeholder skeleton (root motion on, root locked, like the sample's clips)
    - builds `PSD_Padel_Footwork` on the walk loops' schema and settings, with the cost overrides in `Tools/AssetPipeline/config/footwork.json` (a little dearer to jump into, cheaper to stay in, clip ends never picked)
-   - rebuilds the normalization set and the indexes over every database
+   - scores it with the sample's normalization set, which stays over the sample's databases only (folding the footwork into it shifted the sample's own picks), and rebuilds every index
 
 ## The data contract
 

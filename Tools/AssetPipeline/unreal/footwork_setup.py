@@ -16,8 +16,8 @@ From SourceArt/_incoming/Footwork/*.fbx (git-ignored: the clips carry the SMPL b
   /Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork
                                                the database, on the Walk Loops schema and settings
 
-and rebuilds the normalization set over every database, so footwork and Game Animation Sample
-costs compare. Data/Animation.json lists the database in MotionMatchingExtraDatabases (searched
+and scores it with the sample's normalization set (PSN_Stand, kept over the sample's databases
+only), so footwork and Game Animation Sample costs compare without moving the sample's own picks. Data/Animation.json lists the database in MotionMatchingExtraDatabases (searched
 when built, skipped when not) and in MotionMatchingWalkDatabases (the walk band, where padel
 footwork lives: under MotionMatchingRunFromMps).
 
@@ -237,13 +237,18 @@ def build_database(settings: dict, clips: list[unreal.AnimSequence]) -> None:
         return
     ASSETS.save_asset(DATABASE, only_if_is_dirty=False)
 
-    # One normalization over everything searched together, then every index again.
-    paths = [*settings["MotionMatchingDatabases"], DATABASE]
+    # The sample's normalization stays over the sample's databases only, as animation_setup.py
+    # builds it, and the footwork is scored with it. Folding the footwork into it rescales every
+    # sample feature and shifts the picks between the sample's own clips, even where footwork
+    # never wins: Padel.Animation.MotionMatching then failed with no footwork pick at all.
+    # Rebuilding it here also undoes a set an earlier run of this script built with footwork.
+    main_paths = list(settings["MotionMatchingDatabases"])
+    paths = [*main_paths, DATABASE]
     databases = [unreal.load_asset(p) for p in paths]
     if not all(isinstance(d, unreal.PoseSearchDatabase) for d in databases):
         fail("a database in MotionMatchingDatabases isn't built: run animation_setup.py first")
         return
-    error = builder.build_normalization_set(normalization, databases)
+    error = builder.build_normalization_set(normalization, databases[:len(main_paths)])
     if error:
         fail(f"{NORMALIZATION}: {error}")
         return
