@@ -45,6 +45,8 @@ struct FPadelMotionMatchingTuning
 	double RunFromUnits = 250.0;
 	double SprintFromUnits = 500.0;
 	double GaitOverlap = 0.2;
+	/** M3: the playing clip's root speed this far (cm/s) from the simulation's: search soon and switch without SwitchCostMargin (MotionMatchingSpeedMismatchMps; 0 off). */
+	double SpeedMismatchUnits = 0.0;
 };
 
 /** Which databases a search may use (the Game Animation Sample picks them with a chooser table; this is it in C++). */
@@ -136,7 +138,7 @@ private:
 		bool bLoop = false;
 	};
 
-	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut);
+	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bForceSwitch);
 	double MatchedPlayRate(const FPlaying& Playing, double SpeedUnits) const;
 	void CacheHistoryBones();
 	FVector MeasureRootVelocity(const FPlaying& Playing) const;

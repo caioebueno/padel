@@ -206,6 +206,7 @@
 		"MotionMatchingHistorySamplingS": 0.04,
 		"MotionMatchingInertialHalfLifeS": 0.25,
 		"MotionMatchingSwitchCostMargin": 0.05,
+		"MotionMatchingSpeedMismatchMps": 0.75,
 		"MocapLegFadeFromMps": 0.3,
 		"MocapLegFadeToMps": 1.5,
 		"MocapLegKeep": 0.0,

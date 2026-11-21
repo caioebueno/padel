@@ -26,6 +26,11 @@ Padel::Shots::FMovementTuning FPadelMovementRow::ToCore() const
 	Out.WallMarginM = WallMarginM;
 	Out.NetMarginM = NetMarginM;
 	Out.AccelFalloff = AccelFalloff;
+	Out.AccelRiseS = AccelRiseS;
+	Out.PivotMinDeg = PivotMinDeg;
+	Out.PivotSpeedMps = PivotSpeedMps;
+	Out.PivotPlantAt1S = PivotPlantAt1S;
+	Out.PivotPlantAt99S = PivotPlantAt99S;
 	Out.ShuffleSpeedFrac = ShuffleSpeedFrac;
 	Out.BackpedalSpeedFrac = BackpedalSpeedFrac;
 	Out.TurnToRunAt1S = TurnToRunAt1S;

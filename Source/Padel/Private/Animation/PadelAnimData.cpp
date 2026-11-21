@@ -103,9 +103,10 @@ FPadelAnimData FPadelAnimData::Load()
 			M.GaitOverlap = Row->MotionMatchingGaitOverlap;
 			M.InertialHalfLifeS = Row->MotionMatchingInertialHalfLifeS;
 			M.SwitchCostMargin = Row->MotionMatchingSwitchCostMargin;
-			if (Row->MotionMatchingInertialHalfLifeS < 0.0 || Row->MotionMatchingSwitchCostMargin < 0.0)
+			M.SpeedMismatchUnits = Row->MotionMatchingSpeedMismatchMps * Padel::MetresToWorld(FVector(1.0, 0.0, 0.0)).X;
+			if (Row->MotionMatchingInertialHalfLifeS < 0.0 || Row->MotionMatchingSwitchCostMargin < 0.0 || Row->MotionMatchingSpeedMismatchMps < 0.0)
 			{
-				Out.Errors.Add(TEXT("Animation.json: MotionMatchingInertialHalfLifeS and MotionMatchingSwitchCostMargin must be 0 or more"));
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingInertialHalfLifeS, MotionMatchingSwitchCostMargin and MotionMatchingSpeedMismatchMps must be 0 or more"));
 			}
 			if (M.RunFromUnits <= 0.0 || M.SprintFromUnits <= M.RunFromUnits || M.GaitOverlap < 0.0 || M.GaitOverlap >= 1.0)
 			{

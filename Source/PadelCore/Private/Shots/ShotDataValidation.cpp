@@ -127,6 +127,15 @@ namespace Padel::Shots
 		Positive(E, "SplitFirstStepAt99", SplitFirstStepAt99);
 		Positive(E, "HomeArriveM", HomeArriveM);
 		UnitRange(E, "AccelFalloff", AccelFalloff);
+		NonNegative(E, "AccelRiseS", AccelRiseS);
+		NonNegative(E, "PivotMinDeg", PivotMinDeg);
+		if (PivotMinDeg > 180.0)
+		{
+			E.push_back("PivotMinDeg must be at most 180");
+		}
+		NonNegative(E, "PivotSpeedMps", PivotSpeedMps);
+		NonNegative(E, "PivotPlantAt1S", PivotPlantAt1S);
+		NonNegative(E, "PivotPlantAt99S", PivotPlantAt99S);
 		Fraction(E, "ShuffleSpeedFrac", ShuffleSpeedFrac);
 		Fraction(E, "BackpedalSpeedFrac", BackpedalSpeedFrac);
 		NonNegative(E, "TurnToRunAt1S", TurnToRunAt1S);

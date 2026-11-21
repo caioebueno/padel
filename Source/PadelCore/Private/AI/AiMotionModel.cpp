@@ -41,12 +41,9 @@ namespace
 	}
 
 	// One step of FPlayerMotion's velocity update toward Desired (court axes, ground only).
-	void Push(FAiVec& Velocity, const FAiVec& Desired, double Accel)
+	void Push(FAiVec& Velocity, Shots::AccelRamp::FState& Ramp, const FAiVec& Desired, double Accel, const FAiMotionParams& P, double JerkMax)
 	{
-		const FAiVec Delta = Desired - Velocity;
-		const double Length = Delta.Length2D();
-		const double MaxChange = Accel * StepS;
-		Velocity = Length <= MaxChange ? Desired : Velocity + Delta * (MaxChange / Length);
+		Shots::AccelRamp::Step(Velocity.X, Velocity.Y, Ramp, Desired.X, Desired.Y, Accel, P.AccelRiseS, JerkMax, StepS);
 		Velocity.Z = 0.0;
 	}
 }
@@ -64,6 +61,10 @@ FAiMotionParams ParamsOf(const Shots::FPlayerMotion& Motion, const Shots::FMovem
 	P.TurnTimeS = Motion.TurnTimeS();
 	P.CrossoverMinDistM = Tuning.CrossoverMinDistM;
 	P.TurnBackMinDistM = Tuning.TurnBackMinDistM;
+	P.AccelRiseS = Tuning.AccelRiseS;
+	P.Pivot = Motion.PivotParams();
+	P.AppliedAccelX = Motion.GetAppliedAccel().X;
+	P.AppliedAccelY = Motion.GetAppliedAccel().Y;
 	return P;
 }
 
@@ -74,8 +75,26 @@ double StopSpeedFrac(const FAiMotionParams& P, double DistanceM)
 	{
 		return 1.0;
 	}
+	// With the brake building over AccelRiseS the stop is longer (BIOMECHANICS_MOVEMENT 5.7).
 	const double Decel = Shots::MotionCurve::InitialAccel(P.TopSpeedMps, P.TimeToTopS) * P.BrakeMult;
-	return std::sqrt(2.0 * Decel * (DistanceM > 0.0 ? DistanceM : 0.0)) / P.TopSpeedMps;
+	return Shots::AccelRamp::StopSpeed(DistanceM, Decel, P.AccelRiseS) / P.TopSpeedMps;
+}
+
+void LimitToStop(const FAiMotionParams& P, double DistanceM, double& Stick, bool& bSprint)
+{
+	const double StopFrac = StopSpeedFrac(P, DistanceM);
+	if (bSprint && StopFrac > 1.0)
+	{
+		// Between running and sprinting top speed: a lighter stick on the sprint.
+		const double SprintFrac = StopFrac / (1.0 + P.SprintSpeedBonus);
+		Stick = SprintFrac < Stick ? SprintFrac : Stick;
+		return;
+	}
+	if (StopFrac < Stick)
+	{
+		Stick = StopFrac;
+		bSprint = false;
+	}
 }
 
 double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Q)
@@ -87,6 +106,10 @@ double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Q)
 	FAiVec Position = { Q.From.X, Q.From.Y, 0.0 };
 	FAiVec Velocity = { Q.Velocity.X, Q.Velocity.Y, 0.0 };
 	const double BaseAccel = Shots::MotionCurve::InitialAccel(P.TopSpeedMps, P.TimeToTopS);
+	// FPlayerMotion's jerk limit: the strongest push over the rise time.
+	const double JerkMax = P.AccelRiseS > 0.0 ? BaseAccel * (P.BrakeMult > 1.0 ? P.BrakeMult : 1.0) / P.AccelRiseS : 0.0;
+	Shots::AccelRamp::FState Ramp{ P.AppliedAccelX, P.AppliedAccelY };
+	Shots::AccelRamp::FPivot Pivot;
 	EGait Gait = EGait::Square;
 	EHeld TurnDir = EHeld::Forward;
 	double TurnLeft = 0.0;
@@ -95,7 +118,7 @@ double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Q)
 	// The hold: the player stands (brakes) until the first step (A5).
 	while (Time + 1e-9 < Q.StartDelayS)
 	{
-		Push(Velocity, FAiVec{}, BaseAccel * P.BrakeMult);
+		Push(Velocity, Ramp, FAiVec{}, BaseAccel * P.BrakeMult, P, JerkMax);
 		Position += Velocity * StepS;
 		Time += StepS;
 	}
@@ -118,12 +141,7 @@ double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Q)
 		// MoveTo: flat out, but never faster than the player can still stop in.
 		double Stick = 1.0;
 		bool bSprint = Q.bSprint;
-		const double StopFrac = StopSpeedFrac(P, Distance);
-		if (StopFrac < Stick)
-		{
-			Stick = StopFrac;
-			bSprint = false;
-		}
+		LimitToStop(P, Distance, Stick, bSprint);
 		// The stick MoveTo sends and the unit direction FPlayerMotion reads from it, worked
 		// the same way so a move along a gait boundary (45 degrees) is classed the same.
 		const FAiVec2 StickVec = TeamFrame::MoveVector(Q.HalfSign, Delta * (Stick / Distance));
@@ -161,7 +179,11 @@ double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Q)
 
 		const double Top = P.TopSpeedMps * (bSprint ? 1.0 + P.SprintSpeedBonus : 1.0);
 		const double Frac = Gait == EGait::Turned ? 1.0 : SquareFrac(P, Dir);
-		const FAiVec Desired = Delta * (Top * Stick * Frac / Distance);
+		FAiVec Desired = Delta * (Top * Stick * Frac / Distance);
+		if (Pivot.Update(Velocity.X, Velocity.Y, Desired.X, Desired.Y, P.Pivot, StepS))
+		{
+			Desired = FAiVec{};
+		}
 
 		const double DesiredSpeed = Desired.Length2D();
 		const double Speed = Velocity.Length2D();
@@ -180,7 +202,7 @@ double ArrivalTime(const FAiMotionParams& P, const FAiRunQuery& Q)
 				Accel *= SquareFrac(P, Dir);
 			}
 		}
-		Push(Velocity, Desired, Accel);
+		Push(Velocity, Ramp, Desired, Accel, P, JerkMax);
 		Position += Velocity * StepS;
 		Time += StepS;
 	}

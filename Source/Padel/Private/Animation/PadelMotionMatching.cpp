@@ -166,28 +166,26 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 	// The search reads the pose history, which RecordHistory fills after each evaluate.
 	// M2: a clip that doesn't loop, about to run out, searches now and may switch without beating
 	// the continuing pose by the margin: held on its last frame it would freeze and skate.
-	const bool bRunningOut = !Stack.IsEmpty() && !Stack.Last().bLoop
+	bool bRunningOut = !Stack.IsEmpty() && !Stack.Last().bLoop
 		&& Stack.Last().Time >= Stack.Last().Clip->GetPlayLength() - FMath::Max(Tuning.SearchThrottleS, Dt) * Stack.Last().PlayRate;
-	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || SinceSearchS >= Tuning.SearchThrottleS))
+	// M3 (movement limits): a clip whose own root speed is far from the simulation's no longer
+	// fits (a stop still playing as the player sets off again, or a run as the pivot brakes): its
+	// feet skate however good its pose cost. Search soon, and switch without the margin.
+	const bool bMismatched = !Stack.IsEmpty() && Tuning.SpeedMismatchUnits > 0.0
+		&& FMath::Abs(RootVelocity.Size2D() - SpeedUnits) > Tuning.SpeedMismatchUnits
+		&& SinceSearchS >= 0.5 * Tuning.SearchThrottleS;
+	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || bMismatched || SinceSearchS >= Tuning.SearchThrottleS))
 	{
 		SinceSearchS = 0.0;
-		Search(Context, Trajectory, SpeedUnits, bRunningOut);
+		Search(Context, Trajectory, SpeedUnits, bRunningOut || bMismatched, bMismatched);
 	}
 }
 
-void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut)
+void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bForceSwitch)
 {
 	using namespace UE::PoseSearch;
 	History->SetTrajectory(Trajectory);
 
-	FPoseSearchContinuingProperties Continuing;
-	if (!Stack.IsEmpty())
-	{
-		const FPlaying& Newest = Stack.Last();
-		Continuing.PlayingAsset = Newest.Clip;
-		Continuing.PlayingAssetAccumulatedTime = static_cast<float>(Newest.Time);
-		Continuing.PlayingAssetDatabase = Newest.Database;
-	}
 	// The chooser: still (slow and not speeding up) searches the idles, the stops after moving and
 	// the turns in place when the body has turned; otherwise the starts, loops and pivots. All at once, the
 	// stops' and turns' cost biases (they favour carrying on) win where they don't belong.
@@ -219,6 +217,23 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 		{
 			Assets.Add(Databases[Index]);
 		}
+	}
+	// M3: the chooser has moved on from the playing clip's database (a stop as the player sets
+	// off): it no longer belongs, so the search needn't beat carrying it on.
+	if (!Stack.IsEmpty() && !Assets.Contains(Stack.Last().Database))
+	{
+		bRunningOut = true;
+	}
+	// The playing clip is a candidate to carry on, unless it no longer fits (its clip speed far
+	// from the player's, or its database out of the chooser): then it isn't offered at all, since
+	// a stop's continuing-cost bias would otherwise keep a standing pose under a running player.
+	FPoseSearchContinuingProperties Continuing;
+	if (!Stack.IsEmpty() && !bForceSwitch && Assets.Contains(Stack.Last().Database))
+	{
+		const FPlaying& Newest = Stack.Last();
+		Continuing.PlayingAsset = Newest.Clip;
+		Continuing.PlayingAssetAccumulatedTime = static_cast<float>(Newest.Time);
+		Continuing.PlayingAssetDatabase = Newest.Database;
 	}
 	const UObject* AnimContext = Context.AnimInstanceProxy->GetAnimInstanceObject();
 	const FRole SearchRole = DefaultRole;

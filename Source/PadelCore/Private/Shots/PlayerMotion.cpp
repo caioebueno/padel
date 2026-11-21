@@ -1,7 +1,7 @@
 #include "Shots/PlayerMotion.h"
 
-#include "CourtSpec.h"
 #include "PadelMath.h"
+#include "Shots/AccelRamp.h"
 #include "Shots/MotionCurve.h"
 
 #include <algorithm>
@@ -39,6 +39,24 @@ namespace Padel::Shots
 	{
 		// GDD 6.1: Agility sets how quickly the player turns to run.
 		return Lerp(Tuning->TurnToRunAt1S, Tuning->TurnToRunAt99S, Ratings->Unit(ERating::Agility));
+	}
+
+	double FPlayerMotion::PivotPlantS() const
+	{
+		return Lerp(Tuning->PivotPlantAt1S, Tuning->PivotPlantAt99S, Ratings->Unit(ERating::Agility));
+	}
+
+	AccelRamp::FPivotParams FPlayerMotion::PivotParams() const
+	{
+		AccelRamp::FPivotParams P;
+		if (Tuning->PivotMinDeg > 0.0)
+		{
+			P.CosMin = Math::Cos(Tuning->PivotMinDeg * Math::Pi / 180.0);
+		}
+		P.StartMps = Tuning->SplitMaxSpeedMps;
+		P.PlantMps = Tuning->PivotSpeedMps;
+		P.PlantS = PivotPlantS();
+		return P;
 	}
 
 	double FPlayerMotion::SquareSpeedFrac(const FVec2& UnitDir) const
@@ -146,7 +164,8 @@ namespace Padel::Shots
 		{
 			const double Frac = SquareSpeedFrac(UnitDir);
 			const double SquareTop = Top * Frac;
-			bLong = HeldS >= MotionCurve::TimeToCover(MinDist, SquareTop, TimeToTopSpeed() * Frac, Tuning->AccelFalloff);
+			// The push builds over AccelRiseS, which costs about half of it (AccelRamp).
+			bLong = HeldS >= MotionCurve::TimeToCover(MinDist, SquareTop, TimeToTopSpeed() * Frac, Tuning->AccelFalloff) + 0.5 * Tuning->AccelRiseS;
 		}
 		if (bLong)
 		{
@@ -205,12 +224,28 @@ namespace Padel::Shots
 			}
 		}
 
+		// BIOMECHANICS_MOVEMENT 2.6, 5.7: a reversal brakes, plants, then pushes off.
+		if (Pivot.Update(Velocity.X, Velocity.Y, Desired.X, Desired.Y, PivotParams(), Dt))
+		{
+			Desired = FVec3{};
+		}
+
 		const double BaseAccel = MotionCurve::InitialAccel(TopSpeed(false), TimeToTopSpeed());
 		// Plan the braking with the push the player has at the end of their stamina: a hard
 		// effort or a long rally can take a little away mid-stop, and the plan must still
 		// hold (GDD 6.3 fatigue).
 		const double MarginBrake = BaseAccel * Tuning->BrakeMult * (1.0 - Tuning->FatigueTopSpeedLossAtZero) / FatigueFactor();
-		LimitAtMargins(Desired, MarginBrake, Dt);
+		// FPlayerMotion's jerk limit (BIOMECHANICS_MOVEMENT 5.7): the strongest push (the
+		// brake) over the rise time.
+		const double JerkMax = Tuning->AccelRiseS > 0.0 ? BaseAccel * std::max(1.0, Tuning->BrakeMult) / Tuning->AccelRiseS : 0.0;
+		if (JerkMax > 0.0)
+		{
+			RampMarginBraking(Desired, MarginBrake, JerkMax, Dt);
+		}
+		else
+		{
+			LimitAtMargins(Desired, MarginBrake, Dt);
+		}
 
 		double Accel = BaseAccel;
 		if (SplitBoostLeftS > 0.0)
@@ -252,7 +287,7 @@ namespace Padel::Shots
 			// braking, the braking falls behind the plan, and the player hits the margin.
 			bool bBrakeX = false;
 			bool bBrakeY = false;
-			MarginBraking(MarginBrake, Dt, bBrakeX, bBrakeY);
+			MarginBraking(MarginBrake, JerkMax, Dt, bBrakeX, bBrakeY);
 			bBrakeX = bBrakeX && Delta.X * Velocity.X < 0.0;
 			bBrakeY = bBrakeY && Delta.Y * Velocity.Y < 0.0;
 			if (bBrakeX || bBrakeY)
@@ -280,11 +315,23 @@ namespace Padel::Shots
 				bAllocated = true;
 			}
 		}
-		const double DeltaLength = LengthXY(Delta);
 		// Braking that this tick can't finish is a deceleration; a small trim of speed (the
-		// stick wobbling between gaits' top speeds) is reached at once and isn't one.
-		const bool bDecelerating = bBraking && Speed - DesiredSpeed > MaxChange;
-		Velocity = bAllocated || DeltaLength <= MaxChange ? Desired : Add(Velocity, Scale(Delta, MaxChange / DeltaLength));
+		// stick wobbling between gaits' top speeds) isn't one. With AccelRiseS a trim takes a
+		// few ticks to settle, so a trim is anything the brake would shed while it builds.
+		const bool bDecelerating = bBraking && Speed - DesiredSpeed > std::max(MaxChange, Accel * Tuning->AccelRiseS);
+		if (bAllocated)
+		{
+			// The margin plan's braking is a safety net and takes effect at once; the ramp
+			// carries on from the acceleration it applied.
+			Ramp.AX = (Desired.X - Velocity.X) / Dt;
+			Ramp.AY = (Desired.Y - Velocity.Y) / Dt;
+			Velocity = Desired;
+		}
+		else
+		{
+			// BIOMECHANICS_MOVEMENT 5.7: the push and the brake build over AccelRiseS.
+			AccelRamp::Step(Velocity.X, Velocity.Y, Ramp, Desired.X, Desired.Y, Accel, Tuning->AccelRiseS, JerkMax, Dt);
+		}
 		Velocity.Z = 0.0;
 		Position = Add(Position, Scale(Velocity, Dt));
 		const int EdgeStopsBefore = EdgeStopCount;
@@ -320,70 +367,6 @@ namespace Padel::Shots
 		SplitHopLeftS = SplitHopLeftS > Dt ? SplitHopLeftS - Dt : 0.0;
 	}
 
-	void FPlayerMotion::LimitAtMargins(FVec3& Desired, double Brake, double Dt) const
-	{
-		// GDD 6.3 (BIOMECHANICS_MOVEMENT 2.6): a player arriving at the glass or the net
-		// slows over the last steps instead of stopping dead. Toward a margin, ask for no
-		// more speed than the player can still brake away inside the room left. The limit is
-		// the stepped one, not sqrt(2 a d): speed falls by Brake * Dt a tick and each tick
-		// moves the player its new speed * Dt, so k ticks of braking from k * Brake * Dt
-		// cover Brake * Dt^2 * k (k + 1) / 2.
-		if (Brake <= 0.0 || Dt <= 0.0)
-		{
-			return;
-		}
-		double Lo = 0.0;
-		double Hi = 0.0;
-		double Side = 0.0;
-		OwnHalfLimits(Lo, Hi, Side);
-		const double Step = Brake * Dt;
-		const auto Limit = [Step, Dt](double& Component, double Pos, double Min, double Max)
-		{
-			if (Component > 0.0)
-			{
-				Component = std::min(Component, MarginSpeed(Max - Pos, Step, Dt));
-			}
-			else if (Component < 0.0)
-			{
-				Component = std::max(Component, -MarginSpeed(Pos - Min, Step, Dt));
-			}
-		};
-		Limit(Desired.X, Position.X, Lo, Hi);
-		Limit(Desired.Y, Position.Y, -Side, Side);
-	}
-
-	double FPlayerMotion::MarginSpeed(double Room, double Step, double Dt)
-	{
-		// Whole ticks, so each one sheds exactly Step = Brake * Dt; inside the last tick, just
-		// the room that is left.
-		const double Ticks = std::floor(0.5 * (std::sqrt(1.0 + 8.0 * std::max(0.0, Room) / (Step * Dt)) - 1.0));
-		return Ticks >= 1.0 ? Ticks * Step : std::max(0.0, Room) / Dt;
-	}
-
-	void FPlayerMotion::MarginBraking(double Brake, double Dt, bool& bX, bool& bY) const
-	{
-		// An axis on which the player is moving toward a margin and is at (or within a tick
-		// of) the most speed they can still brake away there: its braking has to happen now.
-		bX = false;
-		bY = false;
-		if (Brake <= 0.0 || Dt <= 0.0)
-		{
-			return;
-		}
-		double Lo = 0.0;
-		double Hi = 0.0;
-		double Side = 0.0;
-		OwnHalfLimits(Lo, Hi, Side);
-		const double Step = Brake * Dt;
-		const auto Binding = [Step, Dt](double V, double Pos, double Min, double Max)
-		{
-			const double Room = V > 0.0 ? Max - Pos : Pos - Min;
-			return V != 0.0 && std::abs(V) + Step >= MarginSpeed(Room, Step, Dt);
-		};
-		bX = Binding(Velocity.X, Position.X, Lo, Hi);
-		bY = Binding(Velocity.Y, Position.Y, -Side, Side);
-	}
-
 	bool FPlayerMotion::NotifyOpponentContact()
 	{
 		// GDD 6.3: stopped or slower than 1 m/s inside 150 ms before the contact.
@@ -409,6 +392,10 @@ namespace Padel::Shots
 	{
 		Position = Vec(InPosition.X, InPosition.Y, 0.0);
 		Velocity = FVec3{};
+		Ramp = AccelRamp::FState{};
+		Pivot = AccelRamp::FPivot{};
+		bMarginBrakeX = false;
+		bMarginBrakeY = false;
 		ClampToOwnHalf();
 		HardEfforts.Reset();
 	}
@@ -462,40 +449,5 @@ namespace Padel::Shots
 			}
 		}
 		Stamina = Clamp(Stamina, 0.0, 1.0);
-	}
-
-	void FPlayerMotion::OwnHalfLimits(double& Lo, double& Hi, double& Side) const
-	{
-		const double Near = Tuning->NetMarginM;
-		const double Far = Court::HalfLength - Tuning->WallMarginM;
-		Side = Court::HalfWidth - Tuning->WallMarginM;
-		Lo = TeamSign > 0.0 ? Near : -Far;
-		Hi = TeamSign > 0.0 ? Far : -Near;
-	}
-
-	void FPlayerMotion::ClampToOwnHalf()
-	{
-		// Players stay on their own half; crossing the net is a referee matter (GDD 3.3).
-		// LimitAtMargins brakes the player into these limits; this is the hard stop behind it.
-		double Lo = 0.0;
-		double Hi = 0.0;
-		double Side = 0.0;
-		OwnHalfLimits(Lo, Hi, Side);
-		const FVec3 Before = Velocity;
-		if (Position.X < Lo || Position.X > Hi)
-		{
-			Position.X = Clamp(Position.X, Lo, Hi);
-			Velocity.X = 0.0;
-		}
-		if (Position.Y < -Side || Position.Y > Side)
-		{
-			Position.Y = Clamp(Position.Y, -Side, Side);
-			Velocity.Y = 0.0;
-		}
-		// GDD 6.3 (BIOMECHANICS_MOVEMENT 2.6): a dead stop is speed the clamp throws away.
-		// Arriving at the margin slower than EdgeStopToleranceMps is the braking curve's
-		// planned arrival plus a rounding hair, not a stop.
-		const double Lost = std::max(std::abs(Before.X - Velocity.X), std::abs(Before.Y - Velocity.Y));
-		EdgeStopCount += Lost > Tuning->EdgeStopToleranceMps ? 1 : 0;
 	}
 }

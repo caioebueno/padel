@@ -91,14 +91,15 @@ namespace
 
 	constexpr int PointsToPlay = 12;
 	constexpr std::uint64_t Seed = 20261116;
-	// Re-recorded for M2b (margin braking comes first, with a per-axis budget; gait
-	// hysteresis; a deceleration only when braking takes more than a tick) on top of A3.
-	// Recorded on Linux/GCC 13; CI checks it on the Mac. Before that: A3 (0x906dfa9c2061f17d),
+	// Re-recorded for the human movement limits (BIOMECHANICS_MOVEMENT 5.7: the push and
+	// brake build over AccelRiseS, pivots plant, margin braking plans the build-up, and the
+	// AI's stop cap holds from sprint speed). Recorded on Linux/GCC 13; CI checks it on the
+	// Mac. Before that: M2b (0x8f7ac5a587e60f1f), A3 (0x906dfa9c2061f17d),
 	// M3 (0xb06e32061a2d3c2e), A5 (0xe6cf73885bb67a8e), A4 (0x884cefa586f46942), S4
 	// (0x18e0f604650fef19), M2 (0x059a2ec46edf1df1), #45 (0x93015cd4b465df38), #43
 	// (0x6e694e677fffa7a2), and #35 with #44 (0x11dc4f0919a9c309).
 	// See the comment at the top.
-	constexpr std::uint64_t ExpectedChecksum = 0x8f7ac5a587e60f1fULL;
+	constexpr std::uint64_t ExpectedChecksum = 0x4d2b5722e7874b48ULL;
 }
 
 TEST_CASE("QA.Determinism: a seeded AI match gives the same checksum on every platform (TP P-12)")

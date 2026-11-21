@@ -39,12 +39,7 @@ namespace
 			}
 			double Speed = 1.0;
 			bool bSprint = true;
-			const double StopFrac = AiMotionModel::StopSpeedFrac(P, Distance);
-			if (StopFrac < Speed)
-			{
-				Speed = StopFrac;
-				bSprint = false;
-			}
+			AiMotionModel::LimitToStop(P, Distance, Speed, bSprint);
 			const FAiVec2 Stick = TeamFrame::MoveVector(HalfSign, Delta * (Speed / Distance));
 			Motion.Step({ Stick.X, Stick.Y }, bSprint, Dt, 1.0, Distance);
 		}
