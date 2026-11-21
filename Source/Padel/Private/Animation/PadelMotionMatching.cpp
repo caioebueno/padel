@@ -213,9 +213,6 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 			: Role == EPadelMotionMatchingRole::Moving ? !bStill && Gait >= Tuning.RunFromUnits * Under && Gait < Tuning.SprintFromUnits * Over
 			: Role == EPadelMotionMatchingRole::MovingSprint ? !bStill && Gait >= Tuning.SprintFromUnits * Under
 			: Role == EPadelMotionMatchingRole::Still ? bStill
-			// Footwork: most of it is under 1 m/s (adjustments, split steps), where the chooser
-			// counts the body as still, and the rest is walk-band shuffling.
-			: Role == EPadelMotionMatchingRole::StillOrWalk ? bStill || Gait < Tuning.RunFromUnits * Over
 			: Role == EPadelMotionMatchingRole::Stop ? bStill && bStopping
 			: bStill && bTurning;
 		if (Databases[Index] && bUse)

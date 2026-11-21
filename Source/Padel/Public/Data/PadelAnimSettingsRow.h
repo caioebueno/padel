@@ -139,8 +139,7 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	 * speeding up, the search uses MotionMatchingStillDatabases (idles), the stop ones when the
 	 * trajectory's past travelled MotionMatchingStopAfterM, and the turn-in-place ones once the
 	 * body has turned MotionMatchingTurnInPlaceDeg over it; otherwise every other database
-	 * (starts, loops, pivots). A database in both the still and the walk lists (the video
-	 * footwork, 0012) is searched while still and in the walk band.
+	 * (starts, loops, pivots).
 	 */
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingStillDatabases;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingStopDatabases;

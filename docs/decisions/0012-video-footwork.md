@@ -33,7 +33,7 @@ Three steps, all scripts in the repo:
 
 ## The data contract
 
-`Data/Animation.json` gains `MotionMatchingExtraDatabases`: databases searched with `MotionMatchingDatabases` when they're built, and skipped with one log line when they aren't. The main list stays all-or-none, because the sample set needs every database. The footwork database is listed there, and in both `MotionMatchingStillDatabases` and `MotionMatchingWalkDatabases`: a database in both lists takes the `StillOrWalk` role and is searched while still and in the walk band. About three quarters of the footwork is under 1 m/s (adjustments, split steps), where the chooser counts the body as still, so in the walk band alone it was never picked.
+`Data/Animation.json` gains `MotionMatchingExtraDatabases`: databases searched with `MotionMatchingDatabases` when they're built, and skipped with one log line when they aren't. The main list stays all-or-none, because the sample set needs every database. The footwork database is listed there, and in `MotionMatchingWalkDatabases` for its role.
 
 A clone without the footwork keeps working exactly as before. `FPadelAnimData` checks that the chooser lists name only main or extra databases, and that no database is in both lists.
 
@@ -43,6 +43,7 @@ A clone without the footwork keeps working exactly as before. `FPadelAnimData` c
 - Bodies about 1.70 m tall. Each player covers 2 to 19 m per rally, at up to about 2.3 m/s.
 - Straight from WHAM, a planted foot slides about 15 cm/s. With the first clips in the search, `Padel.Animation.MotionMatching` failed: 72 to 75 cm/s of planted-foot slide, 2.07 clip switches a second and about 30% more pelvis and spine jerk than its limits. The leg IK plants bring the clips' own slide to about 2 cm/s, and the torso filter cuts pelvis jerk about three times; the cost overrides take on the switching.
 - On a skeleton drawn every 40 frames, stances, shuffles, lunges and reaches read as human. Moments where two players overlap, or where a track starts or ends, can show an odd pose; the 0.3 s trim takes most of them.
+- **In the search, the footwork doesn't win yet.** Searched in the walk band (its role here), it loses to the sample's clips everywhere, including the test's 2 m/s side shuffle (by 0.2-0.5 in cost): only 3% of the footwork is over 2 m/s, and about three quarters is under 1 m/s, where the chooser counts the body as still. Searching it while still as well was tried: it then replaced the idle when standing, and planted-foot slide rose past `Padel.Animation.MotionMatching`'s limits (37 against 25 cm/s), so that was reverted. Until a follow-up gives the footwork its own moments (for example a ready-position or split-step state from gameplay, cut and labelled clips, mirroring), the database is built and searched but changes nothing on screen.
 - What's still missing: sampling exclusions for the bad stretches, mirroring, and the far pair.
 
 ## Rights and licences
