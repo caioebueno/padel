@@ -33,14 +33,14 @@ class FootworkMovesTest(unittest.TestCase):
         self.assertEqual(self.moves.labelled_moves(rig, "crossover-03_1m40s_side"), [(0, 40, "crossover")])
         self.assertEqual(self.moves.labelled_moves({"root_pos": np.zeros((3, 3))}, "lunge-01_x"), [])
 
-    def _track(self, u: float, y: float, frames: int = 100, sway: float = 60.0):
+    def _track(self, u: float, y: float, frames: int = 100, sway: float = 60.0, start: int = 0):
         """A WHAM-like track whose median image position is (u, y) in a 1920x1080 frame."""
         import numpy as np
         f = np.hypot(1920, 1080)
         z = 10.0
         us = u + np.linspace(-sway / 2, sway / 2, frames)
         trans = np.stack([(us - 960) * z / f, np.full(frames, (y - 540) * z / f), np.full(frames, z)], 1)
-        return {"trans": trans, "frame_ids": np.arange(frames)}
+        return {"trans": trans, "frame_ids": np.arange(start, start + frames)}
 
     def test_default_box_matches_the_broadcast_camera(self) -> None:
         res = {0: self._track(600, 800), 1: self._track(1300, 800), 2: self._track(900, 300)}
@@ -50,11 +50,20 @@ class FootworkMovesTest(unittest.TestCase):
         # Training-match cameras: near players at y = 530 and out at x = 1800.
         res = {0: self._track(700, 530), 1: self._track(1800, 700)}
         self.assertEqual(self.wham.pick_near_players(res, 100), {})
-        self.assertEqual(self.wham.pick_near_players(res, 100, net_y=0.4, side_x=0.03), {"L": 0, "R": 1})
+        self.assertEqual(self.wham.pick_near_players(res, 100, net_y=0.42, side_x=0.0), {"L": 0, "R": 1})
+
+    def test_both_near_players_right_of_the_middle_are_both_kept(self) -> None:
+        # Side camera: one partner big at 0.6 W, the other by the glass at 0.9 W.
+        res = {0: self._track(1150, 700), 1: self._track(1750, 600, frames=90), 2: self._track(400, 500, frames=50)}
+        self.assertEqual(self.wham.pick_near_players(res, 100, net_y=0.42, side_x=0.0), {"L": 0, "R": 1})
+
+    def test_one_player_tracked_twice_is_not_a_pair(self) -> None:
+        res = {0: self._track(900, 700, frames=60), 1: self._track(1000, 700, frames=40, start=60)}
+        self.assertEqual(self.wham.pick_near_players(res, 100, net_y=0.42, side_x=0.0), {"L": 0})
 
     def test_still_or_brief_tracks_still_drop_out(self) -> None:
         res = {0: self._track(700, 700, sway=5.0), 1: self._track(1200, 700, frames=20)}
-        self.assertEqual(self.wham.pick_near_players(res, 100, net_y=0.4, side_x=0.03), {})
+        self.assertEqual(self.wham.pick_near_players(res, 100, net_y=0.42, side_x=0.0), {})
 
 
 if __name__ == "__main__":

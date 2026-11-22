@@ -282,33 +282,45 @@ def rolling_min(x, w):
 # --- per track ----------------------------------------------------------------
 # The near court's box in the image, as shares of its height and width. The defaults fit the
 # broadcast camera (0012): the net at about 0.5 H, the side glass at about 0.1 W and 0.9 W.
-# Lower or fisheye cameras (a training match's end and side cameras) put near players just
-# above 0.5 H and out to the glass at the edge: there --net-y 0.4 --side-x 0.03 keeps them.
+# A training match's end and side cameras put near players from about 0.42 H down and out to
+# the glass at the frame's edge, with the far pair at 0.25-0.39 H: there use --net-y 0.42
+# --side-x 0.0.
 NET_Y = 0.5
 SIDE_X = 0.1
+MIN_SHARED = 0.3   # the two near players share at least this much of the shorter track's frames
 
 
 def pick_near_players(res, n_frames, width=1920, height=1080, net_y=NET_Y, side_x=SIDE_X):
-    """Longest on-court track in each half of the near court.
+    """The two longest on-court tracks that are on screen together, named L and R by position.
 
     A track counts when its median position is below net_y * height and between side_x and
     1 - side_x of the width. Umpire, ball kids and the bench are outside that box or barely
-    move, so they drop out.
+    move, so they drop out. Both near players can stand right of the middle (a side camera,
+    one partner by the glass), so the pair isn't one per half; a second track that never
+    shares the screen with the first is the same player tracked twice, so it isn't taken.
     """
     f = np.hypot(width, height)
-    best = {}
+    found = []
     for k, v in res.items():
         t = v["trans"]
         u = f * t[:, 0] / t[:, 2] + width / 2
         y = f * t[:, 1] / t[:, 2] + height / 2
         cover = len(v["frame_ids"]) / n_frames
-        on_court = (np.median(y) > net_y * height) and (side_x * width < np.median(u) < (1 - side_x) * width)
+        on_court = (np.median(y) > net_y * height) and (side_x * width <= np.median(u) <= (1 - side_x) * width)
         if cover < 0.4 or not on_court or np.ptp(u) < 30:
             continue
-        side = "L" if np.median(u) < width / 2 else "R"
-        if side not in best or len(v["frame_ids"]) > len(res[best[side]]["frame_ids"]):
-            best[side] = k
-    return best
+        found.append((len(v["frame_ids"]), k, float(np.median(u)), set(np.asarray(v["frame_ids"]).tolist())))
+    found.sort(key=lambda c: -c[0])
+    pair = found[:1]
+    for c in found[1:]:
+        if len(pair) == 2: break
+        shared = len(c[3] & pair[0][3]) / min(len(c[3]), len(pair[0][3]))
+        if shared >= MIN_SHARED:
+            pair.append(c)
+    pair.sort(key=lambda c: c[2])
+    if len(pair) == 1:
+        return {"L" if pair[0][2] < width / 2 else "R": pair[0][1]}
+    return {side: c[1] for side, c in zip("LR", pair)}
 
 
 def clean_track(v, smpl, src_fps, fps=OUT_FPS):
