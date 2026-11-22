@@ -6,7 +6,14 @@ moving stretches were buried in noise and turning. Motion matching wants short c
 so only the side shuffles are kept (the sample has no strafing, and it is padel's commonest
 footwork), each with a little lead-in and run-out, and every track is mirrored so both
 directions come from both players.
+
+Clips already cut around one labelled move (the reference tables in PadelData, cut with
+cut_clips.py and named `<label>-<n>_<time>_<camera>`) keep the whole clip as that move instead:
+`--moves labelled` in wham_to_fbx.py. The shuffle finder would drop most of them, because a
+lunge, split step or crossover is not a sideways run.
 """
+import re
+
 import numpy as np
 
 # SMPL left/right joint pairs (hips, knees, ankles, feet, collars, shoulders, elbows, wrists, hands).
@@ -80,6 +87,18 @@ def find_moves(rig, fps):
             if b - a >= shortest + pad:
                 moves.append((a, b, label))
     return moves
+
+
+def label_from_clip(clip):
+    """The move label at the front of a cut clip's name: `lunge-01_6m49s_side` -> `lunge`."""
+    m = re.match(r"([a-z][a-z_]*?)-\d+", clip)
+    return m.group(1) if m else "move"
+
+
+def labelled_moves(rig, clip):
+    """[(0, T, label)]: the whole cleaned track as one move, labelled from the clip's name."""
+    T = len(rig["root_pos"])
+    return [(0, T, label_from_clip(clip))] if T >= 4 else []
 
 
 def slice_rig(rig, s, e, pelvis_rest):

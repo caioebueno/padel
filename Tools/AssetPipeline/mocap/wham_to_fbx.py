@@ -33,7 +33,7 @@ from scipy.signal import butter, filtfilt
 from scipy.spatial.transform import Rotation as R, Slerp
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from footwork_moves import find_moves, mirror_track, slice_rig  # noqa: E402
+from footwork_moves import find_moves, labelled_moves, mirror_track, slice_rig  # noqa: E402
 
 SMPL_NAMES = ["Pelvis", "L_Hip", "R_Hip", "Spine1", "L_Knee", "R_Knee", "Spine2",
               "L_Ankle", "R_Ankle", "Spine3", "L_Foot", "R_Foot", "Neck",
@@ -280,27 +280,47 @@ def rolling_min(x, w):
 
 
 # --- per track ----------------------------------------------------------------
-def pick_near_players(res, n_frames, width=1920, height=1080):
-    """Longest on-court track in each half of the near court.
+# The near court's box in the image, as shares of its height and width. The defaults fit the
+# broadcast camera (0012): the net at about 0.5 H, the side glass at about 0.1 W and 0.9 W.
+# A training match's end and side cameras put near players from about 0.42 H down and out to
+# the glass at the frame's edge, with the far pair at 0.25-0.39 H: there use --net-y 0.42
+# --side-x 0.0.
+NET_Y = 0.5
+SIDE_X = 0.1
+MIN_SHARED = 0.3   # the two near players share at least this much of the shorter track's frames
 
-    Main camera, 1080p: the net sits at about y = 0.5 H, the near court's
-    side glass at about x = 0.1 W and 0.9 W. Umpire, ball kids and the
-    bench are outside that box or barely move, so they drop out.
+
+def pick_near_players(res, n_frames, width=1920, height=1080, net_y=NET_Y, side_x=SIDE_X):
+    """The two longest on-court tracks that are on screen together, named L and R by position.
+
+    A track counts when its median position is below net_y * height and between side_x and
+    1 - side_x of the width. Umpire, ball kids and the bench are outside that box or barely
+    move, so they drop out. Both near players can stand right of the middle (a side camera,
+    one partner by the glass), so the pair isn't one per half; a second track that never
+    shares the screen with the first is the same player tracked twice, so it isn't taken.
     """
     f = np.hypot(width, height)
-    best = {}
+    found = []
     for k, v in res.items():
         t = v["trans"]
         u = f * t[:, 0] / t[:, 2] + width / 2
         y = f * t[:, 1] / t[:, 2] + height / 2
         cover = len(v["frame_ids"]) / n_frames
-        on_court = (np.median(y) > 0.5 * height) and (0.1 * width < np.median(u) < 0.9 * width)
+        on_court = (np.median(y) > net_y * height) and (side_x * width <= np.median(u) <= (1 - side_x) * width)
         if cover < 0.4 or not on_court or np.ptp(u) < 30:
             continue
-        side = "L" if np.median(u) < width / 2 else "R"
-        if side not in best or len(v["frame_ids"]) > len(res[best[side]]["frame_ids"]):
-            best[side] = k
-    return best
+        found.append((len(v["frame_ids"]), k, float(np.median(u)), set(np.asarray(v["frame_ids"]).tolist())))
+    found.sort(key=lambda c: -c[0])
+    pair = found[:1]
+    for c in found[1:]:
+        if len(pair) == 2: break
+        shared = len(c[3] & pair[0][3]) / min(len(c[3]), len(pair[0][3]))
+        if shared >= MIN_SHARED:
+            pair.append(c)
+    pair.sort(key=lambda c: c[2])
+    if len(pair) == 1:
+        return {"L" if pair[0][2] < width / 2 else "R": pair[0][1]}
+    return {side: c[1] for side, c in zip("LR", pair)}
 
 
 def clean_track(v, smpl, src_fps, fps=OUT_FPS):
@@ -437,6 +457,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("results"); ap.add_argument("out")
     ap.add_argument("--fps", type=float, default=29.97, help="the source video's frame rate")
+    ap.add_argument("--moves", choices=("shuffles", "labelled"), default="shuffles",
+                    help="shuffles: cut the side shuffles out of whole rallies; labelled: each clip is "
+                         "already one move, named <label>-<n>_..., and is kept whole")
+    ap.add_argument("--net-y", type=float, default=NET_Y, help="near players are below this share of the height")
+    ap.add_argument("--side-x", type=float, default=SIDE_X, help="near players are this share of the width in from each side")
     a = ap.parse_args()
     import joblib
     smpl = load_smpl(os.path.join(a.results, "SMPL_NEUTRAL.pkl"))
@@ -446,13 +471,17 @@ def main():
         clip = os.path.basename(os.path.dirname(pkl))
         res = joblib.load(pkl)
         n = max(int(v["frame_ids"][-1]) + 1 for v in res.values())
-        for side, k in pick_near_players(res, n).items():
+        picked = pick_near_players(res, n, net_y=a.net_y, side_x=a.side_x)
+        if not picked:
+            print(clip, "no near player found", flush=True)
+        for side, k in picked.items():
             for mirrored in (False, True):
                 track = mirror_track(res[k]) if mirrored else res[k]
                 rig, J_rest, verts, contacts, quality, _ = clean_track(track, smpl, a.fps)
                 track_name = f"{clip}_near{side}" + ("_mirror" if mirrored else "")
                 quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]), mirrored=mirrored)
-                for i, (s, e, label) in enumerate(find_moves(rig, OUT_FPS)):
+                moves = labelled_moves(rig, clip) if a.moves == "labelled" else find_moves(rig, OUT_FPS)
+                for i, (s, e, label) in enumerate(moves):
                     name = f"{track_name}_{label}_{i:02d}"
                     write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e, J_rest[0]), J_rest, verts, smpl)
                     move = dict(quality, frames=int(e - s), from_frame=int(s), label=label)
