@@ -33,7 +33,7 @@ from scipy.signal import butter, filtfilt
 from scipy.spatial.transform import Rotation as R, Slerp
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from footwork_moves import find_moves, mirror_track, slice_rig  # noqa: E402
+from footwork_moves import find_moves, labelled_moves, mirror_track, slice_rig  # noqa: E402
 
 SMPL_NAMES = ["Pelvis", "L_Hip", "R_Hip", "Spine1", "L_Knee", "R_Knee", "Spine2",
               "L_Ankle", "R_Ankle", "Spine3", "L_Foot", "R_Foot", "Neck",
@@ -280,12 +280,20 @@ def rolling_min(x, w):
 
 
 # --- per track ----------------------------------------------------------------
-def pick_near_players(res, n_frames, width=1920, height=1080):
+# The near court's box in the image, as shares of its height and width. The defaults fit the
+# broadcast camera (0012): the net at about 0.5 H, the side glass at about 0.1 W and 0.9 W.
+# Lower or fisheye cameras (a training match's end and side cameras) put near players just
+# above 0.5 H and out to the glass at the edge: there --net-y 0.4 --side-x 0.03 keeps them.
+NET_Y = 0.5
+SIDE_X = 0.1
+
+
+def pick_near_players(res, n_frames, width=1920, height=1080, net_y=NET_Y, side_x=SIDE_X):
     """Longest on-court track in each half of the near court.
 
-    Main camera, 1080p: the net sits at about y = 0.5 H, the near court's
-    side glass at about x = 0.1 W and 0.9 W. Umpire, ball kids and the
-    bench are outside that box or barely move, so they drop out.
+    A track counts when its median position is below net_y * height and between side_x and
+    1 - side_x of the width. Umpire, ball kids and the bench are outside that box or barely
+    move, so they drop out.
     """
     f = np.hypot(width, height)
     best = {}
@@ -294,7 +302,7 @@ def pick_near_players(res, n_frames, width=1920, height=1080):
         u = f * t[:, 0] / t[:, 2] + width / 2
         y = f * t[:, 1] / t[:, 2] + height / 2
         cover = len(v["frame_ids"]) / n_frames
-        on_court = (np.median(y) > 0.5 * height) and (0.1 * width < np.median(u) < 0.9 * width)
+        on_court = (np.median(y) > net_y * height) and (side_x * width < np.median(u) < (1 - side_x) * width)
         if cover < 0.4 or not on_court or np.ptp(u) < 30:
             continue
         side = "L" if np.median(u) < width / 2 else "R"
@@ -437,6 +445,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("results"); ap.add_argument("out")
     ap.add_argument("--fps", type=float, default=29.97, help="the source video's frame rate")
+    ap.add_argument("--moves", choices=("shuffles", "labelled"), default="shuffles",
+                    help="shuffles: cut the side shuffles out of whole rallies; labelled: each clip is "
+                         "already one move, named <label>-<n>_..., and is kept whole")
+    ap.add_argument("--net-y", type=float, default=NET_Y, help="near players are below this share of the height")
+    ap.add_argument("--side-x", type=float, default=SIDE_X, help="near players are this share of the width in from each side")
     a = ap.parse_args()
     import joblib
     smpl = load_smpl(os.path.join(a.results, "SMPL_NEUTRAL.pkl"))
@@ -446,13 +459,17 @@ def main():
         clip = os.path.basename(os.path.dirname(pkl))
         res = joblib.load(pkl)
         n = max(int(v["frame_ids"][-1]) + 1 for v in res.values())
-        for side, k in pick_near_players(res, n).items():
+        picked = pick_near_players(res, n, net_y=a.net_y, side_x=a.side_x)
+        if not picked:
+            print(clip, "no near player found", flush=True)
+        for side, k in picked.items():
             for mirrored in (False, True):
                 track = mirror_track(res[k]) if mirrored else res[k]
                 rig, J_rest, verts, contacts, quality, _ = clean_track(track, smpl, a.fps)
                 track_name = f"{clip}_near{side}" + ("_mirror" if mirrored else "")
                 quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]), mirrored=mirrored)
-                for i, (s, e, label) in enumerate(find_moves(rig, OUT_FPS)):
+                moves = labelled_moves(rig, clip) if a.moves == "labelled" else find_moves(rig, OUT_FPS)
+                for i, (s, e, label) in enumerate(moves):
                     name = f"{track_name}_{label}_{i:02d}"
                     write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e, J_rest[0]), J_rest, verts, smpl)
                     move = dict(quality, frames=int(e - s), from_frame=int(s), label=label)
