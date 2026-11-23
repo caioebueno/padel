@@ -101,6 +101,7 @@ void FPadelMotionMatcher::Reset()
 	History.Reset();
 	SinceSearchS = 0.0;
 	Picks = 0;
+	bPinned = false;
 	Stranded = 0.0;
 	ReadySearches = 0;
 	ReadyAccepted = 0;
@@ -117,6 +118,21 @@ void FPadelMotionMatcher::Reset()
 	OffPosVel.Reset();
 	bTransitionPending = false;
 	bHistoryReset = true;
+}
+
+void FPadelMotionMatcher::PinForTest(const UAnimSequenceBase* Clip, const UPoseSearchDatabase* Database, double TimeS)
+{
+	Stack.Reset();
+	bPinned = Clip != nullptr;
+	if (bPinned)
+	{
+		FPlaying Pinned;
+		Pinned.Clip = Clip;
+		Pinned.Database = Database;
+		Pinned.Time = TimeS;
+		Stack.Add(Pinned);
+		RootVelocity = MeasureRootVelocity(Pinned);
+	}
 }
 
 void FPadelMotionMatcher::CacheHistoryBones()
@@ -169,7 +185,7 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 			Stack.RemoveAt(0, Stack.Num() - 1);
 		}
 		// Keep the newest pick matched to the simulation's speed as it changes.
-		Newest.PlayRate = MatchedPlayRate(Newest, SpeedUnits);
+		Newest.PlayRate = bPinned ? 1.0 : MatchedPlayRate(Newest, SpeedUnits);
 		RootVelocity = MeasureRootVelocity(Newest);
 	}
 
@@ -179,7 +195,7 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 	// the continuing pose by the margin: held on its last frame it would freeze and skate.
 	const bool bRunningOut = !Stack.IsEmpty() && !Stack.Last().bLoop
 		&& Stack.Last().Time >= Stack.Last().Clip->GetPlayLength() - FMath::Max(Tuning.SearchThrottleS, Dt) * Stack.Last().PlayRate;
-	if (History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || SinceSearchS >= Tuning.SearchThrottleS))
+	if (!bPinned && History.IsValid() && !History->IsEmpty() && (Stack.IsEmpty() || bRunningOut || SinceSearchS >= Tuning.SearchThrottleS))
 	{
 		SinceSearchS = 0.0;
 		Search(Context, Trajectory, SpeedUnits, bRunningOut, bInRally);

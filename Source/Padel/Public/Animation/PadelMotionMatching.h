@@ -108,6 +108,12 @@ struct PADEL_API FPadelMotionMatcher
 	void Reset();
 
 	/**
+	 * Tests (Padel.Animation.FootworkClipSlide): plays Clip from TimeS at rate 1 and stops
+	 * searching, so one clip can be measured through the whole pose graph. nullptr searches again.
+	 */
+	void PinForTest(const UAnimSequenceBase* Clip, const UPoseSearchDatabase* Database, double TimeS);
+
+	/**
 	 * Advances the clips playing and searches. Trajectory is in the skeletal mesh component's
 	 * world space (cm), the sample at time 0 the current one. SpeedUnits is the simulation's
 	 * ground speed (cm/s), for the play rate. bInRally: the player is in a point (any locomotion
@@ -186,6 +192,8 @@ private:
 	double ReadyCostLowest = 0.0;
 	/** The latest search looked at the Ready databases alone. */
 	bool bReadyOnlySearch = false;
+	/** PinForTest: one clip plays, no search. */
+	bool bPinned = false;
 	FVector RootVelocity = FVector::ZeroVector;
 	/** M2 inertialization: the pose shown last frame and the one before, and the decaying offset (rotation vectors and translations, per compact bone). */
 	TArray<FTransform> LastOut;

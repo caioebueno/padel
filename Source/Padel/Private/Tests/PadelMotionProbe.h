@@ -82,6 +82,11 @@ namespace PadelMotionProbe
 		TArray<FName> PickPerFrame;
 	};
 
+	/** A foot contact path's planted spells (first and last frame): within 3 cm of its 10th percentile height for at least 0.05 s. */
+	TArray<FIntPoint> PlantedSpells(const TArray<FVector>& Path, double Dt);
+	/** Both feet's planted slide (cm/s): how far each planted spell travels, over the time planted. */
+	double PlantedSlideCmps(const TArray<FVector> (&FootPaths)[2], double Dt, double* OutPlantedS = nullptr);
+
 	/** Runs the path in a fresh world. Adds infos to Test; bRan false (SkipReason) without the databases. */
 	FRun Run(FAutomationTestBase& Test, EDrive Drive);
 

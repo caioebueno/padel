@@ -104,6 +104,8 @@ public:
 
 	/** The C++ pose (tests and debugging: what motion matching picked). */
 	const FAnimNode_PadelPlayerPose& GetPoseNode() const { return PoseNode; }
+	/** Tests only (Padel.Animation.FootworkClipSlide pins a clip on the matcher). */
+	FAnimNode_PadelPlayerPose& GetPoseNodeForTest() { return PoseNode; }
 
 	/** The model's swing layer weight even with no swing clip imported (SwingWeight is 0 then). */
 	float RawSwingWeight = 0.0f;
