@@ -107,6 +107,11 @@ FPadelAnimData FPadelAnimData::Load()
 			{
 				Out.Errors.Add(TEXT("Animation.json: MotionMatchingShuffleSideShare must be 0 to 1"));
 			}
+			M.ReadyMaxCost = Row->MotionMatchingReadyMaxCost;
+			if (M.ReadyMaxCost < 0.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingReadyMaxCost must be 0 or more"));
+			}
 			M.InertialHalfLifeS = Row->MotionMatchingInertialHalfLifeS;
 			M.SwitchCostMargin = Row->MotionMatchingSwitchCostMargin;
 			if (Row->MotionMatchingInertialHalfLifeS < 0.0 || Row->MotionMatchingSwitchCostMargin < 0.0)

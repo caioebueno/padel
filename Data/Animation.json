@@ -185,6 +185,7 @@
 			"/Game/Padel/Animations/MotionMatching/Footwork/PSD_Padel_Footwork"
 		],
 		"MotionMatchingShuffleSideShare": 0.6,
+		"MotionMatchingReadyMaxCost": 0.05,
 		"MotionMatchingSprintDatabases": [
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Loops",
 			"/Game/Padel/Animations/MotionMatching/PSD_Stand_Sprint_Starts",

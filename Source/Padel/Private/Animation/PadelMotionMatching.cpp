@@ -101,6 +101,13 @@ void FPadelMotionMatcher::Reset()
 	History.Reset();
 	SinceSearchS = 0.0;
 	Picks = 0;
+	Stranded = 0.0;
+	ReadySearches = 0;
+	ReadyAccepted = 0;
+	ReadyCostSum = 0.0;
+	ReadyCostCount = 0;
+	ReadyCostLowest = 0.0;
+	bReadyOnlySearch = false;
 	RootVelocity = FVector::ZeroVector;
 	LastOut.Reset();
 	PrevOut.Reset();
@@ -148,6 +155,10 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 		Playing.Time += Dt * Playing.PlayRate;
 		Playing.Time = Playing.bLoop ? FMath::Fmod(Playing.Time, FMath::Max(Length, 1e-3)) : FMath::Min(Playing.Time, Length);
 	}
+	if (bReadyOnlySearch && !Stack.IsEmpty() && !IsReadyDatabase(Stack.Last().Database))
+	{
+		Stranded += Dt;
+	}
 	if (!Stack.IsEmpty())
 	{
 		FPlaying& Newest = Stack.Last();
@@ -173,6 +184,12 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 		SinceSearchS = 0.0;
 		Search(Context, Trajectory, SpeedUnits, bRunningOut, bInRally);
 	}
+}
+
+bool FPadelMotionMatcher::IsReadyDatabase(const UPoseSearchDatabase* Database) const
+{
+	const int32 Index = Database ? Databases.IndexOfByKey(Database) : INDEX_NONE;
+	return Index != INDEX_NONE && Roles.IsValidIndex(Index) && Roles[Index] == EPadelMotionMatchingRole::Ready;
 }
 
 void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bInRally)
@@ -203,8 +220,9 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	// Stopping: still coming, the player still moving (once at rest, an idle takes over).
 	const bool bStopping = FVector::Dist2D(Now.Position, Oldest.Position) >= Tuning.StopAfterUnits && SpeedUnits >= 10.0;
 	// Shuffling: in a point, moving in the walk band and mostly sideways to the body (the mesh
-	// faces +Y). The footwork alone is searched then: alongside the sample's clips it lost every
-	// shuffle by about ten times (docs/decisions/0012-video-footwork.md), and the sample has no strafing.
+	// faces +Y). The footwork is searched alone first then: alongside the sample's clips it lost
+	// every shuffle by about ten times (docs/decisions/0012-video-footwork.md), and the sample has
+	// no strafing.
 	const FVector Travel = (Soon.Position - Now.Position) * FVector(1.0, 1.0, 0.0);
 	const FVector Side = Now.Facing.RotateVector(FVector::CrossProduct(FVector::UpVector, FVector(0.0, 1.0, 0.0)));
 	const bool bShuffling = bInRally && !bStill && SpeedUnits < Tuning.RunFromUnits * (1.0 + Tuning.GaitOverlap)
@@ -214,28 +232,6 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	{
 		bHasReady |= Databases[Index] && Roles.IsValidIndex(Index) && Roles[Index] == EPadelMotionMatchingRole::Ready;
 	}
-	const bool bFootworkOnly = bShuffling && bHasReady;
-	TArray<const UObject*, TInlineAllocator<16>> Assets;
-	for (int32 Index = 0; Index < Databases.Num(); ++Index)
-	{
-		const EPadelMotionMatchingRole Role = Roles.IsValidIndex(Index) ? Roles[Index] : EPadelMotionMatchingRole::Moving;
-		const double Gait = SpeedUnits; // the prediction overshoots while speeding up
-		const double Over = 1.0 + Tuning.GaitOverlap;
-		const double Under = 1.0 - Tuning.GaitOverlap;
-		const bool bUse = bFootworkOnly ? Role == EPadelMotionMatchingRole::Ready
-			: Role == EPadelMotionMatchingRole::MovingWalk ? !bStill && Gait < Tuning.RunFromUnits * Over
-			: Role == EPadelMotionMatchingRole::Moving ? !bStill && Gait >= Tuning.RunFromUnits * Under && Gait < Tuning.SprintFromUnits * Over
-			: Role == EPadelMotionMatchingRole::MovingSprint ? !bStill && Gait >= Tuning.SprintFromUnits * Under
-			: Role == EPadelMotionMatchingRole::Still ? bStill
-			// Footwork plays only in the shuffle (above); standing, it won as an idle and slid.
-			: Role == EPadelMotionMatchingRole::Ready ? false
-			: Role == EPadelMotionMatchingRole::Stop ? bStill && bStopping
-			: bStill && bTurning;
-		if (Databases[Index] && bUse)
-		{
-			Assets.Add(Databases[Index]);
-		}
-	}
 	const UObject* AnimContext = Context.AnimInstanceProxy->GetAnimInstanceObject();
 	const FRole SearchRole = DefaultRole;
 	const IPoseHistory* PoseHistory = History.Get();
@@ -243,33 +239,88 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	// by SwitchCostMargin (the search alone picks a neighbour for any tiny gain, which reads as jitter).
 	FSearchResult Best;
 	FSearchResult ContinuingResult;
-	FSearchResults Results;
-	Results.UpdateWith = [&Best, &ContinuingResult](const FSearchResult& Candidate)
+	auto RunSearch = [&](bool bReadyOnly)
 	{
-		if (Candidate.bIsContinuingPoseSearch && Candidate.PoseCost < ContinuingResult.PoseCost)
+		Best = FSearchResult();
+		ContinuingResult = FSearchResult();
+		TArray<const UObject*, TInlineAllocator<16>> Assets;
+		for (int32 Index = 0; Index < Databases.Num(); ++Index)
 		{
-			ContinuingResult = Candidate;
+			const EPadelMotionMatchingRole Role = Roles.IsValidIndex(Index) ? Roles[Index] : EPadelMotionMatchingRole::Moving;
+			const double Gait = SpeedUnits; // the prediction overshoots while speeding up
+			const double Over = 1.0 + Tuning.GaitOverlap;
+			const double Under = 1.0 - Tuning.GaitOverlap;
+			const bool bUse = bReadyOnly ? Role == EPadelMotionMatchingRole::Ready
+				: Role == EPadelMotionMatchingRole::MovingWalk ? !bStill && Gait < Tuning.RunFromUnits * Over
+				: Role == EPadelMotionMatchingRole::Moving ? !bStill && Gait >= Tuning.RunFromUnits * Under && Gait < Tuning.SprintFromUnits * Over
+				: Role == EPadelMotionMatchingRole::MovingSprint ? !bStill && Gait >= Tuning.SprintFromUnits * Under
+				: Role == EPadelMotionMatchingRole::Still ? bStill
+				// Footwork plays only in the shuffle (the Ready pass); standing, it won as an idle and slid.
+				: Role == EPadelMotionMatchingRole::Ready ? false
+				: Role == EPadelMotionMatchingRole::Stop ? bStill && bStopping
+				: bStill && bTurning;
+			if (Databases[Index] && bUse)
+			{
+				Assets.Add(Databases[Index]);
+			}
 		}
-		if (Candidate.PoseCost < Best.PoseCost)
+		FSearchResults Results;
+		Results.UpdateWith = [this, bReadyOnly, &Best, &ContinuingResult](const FSearchResult& Candidate)
 		{
-			Best = Candidate;
-		}
-	};
-	Results.FinalizeResults = [&Best]()
-	{
-		if (Best.IsValid() && !Best.IsAssetTimeValid())
+			// Pose Search also offers the playing clip's continuing pose from its own database, searched
+			// or not. In the Ready pass a sample clip's would always win (the footwork never beats it by
+			// the margin), and nothing searched could replace it: it would play on under a shuffling
+			// pawn. That pass weighs the footwork alone; the fallback below weighs the rest.
+			if (bReadyOnly && !IsReadyDatabase(Candidate.Database.Get()))
+			{
+				return;
+			}
+			if (Candidate.bIsContinuingPoseSearch && Candidate.PoseCost < ContinuingResult.PoseCost)
+			{
+				ContinuingResult = Candidate;
+			}
+			if (Candidate.PoseCost < Best.PoseCost)
+			{
+				Best = Candidate;
+			}
+		};
+		Results.FinalizeResults = [&Best]()
 		{
-			Best.SetAssetTime(Best.Database->GetNormalizedAssetTime(Best.PoseIdx));
-		}
-	};
-	Results.GetBestResult = [&Best]() { return Best; };
-	Results.IterateOverSearchResults = [&Best](const TFunctionRef<bool(FSearchResult&)> Function) { return Best.IsValid() && Function(Best); };
+			if (Best.IsValid() && !Best.IsAssetTimeValid())
+			{
+				Best.SetAssetTime(Best.Database->GetNormalizedAssetTime(Best.PoseIdx));
+			}
+		};
+		Results.GetBestResult = [&Best]() { return Best; };
+		Results.IterateOverSearchResults = [&Best](const TFunctionRef<bool(FSearchResult&)> Function) { return Best.IsValid() && Function(Best); };
 PRAGMA_DISABLE_EXPERIMENTAL_WARNINGS
-	UPoseSearchLibrary::MotionMatch(
-		MakeArrayView(&AnimContext, 1), MakeArrayView(&SearchRole, 1), MakeArrayView(&PoseHistory, 1),
-		MakeArrayView(Assets.GetData(), Assets.Num()), Continuing, FPoseSearchFutureProperties(), FPoseSearchEvent(), Results);
+		UPoseSearchLibrary::MotionMatch(
+			MakeArrayView(&AnimContext, 1), MakeArrayView(&SearchRole, 1), MakeArrayView(&PoseHistory, 1),
+			MakeArrayView(Assets.GetData(), Assets.Num()), Continuing, FPoseSearchFutureProperties(), FPoseSearchEvent(), Results);
 PRAGMA_ENABLE_EXPERIMENTAL_WARNINGS
-	Results.FinalizeResults();
+		Results.FinalizeResults();
+	};
+	bReadyOnlySearch = false;
+	if (bShuffling && bHasReady)
+	{
+		RunSearch(true);
+		++ReadySearches;
+		if (Best.IsValid())
+		{
+			const double Cost = static_cast<float>(Best.PoseCost);
+			ReadyCostLowest = ReadyCostCount == 0 ? Cost : FMath::Min(ReadyCostLowest, Cost);
+			ReadyCostSum += Cost;
+			++ReadyCostCount;
+		}
+		// The footwork plays only where it matches: a poor best (a shuffle unlike any clip) falls
+		// back to the sample's databases, which then search exactly as they do without footwork.
+		bReadyOnlySearch = Best.IsValid() && static_cast<float>(Best.PoseCost) <= Tuning.ReadyMaxCost;
+		ReadyAccepted += bReadyOnlySearch ? 1 : 0;
+	}
+	if (!bReadyOnlySearch)
+	{
+		RunSearch(false);
+	}
 	if (!Best.IsValid() || Best.bIsContinuingPoseSearch)
 	{
 		return;

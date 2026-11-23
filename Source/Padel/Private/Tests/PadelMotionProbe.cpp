@@ -533,6 +533,11 @@ namespace PadelMotionProbe
 		Out.bMotionMatched = Anim->GetPoseNode().IsMotionMatching();
 		Out.DurationS = Out.Phases.Num() * Dt;
 		Out.SwitchesPerS = Out.DurationS > 0.0 ? Matcher.NumPicks() / Out.DurationS : 0.0;
+		Out.StrandedS = Matcher.StrandedS();
+		Out.ReadySearches = Matcher.NumReadySearches();
+		Out.ReadyAccepted = Matcher.NumReadyAccepted();
+		Out.MeanReadyCost = Matcher.MeanReadyBestCost();
+		Out.LowestReadyCost = Matcher.LowestReadyBestCost();
 		for (int32 F = 0; F < 2; ++F)
 		{
 			Out.LockedShare[F] = Out.Phases.IsEmpty() ? 0.0 : static_cast<double>(LockedFrames[F]) / Out.Phases.Num();
@@ -560,8 +565,9 @@ namespace PadelMotionProbe
 		{
 			return;
 		}
-		Test.AddInfo(FString::Printf(TEXT("[%s] %.2f clip switches/s over %.1f s; poses playing at once: max %d, mean %.2f; feet locked %.0f%% / %.0f%%"),
-			*Label, Run.SwitchesPerS, Run.DurationS, Run.MaxPlaying, Run.MeanPlaying, Run.LockedShare[0] * 100.0, Run.LockedShare[1] * 100.0));
+		Test.AddInfo(FString::Printf(TEXT("[%s] %.2f clip switches/s over %.1f s; poses playing at once: max %d, mean %.2f; feet locked %.0f%% / %.0f%%; footwork-first searches %d, footwork played in %d (best cost mean %.3f, lowest %.3f); a sample clip stranded %.2f s"),
+			*Label, Run.SwitchesPerS, Run.DurationS, Run.MaxPlaying, Run.MeanPlaying, Run.LockedShare[0] * 100.0, Run.LockedShare[1] * 100.0,
+			Run.ReadySearches, Run.ReadyAccepted, Run.MeanReadyCost, Run.LowestReadyCost, Run.StrandedS));
 		for (const FBodyMetrics* Body : { &Run.Placeholder, &Run.MetaHuman })
 		{
 			if (!Body->bValid)

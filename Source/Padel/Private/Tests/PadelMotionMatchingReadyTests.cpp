@@ -52,6 +52,10 @@ bool FPadelMotionMatchingReadyTest::RunTest(const FString& Parameters)
 	// The side shuffle is the footwork's job (the sample has no strafing): it has to play there.
 	TestTrue(FString::Printf(TEXT("The side shuffle picks the footwork (%d frames)"), FootworkFrames.FindRef(TEXT("shuffle"))), FootworkFrames.FindRef(TEXT("shuffle")) > 0);
 
+	// Where the footwork doesn't match, the sample's clips carry on: never a sample clip left
+	// playing because only the footwork was searched (Padel.Animation.MotionMatching says why).
+	TestTrue(FString::Printf(TEXT("Ready: no sample clip is stranded by a footwork-only search (%.2f s)"), Ready.StrandedS), Ready.StrandedS == 0.0);
+
 	// The same gates as the sample's clips alone (Padel.Animation.MotionMatching, clips run).
 	const FBodyMetrics& P = Ready.Placeholder;
 	TestTrue(FString::Printf(TEXT("Ready: standing and moving steadily, planted feet slide under 25 cm/s (%.1f)"), P.SteadySlideCmps), P.SteadySlideCmps < 25.0);
