@@ -38,6 +38,11 @@ bool FPadelMotionMatchingTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("Over the whole path under 50 cm/s (%.1f)"), P.SlideCmps), P.SlideCmps < 50.0);
 	TestTrue(FString::Printf(TEXT("No body bone turns over 20 deg in a frame (%.1f)"), P.WorstBoneTurnDeg), P.WorstBoneTurnDeg < 20.0);
 
+	// A footwork-only shuffle search once kept a stop clip playing under the shuffling pawn (Pose
+	// Search offers the playing clip's continuing pose even from a database it wasn't asked to
+	// search), sliding the feet 53 cm/s with the footwork never picked. The search falls back
+	// to the sample's databases instead; with no footwork database this is 0 trivially.
+	TestTrue(FString::Printf(TEXT("No clip plays on from a database the search left out (%.2f s)"), Clips.StrandedS), Clips.StrandedS == 0.0);
 	// M2: fewer, cleaner switches (M1: 1.96 a second, up to 4 clips crossfading; M2: 1.52, one).
 	TestTrue(FString::Printf(TEXT("Under 1.8 clip switches a second (%.2f)"), Clips.SwitchesPerS), Clips.SwitchesPerS < 1.8);
 	TestTrue(FString::Printf(TEXT("At most 2 poses play at once (%d)"), Clips.MaxPlaying), Clips.MaxPlaying <= 2);
@@ -50,6 +55,7 @@ bool FPadelMotionMatchingTest::RunTest(const FString& Parameters)
 	{
 		// The full stack: the warps and foot locking keep steady running planted (M1: 33.6 cm/s; M2: 30.1).
 		TestTrue(FString::Printf(TEXT("Full stack: under 1.6 switches a second (%.2f)"), Full.SwitchesPerS), Full.SwitchesPerS < 1.6);
+		TestTrue(FString::Printf(TEXT("Full stack: no clip plays on from a database the search left out (%.2f s)"), Full.StrandedS), Full.StrandedS == 0.0);
 		TestTrue(FString::Printf(TEXT("Full stack: steady planted feet slide under 33 cm/s (%.1f)"), Full.Placeholder.SteadySlideCmps), Full.Placeholder.SteadySlideCmps < 33.0);
 		TestTrue(FString::Printf(TEXT("Full stack: no body bone turns over 20 deg in a frame (%.1f)"), Full.Placeholder.WorstBoneTurnDeg), Full.Placeholder.WorstBoneTurnDeg < 20.0);
 		// The racket arm's IK on whichever body shows it (the MetaHuman's own warp after the

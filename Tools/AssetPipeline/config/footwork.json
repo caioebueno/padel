@@ -5,5 +5,24 @@
     "base_cost_bias": 0.05,
     "continuing_pose_cost_bias": -0.03,
     "exclude_from_database_parameters": {"min": 0.3, "max": -0.3}
+  },
+  "labelled_windows": {
+    "_doc": "How mocap/wham_to_fbx.py --moves labelled cuts each labelled clip (about 5 s, mostly standing around the move) into the windows where the player moves; footwork_moves.active_windows. Moving: root ground speed over min_mps (m/s) for at least min_s, gaps up to gap_s bridged; pad_s kept either side (= the database's 0.3 s exclusion); stretches over max_s split into equal parts; windows under min_window_s dropped. Seconds. min_window_mps: per label, the median root speed (m/s) a window needs: the game shuffles at 1 to 1.5 m/s and most video shuffles near 0.7, past what the play rate stretches, so slower shuffle windows slid.",
+    "min_mps": 0.5,
+    "min_s": 0.3,
+    "gap_s": 0.2,
+    "pad_s": 0.3,
+    "max_s": 2.0,
+    "min_window_s": 1.0,
+    "min_window_mps": {"shuffle": 1.0}
+  },
+  "foot_plants": {
+    "_doc": "Extra foot plants in mocap/wham_to_fbx.py (floor_mask, release_overreach): a foot at the floor is planted (held by leg IK) whatever its speed, on top of the low-and-slow contacts. WHAM's feet skim the floor faster than 0.5 m/s, and planted only when slow they glided 0.5-1.4 m/s in the game (Padel.Animation.FootworkClipSlide). Down under floor_enter_m, up over floor_exit_m (joint heights in metres; the foot joints sit 0.03 over the sole); spells under min_s dropped; a plant ends where the hip is over release_reach of the leg's length from the held ankle. Between plants, a foot that stays under floor_exit_m yet travels swing_min_travel_m or more (a step along the floor, a skate no plant can hold) is lifted on a sine arc up to swing_lift_m (lift_floor_steps).",
+    "floor_enter_m": 0.06,
+    "floor_exit_m": 0.08,
+    "min_s": 0.13,
+    "release_reach": 1.0,
+    "swing_lift_m": 0.08,
+    "swing_min_travel_m": 0.03
   }
 }

@@ -12,6 +12,7 @@ struct FPoseContext;
 namespace UE::PoseSearch
 {
 	struct FPoseHistory;
+	struct FSearchResult;
 }
 
 /** M1 motion matching tuning (Data/Animation.json MotionMatching*), in seconds and Unreal units. */
@@ -45,8 +46,13 @@ struct FPadelMotionMatchingTuning
 	double RunFromUnits = 250.0;
 	double SprintFromUnits = 500.0;
 	double GaitOverlap = 0.2;
-	/** Shuffling (Animation.json MotionMatchingShuffleSideShare): in a point, in the walk band, the sideways share of the coming travel at least this (0..1); only the Ready databases are searched then. */
+	/** Shuffling (Animation.json MotionMatchingShuffleSideShare): in a point, in the walk band, the sideways share of the coming travel at least this (0..1); the Ready databases are searched first then. */
 	double ShuffleSideShare = 0.6;
+	/**
+	 * Shuffling, the Ready databases' best pose must cost at most this (MotionMatchingReadyMaxCost)
+	 * to play; otherwise the search falls back to the sample's databases as anywhere else.
+	 */
+	double ReadyMaxCost = 0.0;
 };
 
 /** Which databases a search may use (the Game Animation Sample picks them with a chooser table; this is it in C++). */
@@ -62,7 +68,7 @@ enum class EPadelMotionMatchingRole : uint8
 	Stop,
 	/** Turns in place: searched while still and turning. */
 	TurnInPlace,
-	/** Padel footwork (0012): searched in a point (not between points), still or in the walk band. */
+	/** Padel footwork (0012): searched first while shuffling in a point; played where its best pose costs at most ReadyMaxCost. */
 	Ready,
 };
 
@@ -102,6 +108,12 @@ struct PADEL_API FPadelMotionMatcher
 	void Reset();
 
 	/**
+	 * Tests (Padel.Animation.FootworkClipSlide): plays Clip from TimeS at rate 1 and stops
+	 * searching, so one clip can be measured through the whole pose graph. nullptr searches again.
+	 */
+	void PinForTest(const UAnimSequenceBase* Clip, const UPoseSearchDatabase* Database, double TimeS);
+
+	/**
 	 * Advances the clips playing and searches. Trajectory is in the skeletal mesh component's
 	 * world space (cm), the sample at time 0 the current one. SpeedUnits is the simulation's
 	 * ground speed (cm/s), for the play rate. bInRally: the player is in a point (any locomotion
@@ -126,6 +138,20 @@ struct PADEL_API FPadelMotionMatcher
 	/** M2 probes: how many picks since the last reset (each one a switch), and how many poses play at once now. */
 	int32 NumPicks() const { return Picks; }
 	int32 NumPlaying() const { return Stack.Num(); }
+	/**
+	 * Seconds since the last reset that a clip played from databases the latest search left
+	 * out: a sample clip while it looked at the footwork alone, or a footwork clip while it
+	 * looked at the sample's. Nothing searched could replace it, so it played on whatever the
+	 * player did (the footwork-only shuffle search kept a stop clip under a shuffling pawn this
+	 * way). 0 when each search's pick comes from what it searched.
+	 */
+	double StrandedS() const { return Stranded; }
+	/** Searches since the last reset that looked at the Ready databases alone, and how many of those the footwork answered. */
+	int32 NumReadySearches() const { return ReadySearches; }
+	int32 NumReadyAccepted() const { return ReadyAccepted; }
+	/** The Ready passes' best pose costs: mean and lowest (for tuning MotionMatchingReadyMaxCost). */
+	double MeanReadyBestCost() const { return ReadyCostCount > 0 ? ReadyCostSum / ReadyCostCount : 0.0; }
+	double LowestReadyBestCost() const { return ReadyCostLowest; }
 	/** M2: the playing clip's own root velocity (cm/s, root space = component space, at its play rate), for the warps. */
 	FVector ClipRootVelocity() const { return RootVelocity; }
 
@@ -143,6 +169,9 @@ private:
 
 	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bInRally);
 	double MatchedPlayRate(const FPlaying& Playing, double SpeedUnits) const;
+	bool IsReadyDatabase(const UPoseSearchDatabase* Database) const;
+	/** The result's clip, at its time, matches SpeedUnits within PlayRateMin..Max. */
+	bool CanKeepUp(const UE::PoseSearch::FSearchResult& Result, double SpeedUnits) const;
 	void CacheHistoryBones();
 	FVector MeasureRootVelocity(const FPlaying& Playing) const;
 	void Inertialize(FPoseContext& Output);
@@ -155,6 +184,16 @@ private:
 	TArray<FPlaying> Stack;
 	double SinceSearchS = 0.0;
 	int32 Picks = 0;
+	double Stranded = 0.0;
+	int32 ReadySearches = 0;
+	int32 ReadyAccepted = 0;
+	double ReadyCostSum = 0.0;
+	int32 ReadyCostCount = 0;
+	double ReadyCostLowest = 0.0;
+	/** The latest search looked at the Ready databases alone. */
+	bool bReadyOnlySearch = false;
+	/** PinForTest: one clip plays, no search. */
+	bool bPinned = false;
 	FVector RootVelocity = FVector::ZeroVector;
 	/** M2 inertialization: the pose shown last frame and the one before, and the decaying offset (rotation vectors and translations, per compact bone). */
 	TArray<FTransform> LastOut;

@@ -92,6 +92,8 @@ struct PADEL_API FAnimNode_PadelPlayerPose : public FAnimNode_Base
 	const FPadelLocomotionWarp& GetLocomotionWarp() const { return LocomotionWarp; }
 	/** M1: the motion matcher, for tests and debugging (its CurrentDatabase and CurrentClip). */
 	const FPadelMotionMatcher& GetMotionMatcher() const { return Matcher; }
+	/** Tests only: pin a clip (FPadelMotionMatcher::PinForTest) or change the matcher directly. */
+	FPadelMotionMatcher& GetMotionMatcherForTest() { return Matcher; }
 	/** True when the last evaluate played motion matching rather than the loop mix. */
 	bool IsMotionMatching() const { return bMotionMatched; }
 

@@ -152,13 +152,15 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingWalkDatabases;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingSprintDatabases;
 	/**
-	 * Padel footwork (docs/decisions/0012-video-footwork.md): the only databases searched while
+	 * Padel footwork (docs/decisions/0012-video-footwork.md): searched alone first while
 	 * shuffling, in a point (any locomotion state but the between-points Idle), in the walk band,
-	 * with the sideways share of the coming travel at least MotionMatchingShuffleSideShare. Never
-	 * searched otherwise.
+	 * with the sideways share of the coming travel at least MotionMatchingShuffleSideShare. Its
+	 * best pose plays when it costs at most MotionMatchingReadyMaxCost; otherwise the sample's
+	 * databases are searched as anywhere else. Never searched outside the shuffle.
 	 */
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingReadyDatabases;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingShuffleSideShare = 0.6;
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingReadyMaxCost = 0.0;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingRunFromMps = 2.5;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSprintFromMps = 5.0;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingGaitOverlap = 0.2;

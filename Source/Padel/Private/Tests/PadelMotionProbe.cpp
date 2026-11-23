@@ -156,27 +156,15 @@ namespace PadelMotionProbe
 				const TArray<FVector>& Path = Track.FootPath[F];
 				TArray<double> Heights;
 				for (const FVector& P : Path) { Heights.Add(P.Z); }
-				const double Floor = Percentile(Heights, 0.1) + 3.0;
 				M.FootHeights += FString::Printf(TEXT("%s%.1f..%.1f"), F == 0 ? TEXT("") : TEXT(" / "), Percentile(Heights, 0.1), Percentile(Heights, 0.9));
-				int32 From = INDEX_NONE;
-				for (int32 I = 0; I <= Path.Num(); ++I)
+				for (const FIntPoint& Planted : PlantedSpells(Path, Dt))
 				{
-					const bool bDown = I < Path.Num() && Path[I].Z < Floor;
-					if (bDown && From == INDEX_NONE) { From = I; }
-					if (!bDown && From != INDEX_NONE)
-					{
-						const int32 To = I - 1;
-						const double Spell = (To - From) * Dt;
-						if (Spell >= 0.05)
-						{
-							const double Moved = FVector::Dist2D(Path[To], Path[From]);
-							SlideCm += Moved;
-							M.PlantedS += Spell;
-							M.WorstSlideSpellCmps = FMath::Max(M.WorstSlideSpellCmps, Moved / Spell);
-							ByPhase.FindOrAdd(Phases[From]) += FVector2D(Moved, Spell);
-						}
-						From = INDEX_NONE;
-					}
+					const double Spell = (Planted.Y - Planted.X) * Dt;
+					const double Moved = FVector::Dist2D(Path[Planted.Y], Path[Planted.X]);
+					SlideCm += Moved;
+					M.PlantedS += Spell;
+					M.WorstSlideSpellCmps = FMath::Max(M.WorstSlideSpellCmps, Moved / Spell);
+					ByPhase.FindOrAdd(Phases[Planted.X]) += FVector2D(Moved, Spell);
 				}
 			}
 			M.SlideCmps = M.PlantedS > 0.0 ? SlideCm / M.PlantedS : 0.0;
@@ -320,6 +308,43 @@ namespace PadelMotionProbe
 			}
 			return nullptr;
 		}
+	}
+
+	TArray<FIntPoint> PlantedSpells(const TArray<FVector>& Path, double Dt)
+	{
+		// Planted: within 3 cm of the ground (the path's 10th percentile height) for at least 0.05 s.
+		TArray<double> Heights;
+		for (const FVector& P : Path) { Heights.Add(P.Z); }
+		const double Floor = Detail::Percentile(Heights, 0.1) + 3.0;
+		TArray<FIntPoint> Spells;
+		int32 From = INDEX_NONE;
+		for (int32 I = 0; I <= Path.Num(); ++I)
+		{
+			const bool bDown = I < Path.Num() && Path[I].Z < Floor;
+			if (bDown && From == INDEX_NONE) { From = I; }
+			if (!bDown && From != INDEX_NONE)
+			{
+				if ((I - 1 - From) * Dt >= 0.05) { Spells.Add(FIntPoint(From, I - 1)); }
+				From = INDEX_NONE;
+			}
+		}
+		return Spells;
+	}
+
+	double PlantedSlideCmps(const TArray<FVector> (&FootPaths)[2], double Dt, double* OutPlantedS)
+	{
+		double Moved = 0.0;
+		double Planted = 0.0;
+		for (const TArray<FVector>& Path : FootPaths)
+		{
+			for (const FIntPoint& Spell : PlantedSpells(Path, Dt))
+			{
+				Moved += FVector::Dist2D(Path[Spell.Y], Path[Spell.X]);
+				Planted += (Spell.Y - Spell.X) * Dt;
+			}
+		}
+		if (OutPlantedS) { *OutPlantedS = Planted; }
+		return Planted > 0.0 ? Moved / Planted : 0.0;
 	}
 
 	FRun Run(FAutomationTestBase& Test, EDrive Drive)
@@ -533,6 +558,11 @@ namespace PadelMotionProbe
 		Out.bMotionMatched = Anim->GetPoseNode().IsMotionMatching();
 		Out.DurationS = Out.Phases.Num() * Dt;
 		Out.SwitchesPerS = Out.DurationS > 0.0 ? Matcher.NumPicks() / Out.DurationS : 0.0;
+		Out.StrandedS = Matcher.StrandedS();
+		Out.ReadySearches = Matcher.NumReadySearches();
+		Out.ReadyAccepted = Matcher.NumReadyAccepted();
+		Out.MeanReadyCost = Matcher.MeanReadyBestCost();
+		Out.LowestReadyCost = Matcher.LowestReadyBestCost();
 		for (int32 F = 0; F < 2; ++F)
 		{
 			Out.LockedShare[F] = Out.Phases.IsEmpty() ? 0.0 : static_cast<double>(LockedFrames[F]) / Out.Phases.Num();
@@ -560,8 +590,9 @@ namespace PadelMotionProbe
 		{
 			return;
 		}
-		Test.AddInfo(FString::Printf(TEXT("[%s] %.2f clip switches/s over %.1f s; poses playing at once: max %d, mean %.2f; feet locked %.0f%% / %.0f%%"),
-			*Label, Run.SwitchesPerS, Run.DurationS, Run.MaxPlaying, Run.MeanPlaying, Run.LockedShare[0] * 100.0, Run.LockedShare[1] * 100.0));
+		Test.AddInfo(FString::Printf(TEXT("[%s] %.2f clip switches/s over %.1f s; poses playing at once: max %d, mean %.2f; feet locked %.0f%% / %.0f%%; footwork-first searches %d, footwork played in %d (best cost mean %.3f, lowest %.3f); a clip stranded %.2f s"),
+			*Label, Run.SwitchesPerS, Run.DurationS, Run.MaxPlaying, Run.MeanPlaying, Run.LockedShare[0] * 100.0, Run.LockedShare[1] * 100.0,
+			Run.ReadySearches, Run.ReadyAccepted, Run.MeanReadyCost, Run.LowestReadyCost, Run.StrandedS));
 		for (const FBodyMetrics* Body : { &Run.Placeholder, &Run.MetaHuman })
 		{
 			if (!Body->bValid)

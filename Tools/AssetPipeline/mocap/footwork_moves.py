@@ -8,9 +8,12 @@ footwork), each with a little lead-in and run-out, and every track is mirrored s
 directions come from both players.
 
 Clips already cut around one labelled move (the reference tables in PadelData, cut with
-cut_clips.py and named `<label>-<n>_<time>_<camera>`) keep the whole clip as that move instead:
-`--moves labelled` in wham_to_fbx.py. The shuffle finder would drop most of them, because a
-lunge, split step or crossover is not a sideways run.
+cut_clips.py and named `<label>-<n>_<time>_<camera>`) keep that label instead: `--moves
+labelled` in wham_to_fbx.py. The shuffle finder would drop most of them, because a lunge, split
+step or crossover is not a sideways run. Those clips run about 5 s, mostly standing around the
+move, and whole they were never picked (each root holds one heading, which over 5 s of turning
+fits few frames). So each is cut into the short windows where the player moves
+(`labelled_windows` in config/footwork.json).
 """
 import re
 
@@ -95,10 +98,66 @@ def label_from_clip(clip):
     return m.group(1) if m else "move"
 
 
-def labelled_moves(rig, clip):
-    """[(0, T, label)]: the whole cleaned track as one move, labelled from the clip's name."""
-    T = len(rig["root_pos"])
-    return [(0, T, label_from_clip(clip))] if T >= 4 else []
+def active_windows(root_pos, fps, cfg):
+    """[(start, end)] frame windows where the root moves, for motion matching.
+
+    Moving: the root's ground speed, smoothed over 0.1 s, over cfg["min_mps"], for at least
+    cfg["min_s"], gaps up to cfg["gap_s"] bridged. Each stretch keeps cfg["pad_s"] either side
+    (the database never picks a clip's first and last 0.3 s), overlapping stretches merge, and a
+    stretch longer than cfg["max_s"] is split into equal parts no longer than that. Windows under
+    cfg["min_window_s"] are dropped.
+    """
+    T = len(root_pos)
+    if T < 4:
+        return []
+    vel = np.gradient(np.asarray(root_pos, dtype=float), axis=0) * fps
+    speed = np.hypot(vel[:, 0], vel[:, 2])           # y is up
+    k = max(1, int(round(0.1 * fps)))
+    speed = np.convolve(speed, np.ones(k) / k, mode="same")
+    moving = speed > cfg["min_mps"]
+    gap = int(round(cfg["gap_s"] * fps))
+    segs = _segments(moving)
+    for (_, e0), (s1, _) in zip(segs, segs[1:]):
+        if s1 - e0 <= gap:
+            moving[e0:s1] = True
+    pad = int(round(cfg["pad_s"] * fps))
+    shortest = int(round(cfg["min_s"] * fps))
+    stretches = []
+    for s, e in _segments(moving):
+        if e - s < shortest:
+            continue
+        s, e = max(0, s - pad), min(T, e + pad)
+        if stretches and s <= stretches[-1][1]:
+            stretches[-1] = (stretches[-1][0], max(e, stretches[-1][1]))
+        else:
+            stretches.append((s, e))
+    longest = max(1, int(round(cfg["max_s"] * fps)))
+    least = int(round(cfg["min_window_s"] * fps))
+    windows = []
+    for s, e in stretches:
+        parts = int(np.ceil((e - s) / longest))
+        edges = np.linspace(s, e, parts + 1).round().astype(int)
+        windows += [(int(a), int(b)) for a, b in zip(edges, edges[1:]) if b - a >= least]
+    return windows
+
+
+def median_speed(root_pos, fps):
+    """The root's median ground speed (m/s, y up) over a window."""
+    vel = np.gradient(np.asarray(root_pos, dtype=float), axis=0) * fps
+    return float(np.median(np.hypot(vel[:, 0], vel[:, 2]))) if len(vel) else 0.0
+
+
+def labelled_moves(rig, clip, fps, cfg):
+    """[(start, end, label)]: the moving windows of a cut clip, labelled from the clip's name.
+
+    cfg["min_window_mps"] maps a label to the median speed its windows need: most video shuffles
+    run about 0.7 m/s, and the game's shuffles at 1 to 1.5 m/s, beyond what the play rate can
+    stretch (0012); slower windows played under a real shuffle slid.
+    """
+    label = label_from_clip(clip)
+    least = cfg.get("min_window_mps", {}).get(label, 0.0)
+    return [(s, e, label) for s, e in active_windows(rig["root_pos"], fps, cfg)
+            if median_speed(rig["root_pos"][s:e], fps) >= least]
 
 
 def slice_rig(rig, s, e, pelvis_rest):
