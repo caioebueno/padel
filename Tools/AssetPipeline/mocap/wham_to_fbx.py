@@ -211,33 +211,70 @@ def plant_feet(q, trans, J_rest, contacts, fps):
                 weight[t] = max(weight[t], w)
                 target_p[t] = (1 - w) * target_p[t] + w * p
                 target_yaw[t] += w * np.angle(np.exp(1j * (yaw - target_yaw[t])))
-        a = np.linalg.norm(J_rest[knee] - J_rest[hip]); b = np.linalg.norm(J_rest[ankle] - J_rest[knee])
-        for t in np.nonzero(weight > 0)[0]:
-            H, K, A, Tg = P[t, hip], P[t, knee], P[t, ankle], target_p[t]
-            # Soft reach: past SOFT_REACH of the leg's length the ankle eases off its target
-            # instead of snapping the knee straight (the body has moved off a plant it is lifting).
-            d = soft_reach(np.linalg.norm(Tg - H), a + b)
-            d = max(d, abs(a - b) + 1e-4)
-            u = (Tg - H) / max(np.linalg.norm(Tg - H), 1e-9)
-            # Bend toward where the knee points (SMPL's knee faces +z at rest), which stays
-            # steady when the leg is nearly straight, unlike the knee's offset from the hip-ankle line.
-            pole = G[t, knee] @ np.array([0.0, 0.0, 1.0])
-            v = pole - (pole @ u) * u
-            v = v / max(np.linalg.norm(v), 1e-9)
-            cos_a = (a * a + d * d - b * b) / (2 * a * d)
-            K_new = H + a * (cos_a * u + np.sqrt(max(0.0, 1 - cos_a * cos_a)) * v)
-            D1 = rotation_between(K - H, K_new - H)
-            G_hip = D1 @ G[t, hip]
-            D2 = rotation_between(D1 @ (A - K), H + u * d - K_new)
-            G_knee = D2 @ D1 @ G[t, knee]
-            G_parent = G[t, PARENTS[hip]]
-            turn = R.from_euler("y", target_yaw[t] - foot_yaw[t]).as_matrix()
-            solved = R.from_matrix([G_parent.T @ G_hip, G_hip.T @ G_knee, G_knee.T @ turn @ G[t, ankle]])
-            # The solve puts the knee in the pole's plane, a little off WHAM's knee even with the
-            # target on the ankle, so the result fades in with the plant's weight too.
-            for i, joint in enumerate((hip, knee, ankle)):
-                before = R.from_quat(q[t, joint])
-                q[t, joint] = Slerp([0, 1], R.concatenate([before, solved[i]]))(weight[t]).as_quat()
+        leg_ik(q, P, G, J_rest, (hip, knee, ankle), target_p, target_yaw - foot_yaw, weight)
+    return sign_align(q)
+
+
+def leg_ik(q, P, G, J_rest, chain, target_p, turn_yaw, weight):
+    """Two-bone IK of one leg toward target_p (ankle positions), turning the foot by turn_yaw
+    (radians about +y); each frame's solve fades in by weight. q changes in place."""
+    hip, knee, ankle = chain
+    a = np.linalg.norm(J_rest[knee] - J_rest[hip]); b = np.linalg.norm(J_rest[ankle] - J_rest[knee])
+    for t in np.nonzero(weight > 0)[0]:
+        H, K, A, Tg = P[t, hip], P[t, knee], P[t, ankle], target_p[t]
+        # Soft reach: past SOFT_REACH of the leg's length the ankle eases off its target
+        # instead of snapping the knee straight (the body has moved off a plant it is lifting).
+        d = soft_reach(np.linalg.norm(Tg - H), a + b)
+        d = max(d, abs(a - b) + 1e-4)
+        u = (Tg - H) / max(np.linalg.norm(Tg - H), 1e-9)
+        # Bend toward where the knee points (SMPL's knee faces +z at rest), which stays
+        # steady when the leg is nearly straight, unlike the knee's offset from the hip-ankle line.
+        pole = G[t, knee] @ np.array([0.0, 0.0, 1.0])
+        v = pole - (pole @ u) * u
+        v = v / max(np.linalg.norm(v), 1e-9)
+        cos_a = (a * a + d * d - b * b) / (2 * a * d)
+        K_new = H + a * (cos_a * u + np.sqrt(max(0.0, 1 - cos_a * cos_a)) * v)
+        D1 = rotation_between(K - H, K_new - H)
+        G_hip = D1 @ G[t, hip]
+        D2 = rotation_between(D1 @ (A - K), H + u * d - K_new)
+        G_knee = D2 @ D1 @ G[t, knee]
+        G_parent = G[t, PARENTS[hip]]
+        turn = R.from_euler("y", turn_yaw[t]).as_matrix()
+        solved = R.from_matrix([G_parent.T @ G_hip, G_hip.T @ G_knee, G_knee.T @ turn @ G[t, ankle]])
+        # The solve puts the knee in the pole's plane, a little off WHAM's knee even with the
+        # target on the ankle, so the result fades in with the weight too.
+        for i, joint in enumerate((hip, knee, ankle)):
+            before = R.from_quat(q[t, joint])
+            q[t, joint] = Slerp([0, 1], R.concatenate([before, solved[i]]))(weight[t]).as_quat()
+
+
+def lift_floor_steps(q, trans, J_rest, contacts, fps, plants):
+    """Lifts a foot that steps along the floor between plants.
+
+    WHAM often moves a foot 0.3-0.6 m at floor height between two plants (a skate the leg can't
+    hold as one plant: release_overreach cuts it). Each unplanted stretch where the foot stays under
+    plants["floor_exit_m"] and travels at least plants["swing_min_travel_m"] gets an arc up to
+    plants["swing_lift_m"] (a sine over the gap, so it starts and ends on the floor), by leg IK.
+    The foot keeps its path along the floor and its orientation.
+    """
+    P, G = forward_kinematics(q, trans, J_rest, with_rotations=True)
+    T = len(q)
+    for side, (hip, knee, ankle) in LEG_CHAINS.items():
+        a_, b_ = FOOT_JOINTS[side]
+        low = P[:, [a_, b_], 1].min(1)
+        weight = np.zeros(T); target_p = P[:, ankle].copy()
+        # Low by the game's planted rule too: within 0.03 m of this foot's 10th percentile height.
+        floor = max(plants["floor_exit_m"], np.percentile(low, 10) + 0.03)
+        for s0, e0 in segments_of(~contacts[side] & (low < floor)):
+            n = e0 - s0
+            if n < 3:
+                continue
+            if np.linalg.norm(P[e0 - 1, ankle, [0, 2]] - P[s0, ankle, [0, 2]]) < plants["swing_min_travel_m"]:
+                continue
+            arc = np.sin(np.pi * (np.arange(n) + 1) / (n + 1))
+            weight[s0:e0] = arc
+            target_p[s0:e0, 1] += plants["swing_lift_m"]
+        leg_ik(q, P, G, J_rest, (hip, knee, ankle), target_p, np.zeros(T), weight)
     return sign_align(q)
 
 
@@ -266,13 +303,91 @@ def planted_slide(P, contacts, fps):
     return float(np.mean(out)) if out else None
 
 
-def find_contacts(P, fps):
+def floor_mask(h, fps, plants):
+    """Frames a foot is at the floor whatever its speed, with hysteresis.
+
+    WHAM's feet often skim the floor faster than CONTACT_SPEED_M_S: low and slow alone planted
+    only a fifth to a third of the footwork, and the rest glided about 0.5 to 1.4 m/s under the
+    game's planted rule (Padel.Animation.FootworkClipSlide). A foot comes down under
+    plants["floor_enter_m"] and lifts over plants["floor_exit_m"] (joint heights; the joints sit
+    FOOT_JOINT_HEIGHT_M over the sole); spells under plants["min_s"] are dropped.
+    """
+    c = np.zeros(len(h), dtype=bool)
+    down = False
+    for t, ht in enumerate(h):
+        down = ht < plants["floor_exit_m"] if down else ht < plants["floor_enter_m"]
+        c[t] = down
+    shortest = int(round(plants["min_s"] * fps))
+    for s0, e0 in segments_of(c):
+        if e0 - s0 < shortest:
+            c[s0:e0] = False
+    return c
+
+
+def release_overreach(contact, hip, ankle, leg_length, plants):
+    """Ends a plant where its held ankle is out of the leg's reach.
+
+    A plant holds the ankle at its spell's median position. Held while the body travels on, the
+    hip moves off it, and past plants["release_reach"] of the leg's length the IK would straighten
+    the knee (soft_reach only eases it). The spell is cut back, from whichever end is out of reach,
+    until every frame reaches; what's left under min_s is dropped.
+    """
+    c = contact.copy()
+    limit = plants["release_reach"] * leg_length
+    for s0, e0 in segments_of(contact):
+        s, e = s0, e0
+        while e > s:
+            p = np.median(ankle[s:e], 0)
+            far = np.linalg.norm(hip[s:e] - p, axis=1) > limit
+            if not far.any():
+                break
+            # Trim the end that's furthest out.
+            if np.linalg.norm(hip[s] - p) >= np.linalg.norm(hip[e - 1] - p):
+                s += 1
+            else:
+                e -= 1
+        c[s0:e0] = False
+        c[s:e] = True
+    return c
+
+
+def find_contacts(P, fps, plants=None, J_rest=None):
+    """Planted frames per foot: low and slow, or (plants given) at the floor whatever the speed,
+    released where the leg can't reach (J_rest given)."""
     contacts = {}
     for side, (a, b) in FOOT_JOINTS.items():
         h = P[:, [a, b], 1].min(1)
         speed = np.linalg.norm(np.gradient(P[:, b][:, [0, 2]], axis=0), axis=1) * fps
-        contacts[side] = contact_mask(h, speed, fps)
+        c = contact_mask(h, speed, fps)
+        if plants:
+            c |= floor_mask(h, fps, plants)
+            if J_rest is not None:
+                hip, knee, ankle = LEG_CHAINS[side]
+                leg = np.linalg.norm(J_rest[knee] - J_rest[hip]) + np.linalg.norm(J_rest[ankle] - J_rest[knee])
+                shortest = int(round(plants["min_s"] * fps))
+                c = release_overreach(c, P[:, hip], P[:, ankle], leg, plants)
+                for s0, e0 in segments_of(c):
+                    if e0 - s0 < shortest:
+                        c[s0:e0] = False
+        contacts[side] = c
     return contacts
+
+
+def game_planted_slide(P, fps):
+    """Planted-foot slide (m/s) by the game's rule (PadelMotionProbe::PlantedSlideCmps): each
+    foot's contact point (the lower of ankle and ball) is planted within 0.03 m of its 10th
+    percentile height for at least 0.05 s, and slide is the planted spells' travel over their time.
+    Unlike planted_slide, which reads only the frames this script planted, it counts a foot that
+    skims the floor while moving: what shows as sliding in the game."""
+    moved = planted = 0.0
+    for a, b in FOOT_JOINTS.values():
+        path = np.where((P[:, b, 1] < P[:, a, 1])[:, None], P[:, b], P[:, a])
+        floor = np.percentile(path[:, 1], 10) + 0.03
+        for s0, e0 in segments_of(path[:, 1] < floor):
+            if (e0 - 1 - s0) / fps >= 0.05:
+                moved += np.linalg.norm(path[e0 - 1, [0, 2]] - path[s0, [0, 2]])
+                planted += (e0 - 1 - s0) / fps
+    return moved / planted if planted > 0 else None
 
 
 def rolling_min(x, w):
@@ -324,7 +439,7 @@ def pick_near_players(res, n_frames, width=1920, height=1080, net_y=NET_Y, side_
     return {side: c[1] for side, c in zip("LR", pair)}
 
 
-def clean_track(v, smpl, src_fps, fps=OUT_FPS):
+def clean_track(v, smpl, src_fps, fps=OUT_FPS, plants=None):
     betas = np.median(v["betas"], 0)
     verts = smpl["v_template"] + smpl["shapedirs"][:, :, :len(betas)] @ betas
     J_rest = smpl["J_regressor"] @ verts
@@ -347,9 +462,12 @@ def clean_track(v, smpl, src_fps, fps=OUT_FPS):
     trans[:, 1] -= floor
     P[:, :, 1] -= floor[:, None]
 
-    contacts = find_contacts(P, fps)
+    game_before = game_planted_slide(P, fps)
+    contacts = find_contacts(P, fps, plants, J_rest)
     slide_before = planted_slide(P, contacts, fps)
     q = plant_feet(q, trans, J_rest, contacts, fps)
+    if plants:
+        q = lift_floor_steps(q, trans, J_rest, contacts, fps, plants)
     P = forward_kinematics(q, trans, J_rest)
 
     # Root bone: the pelvis on the floor, facing the pelvis's smoothed heading (SMPL faces +z).
@@ -369,6 +487,7 @@ def clean_track(v, smpl, src_fps, fps=OUT_FPS):
         "frames": int(len(q)), "fps": fps, "first_frame_trimmed": trim, "body_height_m": round(float(np.ptp(verts[:, 1])), 2),
         "travel_m": round(float(np.linalg.norm(np.diff(root_pos[:, [0, 2]], axis=0), axis=1).sum()), 1),
         "planted_slide_cm_s": cm(slide), "planted_slide_before_ik_cm_s": cm(slide_before),
+        "game_slide_cm_s": cm(game_planted_slide(P, fps)), "game_slide_before_ik_cm_s": cm(game_before),
         "planted_share": round(float(np.mean([c.mean() for c in contacts.values()])), 2),
     }
     return rig, J_rest, verts, {k: c.astype(int).tolist() for k, c in contacts.items()}, quality, P
@@ -463,10 +582,12 @@ def main():
                          "already one move, named <label>-<n>_..., cut into its moving windows")
     ap.add_argument("--net-y", type=float, default=NET_Y, help="near players are below this share of the height")
     ap.add_argument("--side-x", type=float, default=SIDE_X, help="near players are this share of the width in from each side")
-    ap.add_argument("--config", default=FOOTWORK_CONFIG, help="labelled_windows: how --moves labelled cuts each clip")
+    ap.add_argument("--config", default=FOOTWORK_CONFIG, help="labelled_windows (how --moves labelled cuts each clip) and foot_plants")
     a = ap.parse_args()
     with open(a.config) as f:
-        windows = {k: v for k, v in json.load(f)["labelled_windows"].items() if not k.startswith("_")}
+        config = json.load(f)
+    windows = {k: v for k, v in config["labelled_windows"].items() if not k.startswith("_")}
+    plants = {k: v for k, v in config["foot_plants"].items() if not k.startswith("_")}
     import joblib
     smpl = load_smpl(os.path.join(a.results, "SMPL_NEUTRAL.pkl"))
     os.makedirs(a.out, exist_ok=True)
@@ -481,14 +602,16 @@ def main():
         for side, k in picked.items():
             for mirrored in (False, True):
                 track = mirror_track(res[k]) if mirrored else res[k]
-                rig, J_rest, verts, contacts, quality, _ = clean_track(track, smpl, a.fps)
+                rig, J_rest, verts, contacts, quality, P = clean_track(track, smpl, a.fps, plants=plants)
                 track_name = f"{clip}_near{side}" + ("_mirror" if mirrored else "")
                 quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]), mirrored=mirrored)
                 moves = labelled_moves(rig, clip, OUT_FPS, windows) if a.moves == "labelled" else find_moves(rig, OUT_FPS)
                 for i, (s, e, label) in enumerate(moves):
                     name = f"{track_name}_{label}_{i:02d}"
                     write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e, J_rest[0]), J_rest, verts, smpl)
-                    move = dict(quality, frames=int(e - s), from_frame=int(s), label=label)
+                    game = game_planted_slide(P[s:e], OUT_FPS)
+                    move = dict(quality, frames=int(e - s), from_frame=int(s), label=label,
+                                game_slide_cm_s=round(game * 100, 1) if game is not None else None)
                     with open(os.path.join(a.out, name + ".json"), "w") as f:
                         json.dump({"quality": move, "contacts": {f_: c[s:e] for f_, c in contacts.items()}}, f)
                     report[name] = move

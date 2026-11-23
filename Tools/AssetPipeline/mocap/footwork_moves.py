@@ -141,10 +141,23 @@ def active_windows(root_pos, fps, cfg):
     return windows
 
 
+def median_speed(root_pos, fps):
+    """The root's median ground speed (m/s, y up) over a window."""
+    vel = np.gradient(np.asarray(root_pos, dtype=float), axis=0) * fps
+    return float(np.median(np.hypot(vel[:, 0], vel[:, 2]))) if len(vel) else 0.0
+
+
 def labelled_moves(rig, clip, fps, cfg):
-    """[(start, end, label)]: the moving windows of a cut clip, labelled from the clip's name."""
+    """[(start, end, label)]: the moving windows of a cut clip, labelled from the clip's name.
+
+    cfg["min_window_mps"] maps a label to the median speed its windows need: most video shuffles
+    run about 0.7 m/s, and the game's shuffles at 1 to 1.5 m/s, beyond what the play rate can
+    stretch (0012); slower windows played under a real shuffle slid.
+    """
     label = label_from_clip(clip)
-    return [(s, e, label) for s, e in active_windows(rig["root_pos"], fps, cfg)]
+    least = cfg.get("min_window_mps", {}).get(label, 0.0)
+    return [(s, e, label) for s, e in active_windows(rig["root_pos"], fps, cfg)
+            if median_speed(rig["root_pos"][s:e], fps) >= least]
 
 
 def slice_rig(rig, s, e, pelvis_rest):

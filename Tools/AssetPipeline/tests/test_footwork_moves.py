@@ -28,7 +28,8 @@ class FootworkMovesTest(unittest.TestCase):
         self.assertEqual(self.moves.label_from_clip("rally_07"), "move")
 
     FPS = 30.0
-    WINDOWS = {"min_mps": 0.5, "min_s": 0.3, "gap_s": 0.2, "pad_s": 0.3, "max_s": 2.0, "min_window_s": 1.0}
+    WINDOWS = {"min_mps": 0.5, "min_s": 0.3, "gap_s": 0.2, "pad_s": 0.3, "max_s": 2.0, "min_window_s": 1.0,
+               "min_window_mps": {"shuffle": 1.0}}
 
     def _root(self, speeds_mps):
         """Root positions (y up) moving along x at each frame's speed."""
@@ -73,6 +74,14 @@ class FootworkMovesTest(unittest.TestCase):
         windows = self.moves.active_windows(self._root(speeds), self.FPS, self.WINDOWS)
         self.assertEqual(len(windows), 1)
         self.assertLess(windows[0][1], int(3.0 * self.FPS))
+
+    def test_slow_shuffle_windows_are_dropped_other_labels_kept(self) -> None:
+        # A 1.2 s move at 0.7 m/s: under shuffle's 1.0 m/s floor, so only a split step keeps it.
+        slow = {"root_pos": self._root(self._speeds((1.0, 0.0), (1.2, 0.7), (1.0, 0.0)))}
+        fast = {"root_pos": self._root(self._speeds((1.0, 0.0), (1.2, 1.4), (1.0, 0.0)))}
+        self.assertEqual(self.moves.labelled_moves(slow, "shuffle-02_x", self.FPS, self.WINDOWS), [])
+        self.assertEqual(len(self.moves.labelled_moves(slow, "split_step-02_x", self.FPS, self.WINDOWS)), 1)
+        self.assertEqual(len(self.moves.labelled_moves(fast, "shuffle-02_x", self.FPS, self.WINDOWS)), 1)
 
     def test_a_clip_that_never_moves_gives_nothing(self) -> None:
         import numpy as np
