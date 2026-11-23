@@ -54,6 +54,7 @@ FOOT_JOINTS = {"L": (7, 10), "R": (8, 11)}   # ankle, ball of foot
 FOOT_JOINT_HEIGHT_M = 0.03   # the ankle/ball joints sit about this far above the sole
 TRIM_S = 0.3                 # dropped from each end of a track
 OUT_FPS = 30.0               # every clip is written at this rate
+FOOTWORK_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config", "footwork.json")
 # Rotation low-pass cutoffs (Hz) per joint group. WHAM's single-camera jitter is worst on the
 # torso, which moves slowly anyway; the legs keep the most detail for quick steps.
 TORSO = {0, 3, 6, 9, 12, 15}
@@ -459,10 +460,13 @@ def main():
     ap.add_argument("--fps", type=float, default=29.97, help="the source video's frame rate")
     ap.add_argument("--moves", choices=("shuffles", "labelled"), default="shuffles",
                     help="shuffles: cut the side shuffles out of whole rallies; labelled: each clip is "
-                         "already one move, named <label>-<n>_..., and is kept whole")
+                         "already one move, named <label>-<n>_..., cut into its moving windows")
     ap.add_argument("--net-y", type=float, default=NET_Y, help="near players are below this share of the height")
     ap.add_argument("--side-x", type=float, default=SIDE_X, help="near players are this share of the width in from each side")
+    ap.add_argument("--config", default=FOOTWORK_CONFIG, help="labelled_windows: how --moves labelled cuts each clip")
     a = ap.parse_args()
+    with open(a.config) as f:
+        windows = {k: v for k, v in json.load(f)["labelled_windows"].items() if not k.startswith("_")}
     import joblib
     smpl = load_smpl(os.path.join(a.results, "SMPL_NEUTRAL.pkl"))
     os.makedirs(a.out, exist_ok=True)
@@ -480,7 +484,7 @@ def main():
                 rig, J_rest, verts, contacts, quality, _ = clean_track(track, smpl, a.fps)
                 track_name = f"{clip}_near{side}" + ("_mirror" if mirrored else "")
                 quality.update(track=int(k), first_frame=int(res[k]["frame_ids"][0]), mirrored=mirrored)
-                moves = labelled_moves(rig, clip) if a.moves == "labelled" else find_moves(rig, OUT_FPS)
+                moves = labelled_moves(rig, clip, OUT_FPS, windows) if a.moves == "labelled" else find_moves(rig, OUT_FPS)
                 for i, (s, e, label) in enumerate(moves):
                     name = f"{track_name}_{label}_{i:02d}"
                     write_fbx(os.path.join(a.out, name + ".fbx"), slice_rig(rig, s, e, J_rest[0]), J_rest, verts, smpl)

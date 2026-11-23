@@ -27,11 +27,58 @@ class FootworkMovesTest(unittest.TestCase):
         self.assertEqual(self.moves.label_from_clip("volley_back-02_3m36s_side"), "volley_back")
         self.assertEqual(self.moves.label_from_clip("rally_07"), "move")
 
-    def test_labelled_moves_keep_the_whole_track(self) -> None:
+    FPS = 30.0
+    WINDOWS = {"min_mps": 0.5, "min_s": 0.3, "gap_s": 0.2, "pad_s": 0.3, "max_s": 2.0, "min_window_s": 1.0}
+
+    def _root(self, speeds_mps):
+        """Root positions (y up) moving along x at each frame's speed."""
         import numpy as np
-        rig = {"root_pos": np.zeros((40, 3))}
-        self.assertEqual(self.moves.labelled_moves(rig, "crossover-03_1m40s_side"), [(0, 40, "crossover")])
-        self.assertEqual(self.moves.labelled_moves({"root_pos": np.zeros((3, 3))}, "lunge-01_x"), [])
+        x = np.concatenate([[0.0], np.cumsum(np.asarray(speeds_mps, dtype=float)[1:] / self.FPS)])
+        return np.stack([x, np.zeros_like(x), np.zeros_like(x)], 1)
+
+    def _speeds(self, *stretches):
+        """Per-frame speeds from (seconds, m/s) stretches."""
+        import numpy as np
+        return np.concatenate([np.full(int(round(s * self.FPS)), v) for s, v in stretches])
+
+    def test_config_has_the_labelled_windows(self) -> None:
+        import json
+        cfg = json.loads((MOCAP.parent / "config" / "footwork.json").read_text())["labelled_windows"]
+        self.assertEqual({k for k in cfg if not k.startswith("_")}, set(self.WINDOWS))
+
+    def test_a_labelled_clip_keeps_only_its_moving_window_padded(self) -> None:
+        # 5 s cut around one move: 2 s standing, a 1 s shuffle, 2 s standing.
+        speeds = self._speeds((2.0, 0.0), (1.0, 1.5), (2.0, 0.0))
+        moves = self.moves.labelled_moves({"root_pos": self._root(speeds)}, "shuffle-03_1m40s_side", self.FPS, self.WINDOWS)
+        self.assertEqual(len(moves), 1)
+        s, e, label = moves[0]
+        self.assertEqual(label, "shuffle")
+        # The move (frames 60..90) plus 0.3 s either side, give or take the 0.1 s smoothing.
+        self.assertAlmostEqual(s, 51, delta=3)
+        self.assertAlmostEqual(e, 99, delta=3)
+
+    def test_a_long_move_splits_into_equal_windows_under_the_cap(self) -> None:
+        speeds = self._speeds((0.5, 0.0), (4.5, 1.2), (0.5, 0.0))
+        windows = self.moves.active_windows(self._root(speeds), self.FPS, self.WINDOWS)
+        self.assertGreaterEqual(len(windows), 3)
+        lengths = [e - s for s, e in windows]
+        self.assertLessEqual(max(lengths), 2.0 * self.FPS)
+        self.assertLessEqual(max(lengths) - min(lengths), 1)
+        # Contiguous: nothing of the move is lost between windows.
+        self.assertTrue(all(a[1] == b[0] for a, b in zip(windows, windows[1:])))
+
+    def test_brief_pauses_are_bridged_and_twitches_dropped(self) -> None:
+        # A 0.1 s pause inside a move is bridged; a 0.1 s twitch alone is dropped.
+        speeds = self._speeds((1.0, 0.0), (0.6, 1.0), (0.1, 0.0), (0.6, 1.0), (1.5, 0.0), (0.1, 2.0), (1.5, 0.0))
+        windows = self.moves.active_windows(self._root(speeds), self.FPS, self.WINDOWS)
+        self.assertEqual(len(windows), 1)
+        self.assertLess(windows[0][1], int(3.0 * self.FPS))
+
+    def test_a_clip_that_never_moves_gives_nothing(self) -> None:
+        import numpy as np
+        still = {"root_pos": np.zeros((150, 3))}
+        self.assertEqual(self.moves.labelled_moves(still, "ready_stance-01_x", self.FPS, self.WINDOWS), [])
+        self.assertEqual(self.moves.labelled_moves({"root_pos": np.zeros((3, 3))}, "lunge-01_x", self.FPS, self.WINDOWS), [])
 
     def _track(self, u: float, y: float, frames: int = 100, sway: float = 60.0, start: int = 0):
         """A WHAM-like track whose median image position is (u, y) in a 1920x1080 frame."""
