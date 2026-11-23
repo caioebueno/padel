@@ -60,7 +60,7 @@ namespace PadelMotionProbe
 		/** Share of the path each foot (left, right) was locked by the M2 foot lock. */
 		double LockedShare[2] = { 0.0, 0.0 };
 		double MeanPlaying = 0.0;
-		/** Seconds a sample clip played on while the search looked at the footwork alone (FPadelMotionMatcher::StrandedS). */
+		/** Seconds a clip played from databases the latest search left out (FPadelMotionMatcher::StrandedS). */
 		double StrandedS = 0.0;
 		/** Footwork-first searches while shuffling, how many the footwork answered, and their best costs (mean, lowest). */
 		int32 ReadySearches = 0;

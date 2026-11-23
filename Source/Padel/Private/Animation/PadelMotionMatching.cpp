@@ -155,7 +155,7 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 		Playing.Time += Dt * Playing.PlayRate;
 		Playing.Time = Playing.bLoop ? FMath::Fmod(Playing.Time, FMath::Max(Length, 1e-3)) : FMath::Min(Playing.Time, Length);
 	}
-	if (bReadyOnlySearch && !Stack.IsEmpty() && !IsReadyDatabase(Stack.Last().Database))
+	if (!Stack.IsEmpty() && bReadyOnlySearch != IsReadyDatabase(Stack.Last().Database))
 	{
 		Stranded += Dt;
 	}
@@ -184,6 +184,31 @@ void FPadelMotionMatcher::Update(const FAnimationUpdateContext& Context, const F
 		SinceSearchS = 0.0;
 		Search(Context, Trajectory, SpeedUnits, bRunningOut, bInRally);
 	}
+}
+
+bool FPadelMotionMatcher::CanKeepUp(const UE::PoseSearch::FSearchResult& Result, double SpeedUnits) const
+{
+	// A footwork pose that can't reach the simulation's speed within PlayRateMin..Max would play
+	// clamped under a faster pawn, and its feet slide (the clips run slower than the game's
+	// shuffle at times); the sample's clips take that frame instead.
+	FPoseSearchBlueprintResult Picked;
+	const UAnimSequenceBase* Clip = Picked.InitFrom(Result, 1.0f) ? Cast<UAnimSequenceBase>(Picked.SelectedAnim.Get()) : nullptr;
+	if (!Clip)
+	{
+		return false;
+	}
+	FPlaying Probe;
+	Probe.Clip = Clip;
+	Probe.Time = Picked.SelectedTime;
+	// As MatchedPlayRate: below a slow walk speeds are noise, and the pose plays as authored.
+	constexpr double MinSpeed = 30.0;
+	if (SpeedUnits < MinSpeed)
+	{
+		return true;
+	}
+	const double ClipSpeed = MeasureRootVelocity(Probe).Size2D();
+	const double Rate = ClipSpeed >= MinSpeed ? SpeedUnits / ClipSpeed : TNumericLimits<double>::Max();
+	return Rate >= Tuning.PlayRateMin && Rate <= Tuning.PlayRateMax;
 }
 
 bool FPadelMotionMatcher::IsReadyDatabase(const UPoseSearchDatabase* Database) const
@@ -270,8 +295,9 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 			// Pose Search also offers the playing clip's continuing pose from its own database, searched
 			// or not. In the Ready pass a sample clip's would always win (the footwork never beats it by
 			// the margin), and nothing searched could replace it: it would play on under a shuffling
-			// pawn. That pass weighs the footwork alone; the fallback below weighs the rest.
-			if (bReadyOnly && !IsReadyDatabase(Candidate.Database.Get()))
+			// pawn. The same the other way: a footwork clip's would carry on past the shuffle. Each
+			// pass weighs only its own databases.
+			if (bReadyOnly != IsReadyDatabase(Candidate.Database.Get()))
 			{
 				return;
 			}
@@ -314,7 +340,7 @@ PRAGMA_ENABLE_EXPERIMENTAL_WARNINGS
 		}
 		// The footwork plays only where it matches: a poor best (a shuffle unlike any clip) falls
 		// back to the sample's databases, which then search exactly as they do without footwork.
-		bReadyOnlySearch = Best.IsValid() && static_cast<float>(Best.PoseCost) <= Tuning.ReadyMaxCost;
+		bReadyOnlySearch = Best.IsValid() && static_cast<float>(Best.PoseCost) <= Tuning.ReadyMaxCost && CanKeepUp(Best, SpeedUnits);
 		ReadyAccepted += bReadyOnlySearch ? 1 : 0;
 	}
 	if (!bReadyOnlySearch)

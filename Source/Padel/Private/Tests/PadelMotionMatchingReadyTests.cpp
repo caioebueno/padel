@@ -54,7 +54,7 @@ bool FPadelMotionMatchingReadyTest::RunTest(const FString& Parameters)
 
 	// Where the footwork doesn't match, the sample's clips carry on: never a sample clip left
 	// playing because only the footwork was searched (Padel.Animation.MotionMatching says why).
-	TestTrue(FString::Printf(TEXT("Ready: no sample clip is stranded by a footwork-only search (%.2f s)"), Ready.StrandedS), Ready.StrandedS == 0.0);
+	TestTrue(FString::Printf(TEXT("Ready: no clip plays on from a database the search left out (%.2f s)"), Ready.StrandedS), Ready.StrandedS == 0.0);
 
 	// The same gates as the sample's clips alone (Padel.Animation.MotionMatching, clips run).
 	const FBodyMetrics& P = Ready.Placeholder;

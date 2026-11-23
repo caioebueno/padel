@@ -12,6 +12,7 @@ struct FPoseContext;
 namespace UE::PoseSearch
 {
 	struct FPoseHistory;
+	struct FSearchResult;
 }
 
 /** M1 motion matching tuning (Data/Animation.json MotionMatching*), in seconds and Unreal units. */
@@ -132,11 +133,11 @@ struct PADEL_API FPadelMotionMatcher
 	int32 NumPicks() const { return Picks; }
 	int32 NumPlaying() const { return Stack.Num(); }
 	/**
-	 * Seconds since the last reset that a clip outside the Ready databases played while the
-	 * latest search looked only at the Ready ones: nothing searched could replace it, so it
-	 * played on whatever the player did (the footwork-only shuffle search kept a stop clip
-	 * under a shuffling pawn this way). 0 when the footwork either plays or the search falls
-	 * back to the sample's databases.
+	 * Seconds since the last reset that a clip played from databases the latest search left
+	 * out: a sample clip while it looked at the footwork alone, or a footwork clip while it
+	 * looked at the sample's. Nothing searched could replace it, so it played on whatever the
+	 * player did (the footwork-only shuffle search kept a stop clip under a shuffling pawn this
+	 * way). 0 when each search's pick comes from what it searched.
 	 */
 	double StrandedS() const { return Stranded; }
 	/** Searches since the last reset that looked at the Ready databases alone, and how many of those the footwork answered. */
@@ -163,6 +164,8 @@ private:
 	void Search(const FAnimationUpdateContext& Context, const FTransformTrajectory& Trajectory, double SpeedUnits, bool bRunningOut, bool bInRally);
 	double MatchedPlayRate(const FPlaying& Playing, double SpeedUnits) const;
 	bool IsReadyDatabase(const UPoseSearchDatabase* Database) const;
+	/** The result's clip, at its time, matches SpeedUnits within PlayRateMin..Max. */
+	bool CanKeepUp(const UE::PoseSearch::FSearchResult& Result, double SpeedUnits) const;
 	void CacheHistoryBones();
 	FVector MeasureRootVelocity(const FPlaying& Playing) const;
 	void Inertialize(FPoseContext& Output);

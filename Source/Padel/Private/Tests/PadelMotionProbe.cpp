@@ -565,7 +565,7 @@ namespace PadelMotionProbe
 		{
 			return;
 		}
-		Test.AddInfo(FString::Printf(TEXT("[%s] %.2f clip switches/s over %.1f s; poses playing at once: max %d, mean %.2f; feet locked %.0f%% / %.0f%%; footwork-first searches %d, footwork played in %d (best cost mean %.3f, lowest %.3f); a sample clip stranded %.2f s"),
+		Test.AddInfo(FString::Printf(TEXT("[%s] %.2f clip switches/s over %.1f s; poses playing at once: max %d, mean %.2f; feet locked %.0f%% / %.0f%%; footwork-first searches %d, footwork played in %d (best cost mean %.3f, lowest %.3f); a clip stranded %.2f s"),
 			*Label, Run.SwitchesPerS, Run.DurationS, Run.MaxPlaying, Run.MeanPlaying, Run.LockedShare[0] * 100.0, Run.LockedShare[1] * 100.0,
 			Run.ReadySearches, Run.ReadyAccepted, Run.MeanReadyCost, Run.LowestReadyCost, Run.StrandedS));
 		for (const FBodyMetrics* Body : { &Run.Placeholder, &Run.MetaHuman })
