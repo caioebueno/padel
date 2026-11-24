@@ -263,7 +263,7 @@ namespace PadelMotionProbe
 			M.SlideByPhase = FString::Join(Parts, TEXT(", "));
 
 			// The biggest turn of a body (and an arm) bone between two frames, component space.
-			auto Worst = [&Phases](const TArray<TArray<FQuat>>& Rotations, const TArray<FString>& Names, double& OutDeg, FString& OutAt)
+			auto Worst = [&Phases](const TArray<TArray<FQuat>>& Rotations, const TArray<FString>& Names, double& OutDeg, FString& OutAt, int32* OutFrame)
 			{
 				for (int32 I = WarmUpFrames + 1; I < Rotations.Num(); ++I)
 				{
@@ -274,12 +274,16 @@ namespace PadelMotionProbe
 						{
 							OutDeg = Deg;
 							OutAt = Names[B] + TEXT(", ") + Phases[I];
+							if (OutFrame)
+							{
+								*OutFrame = I;
+							}
 						}
 					}
 				}
 			};
-			Worst(Track.CoreRotations, Track.CoreNames, M.WorstBoneTurnDeg, M.WorstBoneTurnAt);
-			Worst(Track.ArmRotations, Track.ArmNames, M.WorstArmTurnDeg, M.WorstArmTurnAt);
+			Worst(Track.CoreRotations, Track.CoreNames, M.WorstBoneTurnDeg, M.WorstBoneTurnAt, &M.WorstBoneTurnFrame);
+			Worst(Track.ArmRotations, Track.ArmNames, M.WorstArmTurnDeg, M.WorstArmTurnAt, nullptr);
 
 			// Angular jerk, world space: the angular velocity between frames, differenced twice.
 			for (const TPair<FString, TArray<FQuat>>& Bone : Track.World)

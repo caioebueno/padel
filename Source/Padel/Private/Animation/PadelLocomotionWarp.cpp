@@ -141,8 +141,17 @@ void FPadelLocomotionWarp::Apply(FCompactPose& Pose, const FPadelBodyBones& Bone
 		Target[Side] = CS.GetComponentSpaceTransform(Bones.Foot[Side]).GetLocation();
 		if (FMath::Abs(Stride - 1.0) > 1e-3 && !Along.IsNearlyZero())
 		{
+			// Not on a nearly straight leg: there the knee's bend has no steady way, and shortening a
+			// sprinting leg at push-off (where the clip's knee passes through straight) swung the knee
+			// 27° in a frame (Padel.Animation.MotionMatchingReady, the run back).
+			const FVector ThighAt = CS.GetComponentSpaceTransform(Bones.Thigh[Side]).GetLocation();
+			const FVector KneeAt = CS.GetComponentSpaceTransform(Bones.Calf[Side]).GetLocation();
+			const double Full = FVector::Dist(ThighAt, KneeAt) + FVector::Dist(KneeAt, Target[Side]);
+			const double Straight = Full > 1.0 ? FVector::Dist(ThighAt, Target[Side]) / Full : 0.0;
+			const double Share = FMath::Min(Tuning.StrideStraightLegShare, 1.0 - 1e-3);
+			const double Keep = 1.0 - FMath::SmoothStep(Share, 1.0, Straight);
 			const double Reach = FVector::DotProduct(Target[Side] - Hips, Along);
-			Target[Side] += Along * (Reach * (Stride - 1.0));
+			Target[Side] += Along * (Reach * (Stride - 1.0) * Keep);
 		}
 	}
 

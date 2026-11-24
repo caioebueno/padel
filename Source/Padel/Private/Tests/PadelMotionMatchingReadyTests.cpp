@@ -31,6 +31,11 @@ bool FPadelMotionMatchingReadyTest::RunTest(const FString& Parameters)
 		return true;
 	}
 	Report(*this, TEXT("ready"), Ready);
+	// The clips around the worst bone turn, for the log.
+	for (int32 I = FMath::Max(0, Ready.Placeholder.WorstBoneTurnFrame - 20); I <= Ready.Placeholder.WorstBoneTurnFrame + 5 && I < Ready.ClipPerFrame.Num(); ++I)
+	{
+		AddInfo(FString::Printf(TEXT("ready: frame %d %s: %s"), I, *Ready.Phases[I], *Ready.ClipPerFrame[I]));
+	}
 
 	// Where the footwork plays, by phase.
 	TMap<FString, int32> FootworkFrames;

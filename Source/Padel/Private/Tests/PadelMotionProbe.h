@@ -85,6 +85,7 @@ namespace PadelMotionProbe
 		FString SlideByPhase;
 		double WorstBoneTurnDeg = 0.0;
 		FString WorstBoneTurnAt;
+		int32 WorstBoneTurnFrame = INDEX_NONE;
 		/** The same for the arms (clavicle, upper arm, forearm, hand, both sides): the racket arm's IK shows here. */
 		double WorstArmTurnDeg = 0.0;
 		FString WorstArmTurnAt;

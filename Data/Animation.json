@@ -225,6 +225,7 @@
 		"StrideWarpMax": 1.4,
 		"StrideWarpHalfLifeS": 0.08,
 		"StrideWarpMinMps": 0.5,
+		"StrideWarpStraightLegShare": 0.9,
 		"FootLockHeightM": 0.04,
 		"FootLockSpeedMps": 0.3,
 		"FootLockReleaseHeightM": 0.06,

@@ -228,6 +228,12 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpHalfLifeS = 0.08;
 	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpMinMps = 0.5;
 	/**
+	 * A clip leg longer than this share of the thigh and calf together is nearly straight: the
+	 * stride warp fades out on it toward fully straight, where the knee's bend has no steady way
+	 * and a small change in reach swings it round. 1: never fades.
+	 */
+	UPROPERTY(EditAnywhere, Category = "LocomotionWarp") double StrideWarpStraightLegShare = 1.0;
+	/**
 	 * Foot locking: an ankle within FootLockHeightM of its standing height (0: off) and slower than
 	 * FootLockSpeedMps in the clip's own world stays where it landed; it lets go above
 	 * FootLockReleaseHeightM or FootLockReleaseSpeedMps, or FootLockMaxDriftM from the clip's

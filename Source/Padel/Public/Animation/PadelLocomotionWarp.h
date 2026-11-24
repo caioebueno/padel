@@ -36,6 +36,8 @@ struct FPadelLocomotionWarpTuning
 	double StrideMax = 1.0;
 	double StrideHalfLifeS = 0.08;
 	double StrideMinSpeedUnits = 50.0;
+	/** A clip leg past this share of its full length fades the stride warp out toward straight (1: never). */
+	double StrideStraightLegShare = 1.0;
 
 	/** The ankle at most this far (cm) above its height standing, and slower than FootLockSpeedUnits in the clip's own world, locks. 0 turns locking off. */
 	double FootLockHeightUnits = 0.0;

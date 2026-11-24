@@ -161,6 +161,11 @@ FPadelAnimData FPadelAnimData::Load()
 			W.StrideMax = Row->StrideWarpMax;
 			W.StrideHalfLifeS = Row->StrideWarpHalfLifeS;
 			W.StrideMinSpeedUnits = Row->StrideWarpMinMps * Unit;
+			W.StrideStraightLegShare = Row->StrideWarpStraightLegShare;
+			if (W.StrideStraightLegShare <= 0.0 || W.StrideStraightLegShare > 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: StrideWarpStraightLegShare must be above 0, at most 1"));
+			}
 			W.FootLockHeightUnits = Row->FootLockHeightM * Unit;
 			W.FootLockSpeedUnits = Row->FootLockSpeedMps * Unit;
 			W.FootLockReleaseHeightUnits = Row->FootLockReleaseHeightM * Unit;
