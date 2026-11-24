@@ -133,6 +133,57 @@ namespace PadelMotionProbe
 			for (int32 I = 0; I < 60; ++I) { Step(TEXT("end"), EMovementMode::Adjust); }
 		}
 
+		/** The base check paths (EPath::WalkSteady..WalkTurn90): one move each. Step as LayerVideoPath. */
+		void BasePath(EPath Path, FScript& S, double StartYaw, TFunctionRef<void(const TCHAR*, Padel::EMovementMode)> Step)
+		{
+			using Padel::EMovementMode;
+			const FVector Ahead = FRotator(0.0, StartYaw, 0.0).Vector();
+			const FVector Right = FRotator(0.0, StartYaw + 90.0, 0.0).Vector();
+			const double Walk = 150.0;
+			const double RunSpeed = 450.0;
+			auto Speed = [&S]() { return S.Velocity.Size2D(); };
+			auto Hold = [&](const TCHAR* Phase, int32 Frames, double Want, const FVector& Dir, double Accel, EMovementMode Mode)
+			{
+				for (int32 I = 0; I < Frames; ++I)
+				{
+					Accelerate(S, Dir * Want, Accel);
+					if (Want > 0.0)
+					{
+						Face(S, YawOf(Dir));
+					}
+					Step(Phase, Mode);
+				}
+			};
+			switch (Path)
+			{
+			case EPath::WalkSteady:
+				// Already walking (a moment to get there), then four steady seconds.
+				Hold(TEXT("start"), 30, Walk, Ahead, 500.0, EMovementMode::Run);
+				Hold(TEXT("walk"), 240, Walk, Ahead, 500.0, EMovementMode::Run);
+				break;
+			case EPath::RunSteady:
+				Hold(TEXT("start"), 60, RunSpeed, Ahead, 800.0, EMovementMode::Run);
+				Hold(TEXT("run"), 180, RunSpeed, Ahead, 800.0, EMovementMode::Run);
+				break;
+			case EPath::WalkStart:
+				Hold(TEXT("stand"), 60, 0.0, Ahead, 500.0, EMovementMode::Adjust);
+				Hold(TEXT("start"), 150, Walk, Ahead, 500.0, EMovementMode::Run);
+				break;
+			case EPath::WalkStop:
+				Hold(TEXT("walk"), 120, Walk, Ahead, 500.0, EMovementMode::Run);
+				while (Speed() > 1.0) { Accelerate(S, FVector::ZeroVector, 500.0); Step(TEXT("stop"), EMovementMode::Run); }
+				S.Velocity = FVector::ZeroVector;
+				Hold(TEXT("stand"), 90, 0.0, Ahead, 500.0, EMovementMode::Adjust);
+				break;
+			case EPath::WalkTurn90:
+				Hold(TEXT("walk"), 90, Walk, Ahead, 500.0, EMovementMode::Run);
+				Hold(TEXT("turn"), 150, Walk, Right, 500.0, EMovementMode::Run);
+				break;
+			default:
+				break;
+			}
+		}
+
 		/** What one body recorded each frame. */
 		struct FTrack
 		{
@@ -528,7 +579,7 @@ namespace PadelMotionProbe
 		FScript S;
 		S.Position = FVector(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y, Ground);
 		S.FacingYawDeg = Pawn->GetActorRotation().Yaw;
-		const bool bLayerVideo = Options.Path == EPath::LayerVideo;
+		const bool bLayerVideo = Options.Path != EPath::Classic;
 		if (bLayerVideo)
 		{
 			// Start near the back of the player's half so the 8 m forward leg stops short of the net,
@@ -548,11 +599,19 @@ namespace PadelMotionProbe
 			FScript Dry = S;
 			if (bLayerVideo)
 			{
-				LayerVideoPath(Dry, Dry.FacingYawDeg, [&Dry, &Recorder](const TCHAR*, Padel::EMovementMode)
+				auto DryStep = [&Dry, &Recorder](const TCHAR*, Padel::EMovementMode)
 				{
 					Dry.Position += Dry.Velocity * Dt;
 					Recorder.Path.Add(Dry.Position);
-				});
+				};
+				if (Options.Path == EPath::LayerVideo)
+				{
+					LayerVideoPath(Dry, Dry.FacingYawDeg, DryStep);
+				}
+				else
+				{
+					BasePath(Options.Path, Dry, Dry.FacingYawDeg, DryStep);
+				}
 			}
 			else
 			{
@@ -721,11 +780,19 @@ namespace PadelMotionProbe
 		using Padel::EMovementMode;
 		if (bLayerVideo)
 		{
-			LayerVideoPath(S, StartYaw, [&Mode, &Tick](const TCHAR* Phase, EMovementMode InMode)
+			auto Step = [&Mode, &Tick](const TCHAR* Phase, EMovementMode InMode)
 			{
 				Mode = InMode;
 				Tick(Phase);
-			});
+			};
+			if (Options.Path == EPath::LayerVideo)
+			{
+				LayerVideoPath(S, StartYaw, Step);
+			}
+			else
+			{
+				BasePath(Options.Path, S, StartYaw, Step);
+			}
 		}
 		else
 		{

@@ -37,6 +37,12 @@ namespace PadelMotionProbe
 		 * jog, a side shuffle 2 m each way, stop and stand 1 s.
 		 */
 		LayerVideo,
+		/** Base checks (Padel.Animation.BaseClips): one move each, a few seconds, to see which clip the search picks for it. */
+		WalkSteady,
+		RunSteady,
+		WalkStart,
+		WalkStop,
+		WalkTurn90,
 	};
 
 	/** What a recorder gets before the first frame. */
