@@ -103,4 +103,44 @@ bool FPadelMotionMatchingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPadelMotionMatchingClipKeepsUpTest, "Padel.Animation.MotionMatching.ClipKeepsUp",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPadelMotionMatchingClipKeepsUpTest::RunTest(const FString& Parameters)
+{
+	// The phase 0 layer videos (Padel.Animation.LayerVideo) found the body standing still through
+	// a 90 deg turn and a 2 m walk after a stop: the search kept playing the stop clip's still tail
+	// (Pose Search offers the playing clip's continuing pose even from a database the chooser left
+	// out) while the game walked on at 1.5 m/s. On the layer video path (stop, turn, walk,
+	// reversal, shuffle), whenever the game moves the playing clip must move too.
+	using namespace PadelMotionProbe;
+	FRunOptions Options;
+	Options.Path = EPath::LayerVideo;
+	for (const EDrive Drive : { EDrive::LocomotionOnly, EDrive::FullStack })
+	{
+		const TCHAR* Label = Drive == EDrive::FullStack ? TEXT("full") : TEXT("clips");
+		const FRun Run = PadelMotionProbe::Run(*this, Drive, Options);
+		if (!Run.bRan)
+		{
+			AddInfo(TEXT("Skipped: ") + Run.SkipReason);
+			return true;
+		}
+		Report(*this, Label, Run);
+		// Each frame's clip while stalled, for the log.
+		for (int32 Frame = 1; Frame < Run.ClipPerFrame.Num(); ++Frame)
+		{
+			if (Run.ClipPerFrame[Frame].Contains(TEXT("clip 0.0")) && !Run.ClipPerFrame[Frame].EndsWith(TEXT("path 0.00 m/s")))
+			{
+				AddInfo(FString::Printf(TEXT("[%s] %d %s: %s"), Label, Frame, *Run.Phases[Frame], *Run.ClipPerFrame[Frame]));
+			}
+		}
+		// Before the fix: 2.35 s in all, the longest 1.07 s (the walk stop's tail through the turn and walk).
+		// After: about 0.55 s, each spell under 0.2 s (a search or two to notice).
+		TestTrue(FString::Printf(TEXT("%s: never moving on a clip that barely moves for 0.25 s or more (longest %.2f s, %s)"), Label, Run.WorstStalledSpellS, *Run.WorstStalledAt),
+			Run.WorstStalledSpellS < 0.25);
+		TestTrue(FString::Printf(TEXT("%s: under 0.75 s moving on clips that barely move over the path (%.2f s)"), Label, Run.StalledMovingS), Run.StalledMovingS < 0.75);
+	}
+	return true;
+}
+
 #endif

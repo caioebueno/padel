@@ -573,6 +573,7 @@ namespace PadelMotionProbe
 		TArray<FVector> Past;
 		int64 PlayingSum = 0;
 		int32 LockedFrames[2] = { 0, 0 };
+		double StalledSpellS = 0.0;
 		auto Tick = [&](const FString& Phase)
 		{
 			S.Position += S.Velocity * Dt;
@@ -674,6 +675,26 @@ namespace PadelMotionProbe
 				Shown->RefreshBoneTransforms();
 			}
 			const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
+			const UAnimSequenceBase* Playing = Matcher.CurrentClip();
+			const bool bRanOut = Playing && !Matcher.CurrentLoops() && Matcher.CurrentTime() >= Playing->GetPlayLength() - 1e-3;
+			const double PathSpeed = S.Velocity.Size2D();
+			const bool bStalled = Playing && PathSpeed > 50.0 && (bRanOut || Matcher.ClipRootVelocity().Size2D() < PathSpeed / 3.0);
+			if (bStalled)
+			{
+				Out.StalledMovingS += Dt;
+				StalledSpellS += Dt;
+				if (StalledSpellS > Out.WorstStalledSpellS)
+				{
+					Out.WorstStalledSpellS = StalledSpellS;
+					Out.WorstStalledAt = Playing->GetName() + TEXT(", ") + Phase;
+				}
+			}
+			else
+			{
+				StalledSpellS = 0.0;
+			}
+			Out.ClipPerFrame.Add(Playing ? FString::Printf(TEXT("%s %.2f/%.2f x%.2f, clip %.2f m/s, path %.2f m/s"), *Playing->GetName(), Matcher.CurrentTime(),
+				Playing->GetPlayLength(), Matcher.CurrentPlayRate(), Matcher.ClipRootVelocity().Size2D() / 100.0, PathSpeed / 100.0) : FString());
 			Out.Phases.Add(Phase);
 			Out.PickPerFrame.Add(Matcher.CurrentDatabase());
 			Out.MaxPlaying = FMath::Max(Out.MaxPlaying, Matcher.NumPlaying());
@@ -809,6 +830,7 @@ namespace PadelMotionProbe
 			}
 			Test.AddInfo(FString::Printf(TEXT("[%s] MetaHuman follow (deg, frames): %s"), *Label, *FString::Join(Parts, TEXT("; "))));
 		}
+		Test.AddInfo(FString::Printf(TEXT("[%s] moving on a clip that barely moves: %.2f s, longest %.2f s (%s)"), *Label, Run.StalledMovingS, Run.WorstStalledSpellS, *Run.WorstStalledAt));
 		Test.AddInfo(FString::Printf(TEXT("[%s] picks: %s"), *Label, *Run.Picks));
 	}
 }

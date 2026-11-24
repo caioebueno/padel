@@ -268,6 +268,8 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 	const FVector Side = Now.Facing.RotateVector(FVector::CrossProduct(FVector::UpVector, FVector(0.0, 1.0, 0.0)));
 	const bool bShuffling = bInRally && !bStill && SpeedUnits < Tuning.RunFromUnits * (1.0 + Tuning.GaitOverlap)
 		&& FMath::Abs(FVector::DotProduct(Travel, Side)) >= Tuning.ShuffleSideShare * Travel.Size();
+	// Stalled: the game moves (StillBelowUnits) but the playing clip's own root carries under StalledShare of it.
+	const bool bStalled = !bStill && SpeedUnits >= Tuning.StillBelowUnits && !Stack.IsEmpty() && RootVelocity.Size2D() < SpeedUnits * Tuning.StalledShare;
 	bool bHasReady = false;
 	for (int32 Index = 0; Index < Databases.Num(); ++Index)
 	{
@@ -306,8 +308,15 @@ void FPadelMotionMatcher::Search(const FAnimationUpdateContext& Context, const F
 			}
 		}
 		FSearchResults Results;
-		Results.UpdateWith = [this, bReadyOnly, &Best, &ContinuingResult](const FSearchResult& Candidate)
+		Results.UpdateWith = [this, bReadyOnly, bStalled, &Assets, &Best, &ContinuingResult](const FSearchResult& Candidate)
 		{
+			// A stalled clip from a database the chooser left out (a stop's still tail under a moving
+			// player) may not carry on: its continuing pose matched the past well enough to hold while
+			// the game walked on at 1.5 m/s, and the body stood still for a second (phase 0 layer videos).
+			if (bStalled && Candidate.bIsContinuingPoseSearch && !Assets.Contains(Candidate.Database.Get()))
+			{
+				return;
+			}
 			// Pose Search also offers the playing clip's continuing pose from its own database, searched
 			// or not. In the Ready pass a sample clip's would always win (the footwork never beats it by
 			// the margin), and nothing searched could replace it: it would play on under a shuffling

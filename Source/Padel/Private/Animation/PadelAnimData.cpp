@@ -107,6 +107,11 @@ FPadelAnimData FPadelAnimData::Load()
 			{
 				Out.Errors.Add(TEXT("Animation.json: MotionMatchingShuffleSideShare must be 0 to 1"));
 			}
+			M.StalledShare = Row->MotionMatchingStalledShare;
+			if (M.StalledShare < 0.0 || M.StalledShare > 1.0)
+			{
+				Out.Errors.Add(TEXT("Animation.json: MotionMatchingStalledShare must be 0 to 1"));
+			}
 			M.ReadyMaxCost = Row->MotionMatchingReadyMaxCost;
 			if (M.ReadyMaxCost < 0.0)
 			{

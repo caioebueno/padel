@@ -53,6 +53,8 @@ struct FPadelMotionMatchingTuning
 	 * to play; otherwise the search falls back to the sample's databases as anywhere else.
 	 */
 	double ReadyMaxCost = 0.0;
+	/** Moving, a clip whose root carries under this share of the speed is stalled: a left-out database's can't carry on (MotionMatchingStalledShare; 0 off). */
+	double StalledShare = 0.0;
 };
 
 /** Which databases a search may use (the Game Animation Sample picks them with a chooser table; this is it in C++). */

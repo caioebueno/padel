@@ -160,6 +160,12 @@ struct PADEL_API FPadelAnimSettingsRow : public FTableRowBase
 	 */
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") TArray<FString> MotionMatchingReadyDatabases;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingShuffleSideShare = 0.6;
+	/**
+	 * Moving (at least MotionMatchingStillBelowMps), a playing clip whose own root carries under
+	 * this share of the player's speed is stalled, and if the chooser left its database out it
+	 * may not carry on as the continuing pose (a stop's still tail under a walking player). 0: off.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingStalledShare = 0.0;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingReadyMaxCost = 0.0;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingRunFromMps = 2.5;
 	UPROPERTY(EditAnywhere, Category = "MotionMatching") double MotionMatchingSprintFromMps = 5.0;

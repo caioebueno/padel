@@ -108,6 +108,14 @@ namespace PadelMotionProbe
 		double MeanPlaying = 0.0;
 		/** Seconds a clip played from databases the latest search left out (FPadelMotionMatcher::StrandedS). */
 		double StrandedS = 0.0;
+		/**
+		 * Seconds the path was moving (over 0.5 m/s) while the playing clip barely moved: its own
+		 * root under a third of the path's speed, or a clip that doesn't loop held on its last
+		 * frame. The body stands still or skates while the game moves. And the longest such spell.
+		 */
+		double StalledMovingS = 0.0;
+		double WorstStalledSpellS = 0.0;
+		FString WorstStalledAt;
 		/** Footwork-first searches while shuffling, how many the footwork answered, and their best costs (mean, lowest). */
 		int32 ReadySearches = 0;
 		int32 ReadyAccepted = 0;
@@ -126,6 +134,8 @@ namespace PadelMotionProbe
 		/** First frame of each phase, and the database picked each frame. */
 		TArray<FString> Phases;
 		TArray<FName> PickPerFrame;
+		/** Each frame's playing clip, its playhead / length and play rate, and the path's speed (for logs). */
+		TArray<FString> ClipPerFrame;
 	};
 
 	/** A foot contact path's planted spells (first and last frame): within 3 cm of its 10th percentile height for at least 0.05 s. */
