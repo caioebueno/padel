@@ -30,5 +30,8 @@ public class Padel : ModuleRules
 		// in the editor (the asset registry there).
 		PublicDependencyModuleNames.Add("PoseSearch");
 		PrivateDependencyModuleNames.AddRange(new string[] { "Chooser", "AssetRegistry" });
+
+		// Padel.Animation.LayerVideo renders the probe's path to PNGs (a scene capture read back).
+		PrivateDependencyModuleNames.AddRange(new string[] { "RenderCore", "ImageCore" });
 	}
 }

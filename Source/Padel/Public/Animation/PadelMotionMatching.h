@@ -135,6 +135,9 @@ struct PADEL_API FPadelMotionMatcher
 	FName CurrentDatabase() const;
 	const UAnimSequenceBase* CurrentClip() const;
 	double CurrentPlayRate() const { return Stack.IsEmpty() ? 1.0 : Stack.Last().PlayRate; }
+	/** Probes: the latest pick's playhead (s) and whether it loops, so a test can read the clip's own root motion. */
+	double CurrentTime() const { return Stack.IsEmpty() ? 0.0 : Stack.Last().Time; }
+	bool CurrentLoops() const { return !Stack.IsEmpty() && Stack.Last().bLoop; }
 	/** M2 probes: how many picks since the last reset (each one a switch), and how many poses play at once now. */
 	int32 NumPicks() const { return Picks; }
 	int32 NumPlaying() const { return Stack.Num(); }

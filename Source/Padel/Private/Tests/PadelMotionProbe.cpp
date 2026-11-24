@@ -1,6 +1,7 @@
 #include "PadelMotionProbe.h"
 
 #include "Animation/Model/PlayerAnimModel.h"
+#include "Animation/AnimSequenceBase.h"
 #include "Animation/PadelAnimData.h"
 #include "Animation/PadelPlayerAnimComponent.h"
 #include "Animation/PadelPlayerAnimInstance.h"
@@ -50,6 +51,86 @@ namespace PadelMotionProbe
 		{
 			const double Delta = FMath::FindDeltaAngleDegrees(S.FacingYawDeg, YawDeg);
 			S.FacingYawDeg += FMath::Clamp(Delta, -540.0 * Dt, 540.0 * Dt);
+		}
+
+		double YawOf(const FVector& V) { return FMath::RadiansToDegrees(FMath::Atan2(V.Y, V.X)); }
+
+		/**
+		 * The layer video's path (EPath::LayerVideo). Sets S's velocity and facing for each frame
+		 * and calls Step(Phase, Mode), which must move S.Position on by S.Velocity * Dt.
+		 */
+		void LayerVideoPath(FScript& S, double StartYaw, TFunctionRef<void(const TCHAR*, Padel::EMovementMode)> Step)
+		{
+			using Padel::EMovementMode;
+			const FVector Ahead = FRotator(0.0, StartYaw, 0.0).Vector();
+			const FVector Side = FRotator(0.0, StartYaw + 90.0, 0.0).Vector();
+			const double Walk = 150.0;
+			const double RunSpeed = 450.0;
+			const double Jog = 300.0;
+			const double Shuffle = 200.0;
+			auto Speed = [&S]() { return S.Velocity.Size2D(); };
+			auto Along = [&S](const FVector& From, const FVector& Dir) { return FVector::DotProduct(S.Position - From, Dir); };
+
+			for (int32 I = 0; I < 60; ++I) { Step(TEXT("stand"), EMovementMode::Adjust); }
+			// Walk 3 m.
+			FVector From = S.Position;
+			while (Along(From, Ahead) < 300.0)
+			{
+				Accelerate(S, Ahead * Walk, 500.0);
+				Face(S, StartYaw);
+				Step(Speed() < Walk - 1.0 ? TEXT("start") : TEXT("walk"), EMovementMode::Run);
+			}
+			// Speed up to a run, 4 m in all.
+			From = S.Position;
+			while (Along(From, Ahead) < 400.0)
+			{
+				Accelerate(S, Ahead * RunSpeed, 800.0);
+				Step(Speed() < RunSpeed - 1.0 ? TEXT("speed up") : TEXT("run"), EMovementMode::Run);
+			}
+			while (Speed() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Step(TEXT("stop"), EMovementMode::Run); }
+			S.Velocity = FVector::ZeroVector;
+			for (int32 I = 0; I < 15; ++I) { Step(TEXT("settle"), EMovementMode::Adjust); }
+			// A 90° turn into a 2 m walk.
+			From = S.Position;
+			while (Along(From, Side) < 200.0)
+			{
+				Accelerate(S, Side * Walk, 500.0);
+				Face(S, StartYaw + 90.0);
+				Step(Speed() < Walk - 1.0 ? TEXT("turn") : TEXT("walk"), EMovementMode::Run);
+			}
+			// A 180° reversal into a jog, 2 m past the turn.
+			const FVector TurnAt = S.Position;
+			while (FVector::DotProduct(S.Velocity, -Side) < Jog - 1.0)
+			{
+				Accelerate(S, -Side * Jog, 1200.0);
+				if (FVector::DotProduct(S.Velocity, Side) < 0.0)
+				{
+					Face(S, StartYaw - 90.0);
+				}
+				Step(TEXT("reverse"), EMovementMode::Run);
+			}
+			while (Along(TurnAt, -Side) < 200.0) { Face(S, StartYaw - 90.0); Step(TEXT("jog"), EMovementMode::Run); }
+			while (Speed() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Face(S, StartYaw - 90.0); Step(TEXT("stop2"), EMovementMode::Run); }
+			S.Velocity = FVector::ZeroVector;
+			// Square up to the net, then shuffle 2 m each way.
+			for (int32 I = 0; I < 20; ++I) { Face(S, StartYaw); Step(TEXT("square up"), EMovementMode::Adjust); }
+			From = S.Position;
+			while (Along(From, Side) < 180.0)
+			{
+				Accelerate(S, Side * Shuffle, 800.0);
+				Face(S, StartYaw);
+				Step(Speed() < Shuffle - 1.0 ? TEXT("shuffle start") : TEXT("shuffle"), EMovementMode::Shuffle);
+			}
+			while (FVector::DotProduct(S.Velocity, -Side) < Shuffle - 1.0)
+			{
+				Accelerate(S, -Side * Shuffle, 1000.0);
+				Face(S, StartYaw);
+				Step(TEXT("shuffle turn"), EMovementMode::Shuffle);
+			}
+			while (Along(From, Side) > 20.0) { Face(S, StartYaw); Step(TEXT("shuffle"), EMovementMode::Shuffle); }
+			while (Speed() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Face(S, StartYaw); Step(TEXT("stop3"), EMovementMode::Shuffle); }
+			S.Velocity = FVector::ZeroVector;
+			for (int32 I = 0; I < 60; ++I) { Step(TEXT("end"), EMovementMode::Adjust); }
 		}
 
 		/** What one body recorded each frame. */
@@ -169,7 +250,7 @@ namespace PadelMotionProbe
 			}
 			M.SlideCmps = M.PlantedS > 0.0 ? SlideCm / M.PlantedS : 0.0;
 			FVector2D Steady = FVector2D::ZeroVector;
-			for (const TCHAR* Phase : { TEXT("stand"), TEXT("run"), TEXT("run2"), TEXT("run back"), TEXT("settle"), TEXT("settle2"), TEXT("shuffle"), TEXT("end") })
+			for (const TCHAR* Phase : { TEXT("stand"), TEXT("run"), TEXT("run2"), TEXT("run back"), TEXT("settle"), TEXT("settle2"), TEXT("shuffle"), TEXT("end"), TEXT("walk"), TEXT("jog") })
 			{
 				if (const FVector2D* Found = ByPhase.Find(Phase)) { Steady += *Found; }
 			}
@@ -349,6 +430,11 @@ namespace PadelMotionProbe
 
 	FRun Run(FAutomationTestBase& Test, EDrive Drive)
 	{
+		return Run(Test, Drive, FRunOptions());
+	}
+
+	FRun Run(FAutomationTestBase& Test, EDrive Drive, const FRunOptions& Options)
+	{
 		using namespace Detail;
 		FRun Out;
 		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld=*/false);
@@ -420,6 +506,12 @@ namespace PadelMotionProbe
 		Anim->ArmCarryAlpha = 0.0f;
 		Anim->Body = FPadelBodyDynamics();
 		Anim->Stance = FPadelBodyDynamics();
+		if (Options.bWarpsOff)
+		{
+			// Zeroed tuning turns each part off (FPadelLocomotionWarpTuning); the node copies the set every update.
+			Anim->LocomotionSet.LocomotionWarp = FPadelLocomotionWarpTuning();
+		}
+		const bool bRootMotion = Options.bRootMotion && !bFull;
 
 		FTrack Tracks[2];
 		InitTrack(Tracks[0], Driver);
@@ -432,6 +524,43 @@ namespace PadelMotionProbe
 		FScript S;
 		S.Position = FVector(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y, Ground);
 		S.FacingYawDeg = Pawn->GetActorRotation().Yaw;
+		const bool bLayerVideo = Options.Path == EPath::LayerVideo;
+		if (bLayerVideo)
+		{
+			// Start near the back of the player's half so the 8 m forward leg stops short of the net,
+			// offset sideways so the walk, jog and shuffles stay centred.
+			const FVector SideDir = FRotator(0.0, S.FacingYawDeg + 90.0, 0.0).Vector();
+			const double Sign = S.Position.X >= 0.0 ? 1.0 : -1.0;
+			S.Position = FVector(Sign * 920.0, 0.0, Ground) - SideDir * 80.0;
+		}
+		if (Options.OnSetup)
+		{
+			FSetup Recorder;
+			Recorder.World = World;
+			Recorder.Pawn = Pawn;
+			Recorder.Driver = Driver;
+			Recorder.Shown = Shown;
+			Recorder.StartYawDeg = S.FacingYawDeg;
+			FScript Dry = S;
+			if (bLayerVideo)
+			{
+				LayerVideoPath(Dry, Dry.FacingYawDeg, [&Dry, &Recorder](const TCHAR*, Padel::EMovementMode)
+				{
+					Dry.Position += Dry.Velocity * Dt;
+					Recorder.Path.Add(Dry.Position);
+				});
+			}
+			else
+			{
+				Recorder.Path.Add(Dry.Position);
+			}
+			Options.OnSetup(Recorder);
+		}
+		// Root motion (FRunOptions::bRootMotion): the pawn's own place and facing, and the clip it last read.
+		FVector RootPosition = S.Position;
+		double RootYaw = S.FacingYawDeg;
+		const UAnimSequenceBase* RootClip = nullptr;
+		double RootClipTime = 0.0;
 		const FVector Ahead = FRotator(0.0, S.FacingYawDeg, 0.0).Vector();
 		const FVector Side = FRotator(0.0, S.FacingYawDeg + 90.0, 0.0).Vector();
 		const double RunSpeed = 400.0;
@@ -473,13 +602,18 @@ namespace PadelMotionProbe
 			}
 			else
 			{
-				Pawn->SetActorLocationAndRotation(S.Position, FRotator(0.0, S.FacingYawDeg, 0.0));
+				const FTransform SimPose(FRotator(0.0, S.FacingYawDeg, 0.0), S.Position);
+				const FTransform PawnPose = bRootMotion ? FTransform(FRotator(0.0, RootYaw, 0.0), RootPosition) : SimPose;
+				// Root motion: the path as the pawn would see it from where its clips took it.
+				const FTransform SimToPawn = SimPose.Inverse() * PawnPose;
+				Pawn->SetActorLocationAndRotation(PawnPose.GetLocation(), PawnPose.Rotator());
 				// The path's own trajectory: the past as it happened, the future carried on at this velocity.
 				Past.Add(S.Position);
 				for (const float T : Anim->TrajectoryTimes)
 				{
 					const int32 Back = FMath::Min(Past.Num() - 1, FMath::RoundToInt(-T / Dt));
-					Trajectory.Add(T < 0.0f ? Past[Past.Num() - 1 - Back] : S.Position + S.Velocity * T);
+					const FVector Point = T < 0.0f ? Past[Past.Num() - 1 - Back] : S.Position + S.Velocity * T;
+					Trajectory.Add(bRootMotion ? SimToPawn.TransformPosition(Point) : Point);
 				}
 				Frame.SpeedMps = S.Velocity.Size2D() / 100.0;
 				Frame.Locomotion = Drive == EDrive::ReadyStance ? Padel::Animation::ELocomotionState::Ready
@@ -494,6 +628,44 @@ namespace PadelMotionProbe
 				Anim->Stance = FPadelBodyDynamics();
 			}
 			Driver->TickAnimation(static_cast<float>(Dt), false);
+			if (bRootMotion)
+			{
+				// Move the pawn by what the playing clip's root did over this update (component space,
+				// the mannequin's root bone), so the clip carries the body instead of the path.
+				const FPadelMotionMatcher& Picked = Anim->GetPoseNode().GetMotionMatcher();
+				const UAnimSequenceBase* Clip = Picked.CurrentClip();
+				FTransform Delta = FTransform::Identity;
+				if (Clip)
+				{
+					const double Now = Picked.CurrentTime();
+					const FAnimExtractContext Extract;
+					const double Step = Picked.CurrentPlayRate() * Dt;
+					// A new pick, or the same clip picked again at another time (a jump, or a clip that ran out).
+					const bool bJumped = Clip == RootClip && (Now - RootClipTime > 2.0 * Step + 1e-3
+						|| (Now < RootClipTime && !(Picked.CurrentLoops() && RootClipTime + 1.5 * Step >= Clip->GetPlayLength())));
+					if (Clip != RootClip || bJumped)
+					{
+						Delta = Clip->ExtractRootMotionFromRange(FMath::Max(0.0, Now - Step), Now, Extract);
+					}
+					else if (Now >= RootClipTime)
+					{
+						Delta = Clip->ExtractRootMotionFromRange(RootClipTime, Now, Extract);
+					}
+					else if (Picked.CurrentLoops())
+					{
+						const FTransform ToEnd = Clip->ExtractRootMotionFromRange(RootClipTime, Clip->GetPlayLength(), Extract);
+						const FTransform FromStart = Clip->ExtractRootMotionFromRange(0.0, Now, Extract);
+						Delta = FromStart * ToEnd;
+					}
+					RootClip = Clip;
+					RootClipTime = Now;
+				}
+				FVector Move = Driver->GetComponentQuat().RotateVector(Delta.GetTranslation());
+				Move.Z = 0.0;
+				RootPosition += Move;
+				RootYaw += Delta.GetRotation().Rotator().Yaw;
+				Pawn->SetActorLocationAndRotation(RootPosition, FRotator(0.0, RootYaw, 0.0));
+			}
 			Driver->RefreshBoneTransforms();
 			if (Shown)
 			{
@@ -515,43 +687,58 @@ namespace PadelMotionProbe
 			{
 				Record(Tracks[1]);
 			}
+			if (Options.OnFrame)
+			{
+				Options.OnFrame(Out.Phases.Num() - 1, Phase);
+			}
 		};
 
 		using Padel::EMovementMode;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 60; ++I) { Tick(TEXT("stand")); }
-		Mode = EMovementMode::Run;
-		while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start")); }
-		const FVector RunFrom = S.Position;
-		while (FVector::Dist2D(S.Position, RunFrom) < 300.0) { Tick(TEXT("run")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop")); }
-		S.Velocity = FVector::ZeroVector;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 60; ++I) { Tick(TEXT("settle")); }
-		// A 180° reversal out of a run: accelerate ahead, then turn back through zero.
-		Mode = EMovementMode::Run;
-		while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start2")); }
-		for (int32 I = 0; I < 30; ++I) { Tick(TEXT("run2")); }
-		while (FVector::DotProduct(S.Velocity, -Ahead) < RunSpeed - 1.0)
+		if (bLayerVideo)
 		{
-			Accelerate(S, -Ahead * RunSpeed, 1200.0);
-			if (FVector::DotProduct(S.Velocity, Ahead) < 0.0)
+			LayerVideoPath(S, StartYaw, [&Mode, &Tick](const TCHAR* Phase, EMovementMode InMode)
 			{
-				Face(S, StartYaw + 180.0);
-			}
-			Tick(TEXT("reverse"));
+				Mode = InMode;
+				Tick(Phase);
+			});
 		}
-		for (int32 I = 0; I < 45; ++I) { Face(S, StartYaw + 180.0); Tick(TEXT("run back")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop2")); }
-		S.Velocity = FVector::ZeroVector;
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 30; ++I) { Tick(TEXT("settle2")); }
-		// A side shuffle, square to the net.
-		Mode = EMovementMode::Shuffle;
-		for (int32 I = 0; I < 75; ++I) { Accelerate(S, Side * 200.0, 800.0); Tick(TEXT("shuffle")); }
-		while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop3")); }
-		Mode = EMovementMode::Adjust;
-		for (int32 I = 0; I < 45; ++I) { Tick(TEXT("end")); }
+		else
+		{
+			Mode = EMovementMode::Adjust;
+			for (int32 I = 0; I < 60; ++I) { Tick(TEXT("stand")); }
+			Mode = EMovementMode::Run;
+			while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start")); }
+			const FVector RunFrom = S.Position;
+			while (FVector::Dist2D(S.Position, RunFrom) < 300.0) { Tick(TEXT("run")); }
+			while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop")); }
+			S.Velocity = FVector::ZeroVector;
+			Mode = EMovementMode::Adjust;
+			for (int32 I = 0; I < 60; ++I) { Tick(TEXT("settle")); }
+			// A 180° reversal out of a run: accelerate ahead, then turn back through zero.
+			Mode = EMovementMode::Run;
+			while (S.Velocity.Size2D() < RunSpeed - 1.0) { Accelerate(S, Ahead * RunSpeed, 800.0); Tick(TEXT("start2")); }
+			for (int32 I = 0; I < 30; ++I) { Tick(TEXT("run2")); }
+			while (FVector::DotProduct(S.Velocity, -Ahead) < RunSpeed - 1.0)
+			{
+				Accelerate(S, -Ahead * RunSpeed, 1200.0);
+				if (FVector::DotProduct(S.Velocity, Ahead) < 0.0)
+				{
+					Face(S, StartYaw + 180.0);
+				}
+				Tick(TEXT("reverse"));
+			}
+			for (int32 I = 0; I < 45; ++I) { Face(S, StartYaw + 180.0); Tick(TEXT("run back")); }
+			while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop2")); }
+			S.Velocity = FVector::ZeroVector;
+			Mode = EMovementMode::Adjust;
+			for (int32 I = 0; I < 30; ++I) { Tick(TEXT("settle2")); }
+			// A side shuffle, square to the net.
+			Mode = EMovementMode::Shuffle;
+			for (int32 I = 0; I < 75; ++I) { Accelerate(S, Side * 200.0, 800.0); Tick(TEXT("shuffle")); }
+			while (S.Velocity.Size2D() > 1.0) { Accelerate(S, FVector::ZeroVector, 1000.0); Tick(TEXT("stop3")); }
+			Mode = EMovementMode::Adjust;
+			for (int32 I = 0; I < 45; ++I) { Tick(TEXT("end")); }
+		}
 
 		const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
 		Out.bRan = true;

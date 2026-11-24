@@ -10,8 +10,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Templates/Function.h"
 
+class APadelPlayerPawn;
 class FAutomationTestBase;
+class USkeletalMeshComponent;
 class UWorld;
 
 namespace PadelMotionProbe
@@ -22,6 +25,49 @@ namespace PadelMotionProbe
 		FullStack,
 		/** LocomotionOnly in the ready stance, as in a rally: the footwork (0012) joins the search. */
 		ReadyStance,
+	};
+
+	enum class EPath : uint8
+	{
+		/** M2's path: stand, accelerate to a run, run 3 m, stop, 180° reversal, side shuffle, stop. */
+		Classic,
+		/**
+		 * Phase 0 of the movement plan (Padel.Animation.LayerVideo), about 12 s: stand 1 s, walk
+		 * 3 m, speed up to a run for 4 m, stop, a 90° turn into a 2 m walk, a 180° reversal into a
+		 * jog, a side shuffle 2 m each way, stop and stand 1 s.
+		 */
+		LayerVideo,
+	};
+
+	/** What a recorder gets before the first frame. */
+	struct FSetup
+	{
+		UWorld* World = nullptr;
+		APadelPlayerPawn* Pawn = nullptr;
+		USkeletalMeshComponent* Driver = nullptr;
+		/** The shown MetaHuman's body, or null. */
+		USkeletalMeshComponent* Shown = nullptr;
+		/** The path's ground positions (cm, world), one per frame, worked out ahead of the run. */
+		TArray<FVector> Path;
+		double StartYawDeg = 0.0;
+	};
+
+	/** Probe-only switches; the defaults are the probe as M2 measured it. Nothing here changes the game. */
+	struct FRunOptions
+	{
+		EPath Path = EPath::Classic;
+		/** Orientation warp, stride warp and foot lock off (Animation.json's OrientationWarp*, StrideWarp*, FootLock* zeroed for this run). */
+		bool bWarpsOff = false;
+		/**
+		 * LocomotionOnly: the pawn moves and turns by the playing clip's own root motion instead of
+		 * following the path; the search still sees the path's trajectory, carried into the pawn's
+		 * own frame. A pure clip reference: what the clips look like with no fitting to the game.
+		 */
+		bool bRootMotion = false;
+		/** After the bodies exist, before the first frame (a recorder sets up its camera here). */
+		TFunction<void(const struct FSetup&)> OnSetup;
+		/** After each frame's pose is evaluated and recorded. */
+		TFunction<void(int32 /*Frame*/, const FString& /*Phase*/)> OnFrame;
 	};
 
 	/** One body's numbers over the path. */
@@ -89,6 +135,7 @@ namespace PadelMotionProbe
 
 	/** Runs the path in a fresh world. Adds infos to Test; bRan false (SkipReason) without the databases. */
 	FRun Run(FAutomationTestBase& Test, EDrive Drive);
+	FRun Run(FAutomationTestBase& Test, EDrive Drive, const FRunOptions& Options);
 
 	/** Logs a run's numbers as test infos, prefixed with Label. */
 	void Report(FAutomationTestBase& Test, const FString& Label, const FRun& Run);
