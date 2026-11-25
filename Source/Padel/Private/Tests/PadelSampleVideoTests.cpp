@@ -213,9 +213,9 @@ namespace PadelSampleVideo
 		{
 			return TEXT("not measured");
 		}
-		return FString::Printf(TEXT("slide %.1f cm/s whole path, %.1f steady (by phase: %s); pelvis / spine_03 / head jerk p95 %.0fk / %.0fk / %.0fk; worst bone turn %.1f deg (%s)"),
+		return FString::Printf(TEXT("slide %.1f cm/s whole path, %.1f steady (by phase: %s); pelvis / spine_03 / head jerk p95 %.0fk / %.0fk / %.0fk (pelvis over 300k: %s); worst bone turn %.1f deg (%s)"),
 			B.SlideCmps, B.SteadySlideCmps, *B.SlideByPhase, B.JerkDegPerS3.FindRef(TEXT("pelvis")).Y / 1000.0, B.JerkDegPerS3.FindRef(TEXT("spine_03")).Y / 1000.0,
-			B.JerkDegPerS3.FindRef(TEXT("head")).Y / 1000.0, B.WorstBoneTurnDeg, *B.WorstBoneTurnAt);
+			B.JerkDegPerS3.FindRef(TEXT("head")).Y / 1000.0, *B.PelvisJerkByPhase, B.WorstBoneTurnDeg, *B.WorstBoneTurnAt);
 	}
 }
 

@@ -89,6 +89,8 @@ namespace PadelMotionProbe
 		double WorstSlideSpellCmps = 0.0;
 		double PlantedS = 0.0;
 		FString SlideByPhase;
+		/** Where the pelvis's jerk is high: frames over 300k deg/s^3 by phase. */
+		FString PelvisJerkByPhase;
 		double WorstBoneTurnDeg = 0.0;
 		FString WorstBoneTurnAt;
 		int32 WorstBoneTurnFrame = INDEX_NONE;

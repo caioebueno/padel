@@ -365,6 +365,22 @@ namespace PadelMotionProbe
 				}
 				M.AccelDegPerS2.Add(Bone.Key, Alpha.IsEmpty() ? 0.0 : FMath::Sqrt(AlphaSq / Alpha.Num()));
 				M.JerkDegPerS3.Add(Bone.Key, FVector2D(Jerk.IsEmpty() ? 0.0 : FMath::Sqrt(JerkSq / Jerk.Num()), Percentile(Jerk, 0.95)));
+				if (Bone.Key == TEXT("pelvis"))
+				{
+					TMap<FString, int32> High;
+					for (int32 I = 0; I < Jerk.Num(); ++I)
+					{
+						const int32 Frame = WarmUpFrames + 3 + I;
+						if (Jerk[I] > 300000.0 && Phases.IsValidIndex(Frame))
+						{
+							High.FindOrAdd(Phases[Frame])++;
+						}
+					}
+					for (const TPair<FString, int32>& Entry : High)
+					{
+						M.PelvisJerkByPhase += FString::Printf(TEXT("%s %d; "), *Entry.Key, Entry.Value);
+					}
+				}
 			}
 			return M;
 		}

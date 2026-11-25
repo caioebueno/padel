@@ -57,11 +57,26 @@
 		"DisableBelowSpeed": 10.0
 	},
 	"OrientationWarping": {
-		"_doc": "The sample's orientation warping (graph mode, in the root bone's space): the legs turn onto the pawn's travel where the clip's root motion points elsewhere, the spine to the head turns back.",
+		"_doc": "The sample's orientation warping (graph mode, in the root bone's space): the legs turn onto the pawn's travel where the clip's root motion points elsewhere, the spine to the head turns back. Two changes from the sample, measured on the layer path (restart-step4): its counter-compensation by root motion is off (on, the pelvis's jerk p95 doubled: 410k against 222k without the warp; off, 262k), and the travel it warps toward isn't smoothed (TravelTurnRate, MinSpeed, FadeS: rate-limiting it to 360 deg/s and fading it in above 50 cm/s raised the shuffle's slide from 41 to 64 cm/s).",
 		"Enabled": true,
 		"LocomotionAngleDeltaThreshold": 160.0,
 		"RotationInterpSpeed": 8.0,
+		"TravelTurnRate": 100000.0,
+		"MinSpeed": 0.0,
+		"FadeS": 0.0,
+		"CounterCompensateByRootMotion": false,
 		"SpineBones": ["spine_01", "spine_02", "spine_03", "spine_04", "spine_05", "neck_01", "neck_02", "head"]
+	},
+	"Lean": {
+		"_doc": "The sample's lean (Get_LeanAmount, CalculateRelativeAccelerationAmount): its additive lean blend space, played in mesh space over the locomotion, by the velocity's change across the body over MaxAcceleration (speeding up) or BrakingDeceleration (slowing: the sample's braking with input), scaled ScaleFrom..ScaleTo over SpeedFrom..SpeedTo.",
+		"Enabled": true,
+		"BlendSpace": "/Game/Characters/UEFN_Mannequin/Animations/Poses/BS1D_Additive_Lean_Run.BS1D_Additive_Lean_Run",
+		"MaxAcceleration": 800.0,
+		"BrakingDeceleration": 500.0,
+		"SpeedFrom": 165.0,
+		"SpeedTo": 375.0,
+		"ScaleFrom": 0.5,
+		"ScaleTo": 1.0
 	},
 	"FootPlacement": {
 		"_doc": "The sample's foot placement and leg IK: a foot the clip plants (its contact curve, remapped to a speed as the sample's RemapCurves node does: (1 - contact) * 100) stays put until it moves UnplantRadius or turns UnplantAngle, the pelvis settles to keep the legs in reach, two-bone leg IK reaches the IK foot bones.",
@@ -90,6 +105,7 @@
 		"FutureCount": 15,
 		"FutureIntervalS": 0.1,
 		"FacingTurnRate": 540.0,
-		"StrafeAbove": 60.0
+		"StrafeAbove": 60.0,
+		"StrafeDecideSpeed": 50.0
 	}
 }

@@ -119,6 +119,20 @@ FPadelSampleLocomotionSettings FPadelSampleLocomotionSettings::Load()
 	S.WarpLocomotionAngleDeltaThreshold = Number(Warp, TEXT("LocomotionAngleDeltaThreshold"), S.WarpLocomotionAngleDeltaThreshold);
 	S.WarpRotationInterpSpeed = Number(Warp, TEXT("RotationInterpSpeed"), S.WarpRotationInterpSpeed);
 	S.WarpSpineBones = Names(Warp, TEXT("SpineBones"));
+	S.WarpTravelTurnRate = Number(Warp, TEXT("TravelTurnRate"), S.WarpTravelTurnRate);
+	S.WarpMinSpeed = Number(Warp, TEXT("MinSpeed"), S.WarpMinSpeed);
+	S.WarpFadeS = Number(Warp, TEXT("FadeS"), S.WarpFadeS);
+	bool bCounter = S.bWarpCounterCompensate;
+	S.bWarpCounterCompensate = Warp.IsValid() && Warp->TryGetBoolField(TEXT("CounterCompensateByRootMotion"), bCounter) ? bCounter : S.bWarpCounterCompensate;
+	const TSharedPtr<FJsonObject> LeanJson = Root->GetObjectField(TEXT("Lean"));
+	S.bLean = LeanJson.IsValid() && LeanJson->GetBoolField(TEXT("Enabled"));
+	S.LeanBlendSpace = LeanJson.IsValid() ? LeanJson->GetStringField(TEXT("BlendSpace")) : FString();
+	S.LeanMaxAcceleration = Number(LeanJson, TEXT("MaxAcceleration"), S.LeanMaxAcceleration);
+	S.LeanBrakingDeceleration = Number(LeanJson, TEXT("BrakingDeceleration"), S.LeanBrakingDeceleration);
+	S.LeanSpeedFrom = Number(LeanJson, TEXT("SpeedFrom"), S.LeanSpeedFrom);
+	S.LeanSpeedTo = Number(LeanJson, TEXT("SpeedTo"), S.LeanSpeedTo);
+	S.LeanScaleFrom = Number(LeanJson, TEXT("ScaleFrom"), S.LeanScaleFrom);
+	S.LeanScaleTo = Number(LeanJson, TEXT("ScaleTo"), S.LeanScaleTo);
 	const TSharedPtr<FJsonObject> Feet = Root->GetObjectField(TEXT("FootPlacement"));
 	S.bFootPlacement = Feet.IsValid() && Feet->GetBoolField(TEXT("Enabled"));
 	S.ContactCurves = Names(Feet, TEXT("ContactCurves"));
@@ -143,6 +157,7 @@ FPadelSampleLocomotionSettings FPadelSampleLocomotionSettings::Load()
 	S.FutureIntervalS = Number(Trajectory, TEXT("FutureIntervalS"), S.FutureIntervalS);
 	S.FacingTurnRate = Number(Trajectory, TEXT("FacingTurnRate"), S.FacingTurnRate);
 	S.StrafeAbove = Number(Trajectory, TEXT("StrafeAbove"), S.StrafeAbove);
+	S.StrafeDecideSpeed = Number(Trajectory, TEXT("StrafeDecideSpeed"), S.StrafeDecideSpeed);
 	S.bOk = !S.DriverMesh.IsEmpty() && !S.Databases.IsEmpty() && S.PastCount >= 2 && S.FutureCount >= 2;
 	if (!S.bOk)
 	{
@@ -211,7 +226,20 @@ void FAnimNode_PadelSampleLocomotion::Configure(const FPadelSampleLocomotionSett
 	}
 	OrientationWarping.IKFootRootBone = FBoneReference(TEXT("ik_foot_root"));
 	OrientationWarping.IKFootBones = { FBoneReference(TEXT("ik_foot_l")), FBoneReference(TEXT("ik_foot_r")) };
-	OrientationWarping.Alpha = Settings.bOrientationWarping ? 1.0f : 0.0f;
+	OrientationWarping.Alpha = 0.0f;
+	OrientationWarping.bCounterCompenstateInterpolationByRootMotion = Settings.bWarpCounterCompensate;
+
+	// The sample's lean: its additive lean blend space over the locomotion, in mesh space.
+	UBlendSpace* LeanSpace = Settings.bLean ? LoadObject<UBlendSpace>(nullptr, *Settings.LeanBlendSpace, nullptr, LOAD_Quiet | LOAD_NoWarn) : nullptr;
+	if (LeanSpace)
+	{
+		Lean.SetBlendSpace(LeanSpace);
+	}
+	else if (Settings.bLean)
+	{
+		UE_LOG(LogPadel, Warning, TEXT("Sample locomotion: no lean blend space %s"), *Settings.LeanBlendSpace);
+	}
+	LeanAdditive.Alpha = LeanSpace ? 1.0f : 0.0f;
 
 	// Foot placement and leg IK, as the sample's.
 	ContactCurves.Curves = Settings.ContactCurves;
@@ -266,7 +294,9 @@ void FAnimNode_PadelSampleLocomotion::Initialize_AnyThread(const FAnimationIniti
 	if (!bLinked)
 	{
 		History.Source.SetLinkNode(&MotionMatching);
-		ToComponent.LocalPose.SetLinkNode(&History);
+		LeanAdditive.Base.SetLinkNode(&History);
+		LeanAdditive.Additive.SetLinkNode(&Lean);
+		ToComponent.LocalPose.SetLinkNode(&LeanAdditive);
 		Steering.ComponentPose.SetLinkNode(&ToComponent);
 		OrientationWarping.ComponentPose.SetLinkNode(&Steering);
 		ToLocal.ComponentPose.SetLinkNode(&OrientationWarping);
@@ -298,7 +328,9 @@ void FAnimNode_PadelSampleLocomotion::PreUpdate(const UAnimInstance* InAnimInsta
 	{
 		SteerTo = Mesh->GetComponentQuat();
 	}
-	Travel = Anim->GetCurrentVelocity();
+	Travel = Anim->GetWarpDirection();
+	WarpAlpha = Settings.bOrientationWarping ? Anim->GetWarpAlpha() : 0.0f;
+	LeanAmount = Anim->GetLeanAmount();
 	Choose(*Anim);
 }
 
@@ -381,6 +413,8 @@ void FAnimNode_PadelSampleLocomotion::Update_AnyThread(const FAnimationUpdateCon
 	Steering.CurrentAnimAssetTime = Picked.SelectedTime;
 	Steering.bMirrored = Picked.bIsMirrored;
 	OrientationWarping.LocomotionDirection = Travel;
+	OrientationWarping.Alpha = WarpAlpha;
+	PadelSampleLocomotionDetail::SetMember(Lean, TEXT("X"), LeanAmount);
 	OrientationWarping.CurrentAnimAsset = Steering.CurrentAnimAsset;
 	OrientationWarping.CurrentAnimAssetTime = Picked.SelectedTime;
 	Final.Update_AnyThread(Context);
@@ -442,6 +476,8 @@ void FPadelSampleAnimInstanceProxy::GetCustomNodes(TArray<FAnimNode_Base*>& OutN
 		OutNodes.Add(&Root->OrientationWarping);
 		OutNodes.Add(&Root->Steering);
 		OutNodes.Add(&Root->ToComponent);
+		OutNodes.Add(&Root->LeanAdditive);
+		OutNodes.Add(&Root->Lean);
 		OutNodes.Add(&Root->History);
 		OutNodes.Add(&Root->MotionMatching);
 	}
@@ -477,6 +513,7 @@ FAnimInstanceProxy* UPadelSampleAnimInstance::CreateAnimInstanceProxy()
 void UPadelSampleAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
+	StepDeltaS = DeltaSeconds;
 	BuildSampleTrajectory();
 }
 
@@ -553,7 +590,51 @@ void UPadelSampleAnimInstance::BuildSampleTrajectory()
 	// Facing: the mesh faces +Y in its component, so its forward on the ground is the component's Y axis.
 	const FVector Forward = Facing.RotateVector(FVector(0.0, 1.0, 0.0));
 	const double FacingYaw = YawOf(Forward);
-	bStrafing = GroundSpeed > 50.0 && FMath::Abs(FMath::FindDeltaAngleDegrees(FacingYaw, YawOf(Velocity))) > Settings.StrafeAbove;
+	// Strafing: the body facing away from its travel. Decided only when moving clearly; slower (a
+	// shuffle reversing through zero) the last decision holds, so the body doesn't re-face mid-shuffle.
+	if (GroundSpeed > Settings.StrafeDecideSpeed)
+	{
+		bStrafing = FMath::Abs(FMath::FindDeltaAngleDegrees(FacingYaw, YawOf(Velocity))) > Settings.StrafeAbove;
+	}
+	else if (GroundSpeed < 1.0 && Offset(0.5).Size2D() < 1.0)
+	{
+		bStrafing = false;
+	}
+
+	// Orientation warping's travel: follow the travel's direction at a limited turn rate, and only
+	// while moving clearly, fading in and out, so it doesn't re-aim through a reversal's zero speed.
+	const double Dt = FMath::Max(static_cast<double>(StepDeltaS), 1e-3);
+	const bool bWarpMoving = GroundSpeed > Settings.WarpMinSpeed;
+	if (bWarpMoving)
+	{
+		const FVector Want = Velocity.GetSafeNormal2D();
+		if (WarpDirection.IsNearlyZero())
+		{
+			WarpDirection = Want;
+		}
+		else
+		{
+			const double Delta = FMath::FindDeltaAngleDegrees(YawOf(WarpDirection), YawOf(Want));
+			const double Turn = FMath::Clamp(Delta, -Settings.WarpTravelTurnRate * Dt, Settings.WarpTravelTurnRate * Dt);
+			WarpDirection = FRotator(0.0, YawOf(WarpDirection) + Turn, 0.0).Vector();
+		}
+	}
+	const float Fade = static_cast<float>(Settings.WarpFadeS > 0.0 ? Dt / Settings.WarpFadeS : 1.0);
+	WarpAlpha = FMath::Clamp(WarpAlpha + (bWarpMoving ? Fade : -Fade), 0.0f, 1.0f);
+
+	// The sample's lean (Get_LeanAmount): the velocity's change across the body, over the
+	// acceleration (speeding up) or braking (slowing) it can reach, scaled up with speed.
+	if (bHasLastVelocity)
+	{
+		const FVector Change = (Velocity - LastGroundVelocity) / Dt;
+		const double Limit = FVector::DotProduct(Change, Velocity) > 0.0 ? Settings.LeanMaxAcceleration : Settings.LeanBrakingDeceleration;
+		const FVector Relative = Facing.UnrotateVector(Change.GetClampedToMaxSize(Limit) / FMath::Max(Limit, 1.0));
+		const double Scale = FMath::GetMappedRangeValueClamped(FVector2D(Settings.LeanSpeedFrom, Settings.LeanSpeedTo), FVector2D(Settings.LeanScaleFrom, Settings.LeanScaleTo), GroundSpeed);
+		// The mesh faces +Y in its component, so its right is component -X (Unreal is left-handed: forward Y, right -X... checked by the lean's sign on video).
+		LeanAmount = static_cast<float>(-Relative.X * Scale);
+	}
+	LastGroundVelocity = Velocity;
+	bHasLastVelocity = true;
 
 	// The drawn root against the pawn's facing: how far the offset root still has to turn.
 	const FQuat RootWorld = Mesh->GetBoneQuaternion(Mesh->GetBoneName(0), EBoneSpaces::WorldSpace);

@@ -31,6 +31,8 @@
 #include "BoneControllers/AnimNode_OrientationWarping.h"
 #include "BoneControllers/AnimNode_FootPlacement.h"
 #include "BoneControllers/AnimNode_LegIK.h"
+#include "Animation/AnimNode_ApplyMeshSpaceAdditive.h"
+#include "AnimNodes/AnimNode_BlendSpacePlayer.h"
 #include "PoseSearch/AnimNode_MotionMatching.h"
 #include "PoseSearch/AnimNode_PoseSearchHistoryCollector.h"
 #include "PadelSampleLocomotion.generated.h"
@@ -100,6 +102,23 @@ struct PADEL_API FPadelSampleLocomotionSettings
 	bool bOrientationWarping = true;
 	double WarpLocomotionAngleDeltaThreshold = 160.0;
 	double WarpRotationInterpSpeed = 8.0;
+	/** The warp follows the travel's direction at most this fast (deg/s), and only above WarpMinSpeed, fading in and out over WarpFadeS. */
+	double WarpTravelTurnRate = 360.0;
+	double WarpMinSpeed = 50.0;
+	double WarpFadeS = 0.2;
+	/** The engine node's counter-compensation of its interpolation by the pose's root motion (on in the sample). */
+	bool bWarpCounterCompensate = true;
+	/** Strafing is decided only above StrafeDecideSpeed; slower (a shuffle reversing through zero) it holds. */
+	double StrafeDecideSpeed = 50.0;
+	// The sample's lean: an additive lean blend space by the acceleration across the body.
+	bool bLean = true;
+	FString LeanBlendSpace;
+	double LeanMaxAcceleration = 800.0;
+	double LeanBrakingDeceleration = 500.0;
+	double LeanSpeedFrom = 165.0;
+	double LeanSpeedTo = 375.0;
+	double LeanScaleFrom = 0.5;
+	double LeanScaleTo = 1.0;
 	TArray<FName> WarpSpineBones;
 	// Foot placement and leg IK (the sample's).
 	bool bFootPlacement = true;
@@ -163,6 +182,8 @@ struct PADEL_API FAnimNode_PadelSampleLocomotion : public FAnimNode_Base
 
 	UPROPERTY() FAnimNode_MotionMatching MotionMatching;
 	UPROPERTY() FAnimNode_PoseSearchHistoryCollector History;
+	UPROPERTY() FAnimNode_BlendSpacePlayer_Standalone Lean;
+	UPROPERTY() FAnimNode_ApplyMeshSpaceAdditive LeanAdditive;
 	UPROPERTY() FAnimNode_ConvertLocalToComponentSpace ToComponent;
 	UPROPERTY() FAnimNode_Steering Steering;
 	UPROPERTY() FAnimNode_OrientationWarping OrientationWarping;
@@ -200,8 +221,11 @@ private:
 	EPoseSearchInterruptMode Interrupt = EPoseSearchInterruptMode::DoNotInterrupt;
 	/** Steering's target: the pawn's facing (mesh component rotation, world). */
 	FQuat SteerTo = FQuat::Identity;
-	/** Orientation warping's travel: the pawn's ground velocity (world, cm/s). */
+	/** Orientation warping's travel direction (world) and weight, smoothed by the anim instance. */
 	FVector Travel = FVector::ZeroVector;
+	float WarpAlpha = 0.0f;
+	/** The lean blend space's input (-1 left .. 1 right). */
+	float LeanAmount = 0.0f;
 	FPadelSampleChoice Choice;
 	FPadelSampleChoice LastChoice;
 };
@@ -246,6 +270,9 @@ public:
 	FVector GetFutureVelocity() const { return FutureVelocity; }
 	/** Yaw (degrees) from the drawn root to the pawn's facing: how far the offset root lags the turn. */
 	double GetRootYawLag() const { return RootYawLag; }
+	FVector GetWarpDirection() const { return WarpDirection; }
+	float GetWarpAlpha() const { return WarpAlpha; }
+	float GetLeanAmount() const { return LeanAmount; }
 	bool IsStrafing() const { return bStrafing; }
 	const FPadelSampleLocomotionSettings& GetSettings() const { return Settings; }
 
@@ -266,6 +293,12 @@ private:
 	FVector FutureVelocity = FVector::ZeroVector;
 	double RootYawLag = 0.0;
 	bool bStrafing = false;
+	FVector WarpDirection = FVector::ZeroVector;
+	float WarpAlpha = 0.0f;
+	float LeanAmount = 0.0f;
+	FVector LastGroundVelocity = FVector::ZeroVector;
+	bool bHasLastVelocity = false;
+	float StepDeltaS = 0.0f;
 
 	UPROPERTY(Transient)
 	FAnimNode_PadelSampleLocomotion SampleNode;
