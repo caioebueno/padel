@@ -38,10 +38,15 @@ namespace PadelMotionProbe
 			FVector Position = FVector::ZeroVector;
 			FVector Velocity = FVector::ZeroVector;
 			double FacingYawDeg = 0.0;
+			/** What the script is heading for and how hard (the movement's intent, for the animation). */
+			FVector Want = FVector::ZeroVector;
+			double Accel = 0.0;
 		};
 
 		void Accelerate(FScript& S, const FVector& Want, double Accel)
 		{
+			S.Want = Want;
+			S.Accel = Accel;
 			const FVector Delta = Want - S.Velocity;
 			const double Step = Accel * Dt;
 			S.Velocity = Delta.Size() <= Step ? Want : S.Velocity + Delta.GetSafeNormal() * Step;
@@ -685,6 +690,9 @@ namespace PadelMotionProbe
 				In.Position = Padel::ToMetres(S.Position);
 				In.Position.Z = 0.0;
 				In.Velocity = Padel::ToMetres(S.Velocity);
+				In.DesiredVelocity = Padel::ToMetres(S.Want);
+				In.AccelLimitMps2 = S.Accel / 100.0;
+				In.bHasDesired = S.Accel > 0.0;
 				In.TeamSign = TeamSign;
 				In.ForehandSign = 1.0;
 				In.Mode = Mode;

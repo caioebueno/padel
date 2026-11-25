@@ -31,6 +31,10 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	Stance.PelvisDropUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, -Frame.StancePose.DropM)).Z);
 	Stance.FeetWidenUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.StancePose.WidenM)).Z);
 	Body.HopLiftUnits = static_cast<float>(Padel::MetresToWorld(FVector(0.0, 0.0, Frame.HopLiftM)).Z);
+	SimVelocity = Padel::ToWorld(Frame.VelocityMps) * FVector(1.0, 1.0, 0.0);
+	DesiredVelocity = Padel::ToWorld(Frame.DesiredVelocityMps) * FVector(1.0, 1.0, 0.0);
+	AccelLimit = Padel::MetresToWorld(FVector(Frame.AccelLimitMps2, 0.0, 0.0)).X;
+	bHasDesired = Frame.bHasDesired;
 	Trajectory = InTrajectoryWorld;
 	BuildMotionTrajectory();
 

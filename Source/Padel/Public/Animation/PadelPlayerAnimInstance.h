@@ -218,6 +218,11 @@ protected:
 	TArray<TPair<double, FQuat>> FacingHistory;
 	/** The ground velocity (cm/s) the model's trajectory implied last frame, its time, and the acceleration since (smoothed). */
 	FVector LastVelocity = FVector::ZeroVector;
+	/** The simulation's velocity, the velocity the player is heading for and how fast it can change (world, cm/s and cm/s^2), when the frame knows them. */
+	FVector SimVelocity = FVector::ZeroVector;
+	FVector DesiredVelocity = FVector::ZeroVector;
+	double AccelLimit = 0.0;
+	bool bHasDesired = false;
 	double LastVelocityTime = -1.0;
 	FVector Acceleration = FVector::ZeroVector;
 	void BuildMotionTrajectory();

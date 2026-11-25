@@ -211,6 +211,7 @@ namespace Padel::Shots
 		// hold (GDD 6.3 fatigue).
 		const double MarginBrake = BaseAccel * Tuning->BrakeMult * (1.0 - Tuning->FatigueTopSpeedLossAtZero) / FatigueFactor();
 		LimitAtMargins(Desired, MarginBrake, Dt);
+		DesiredVelocity = Desired;
 
 		double Accel = BaseAccel;
 		if (SplitBoostLeftS > 0.0)
@@ -244,6 +245,7 @@ namespace Padel::Shots
 
 		FVec3 Delta = Sub(Desired, Velocity);
 		const double MaxChange = Accel * Dt;
+		AccelLimit = Accel;
 		bool bAllocated = false;
 		{
 			// GDD 6.3 (BIOMECHANICS_MOVEMENT 2.6): braking into a margin comes first. A player

@@ -563,12 +563,39 @@ void UPadelSampleAnimInstance::BuildSampleTrajectory()
 
 	// PadelCore's velocity (read off the model's trajectory by ApplyFrame) carried on as the
 	// legacy path does: braking ends at rest, speeding up is carried for at most half a second.
-	const FVector Velocity(LastVelocity.X, LastVelocity.Y, 0.0);
+	const FVector Velocity = bHasDesired ? SimVelocity : FVector(LastVelocity.X, LastVelocity.Y, 0.0);
 	const double GroundSpeed = Velocity.Size2D();
 	const double Along = GroundSpeed > 1.0 ? FVector::DotProduct(Acceleration, Velocity / GroundSpeed) : 0.0;
 	const double StopIn = Along < -1.0 ? GroundSpeed / -Along : TNumericLimits<double>::Max();
+	// With the player's intent (the velocity PadelCore's movement is heading for, and how fast it
+	// can get there), the future is that movement played on, as the sample's movement component
+	// predicts from the stick: a reversal shows as a reversal, a start levels off at its speed.
+	TArray<FVector> Intended;
+	if (bHasDesired && AccelLimit > 1.0)
+	{
+		constexpr double H = 1.0 / 60.0;
+		const int32 Steps = FMath::CeilToInt((Settings.FutureCount * Settings.FutureIntervalS + 0.1) / H) + 1;
+		Intended.Reserve(Steps + 1);
+		FVector V = Velocity;
+		FVector P = FVector::ZeroVector;
+		Intended.Add(P);
+		for (int32 I = 0; I < Steps; ++I)
+		{
+			const FVector Delta = DesiredVelocity - V;
+			V = Delta.Size2D() <= AccelLimit * H ? DesiredVelocity : V + Delta.GetSafeNormal2D() * AccelLimit * H;
+			P += V * H;
+			Intended.Add(P);
+		}
+	}
 	auto Offset = [&](double T)
 	{
+		if (!Intended.IsEmpty())
+		{
+			const double Index = T * 60.0;
+			const int32 Lo = FMath::Clamp(FMath::FloorToInt(Index), 0, Intended.Num() - 1);
+			const int32 Hi = FMath::Min(Lo + 1, Intended.Num() - 1);
+			return FMath::Lerp(Intended[Lo], Intended[Hi], Index - Lo);
+		}
 		if (StopIn < TNumericLimits<double>::Max())
 		{
 			const double U = FMath::Min(T, StopIn);

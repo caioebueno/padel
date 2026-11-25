@@ -52,6 +52,11 @@ namespace Padel::Shots
 
 		const FVec3& GetPosition() const { return Position; }
 		const FVec3& GetVelocity() const { return Velocity; }
+		// The velocity the player was heading for on the last step (the stick or the AI's move,
+		// after the margins), and the most the velocity could change per second toward it.
+		// Read-only, for animation: what the player intends, not just what they do.
+		const FVec3& GetDesiredVelocity() const { return DesiredVelocity; }
+		double GetAccelLimit() const { return AccelLimit; }
 		double GetStamina() const { return Stamina; }
 		// GDD 6.3: the share of top speed and acceleration left at the current stamina.
 		double FatigueFactor() const;
@@ -104,6 +109,8 @@ namespace Padel::Shots
 		bool bSplitPending = false;
 		int SplitStepCount = 0;
 		int EdgeStopCount = 0;
+		FVec3 DesiredVelocity = Vec(0.0, 0.0, 0.0);
+		double AccelLimit = 0.0;
 		EMovementMode Mode = EMovementMode::Adjust;
 		EGait Gait = EGait::Square;
 		EHeld HeldDir = EHeld::None;

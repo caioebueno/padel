@@ -164,6 +164,9 @@ namespace Padel::Animation
 		const FPlayerMotion& Motion = Controller.GetMotion();
 		In.Position = Motion.GetPosition();
 		In.Velocity = Motion.GetVelocity();
+		In.DesiredVelocity = Motion.GetDesiredVelocity();
+		In.AccelLimitMps2 = Motion.GetAccelLimit();
+		In.bHasDesired = true;
 		In.bSprinting = Motion.IsSprinting();
 		In.bSplitHopping = Motion.IsSplitHopping();
 		In.SplitHopLeftS = Motion.GetSplitHopLeftS();
@@ -205,6 +208,10 @@ namespace Padel::Animation
 		const FVec3 Right = RightAxis(In.TeamSign);
 		const double Speed = LengthXY(In.Velocity);
 		Frame.SpeedMps = Speed;
+		Frame.VelocityMps = In.Velocity;
+		Frame.DesiredVelocityMps = In.DesiredVelocity;
+		Frame.AccelLimitMps2 = In.AccelLimitMps2;
+		Frame.bHasDesired = In.bHasDesired;
 		Frame.Mode = In.Mode;
 		using PlayerAnimModelDetail::RadToDeg;
 		Frame.NetYawDeg = std::atan2(Forward.Y, Forward.X) * RadToDeg;

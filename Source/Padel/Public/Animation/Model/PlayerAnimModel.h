@@ -86,6 +86,11 @@ namespace Padel::Animation
 
 		FVec3 Position;
 		FVec3 Velocity;
+		// The velocity the player is heading for and how fast it can change (FPlayerMotion's
+		// GetDesiredVelocity, GetAccelLimit; bHasDesired false where nobody knows).
+		FVec3 DesiredVelocity;
+		double AccelLimitMps2 = 0.0;
+		bool bHasDesired = false;
 		bool bSprinting = false;
 		bool bSplitHopping = false;
 		// Time left in the split-step hop (FPlayerMotion::GetSplitHopLeftS), to shape it.
@@ -113,6 +118,11 @@ namespace Padel::Animation
 	{
 		ELocomotionState Locomotion = ELocomotionState::Idle;
 		double SpeedMps = 0.0;
+		// The input's intent, passed on for the animation's trajectory (world metres, m/s, m/s^2).
+		FVec3 VelocityMps;
+		FVec3 DesiredVelocityMps;
+		double AccelLimitMps2 = 0.0;
+		bool bHasDesired = false;
 		// Movement direction relative to where the body faces: 0 forward, +90 to the right.
 		double DirectionDeg = 0.0;
 		// M2's movement mode this tick (N1).
