@@ -6,7 +6,10 @@
 //   motion matching (the sample's Dense databases, chosen by the sample's rules in C++)
 //     -> pose history collector (the trajectory comes from PadelCore, not a movement component)
 //     -> steering (the clip's root motion turned toward the pawn's facing)
+//     -> orientation warping (the legs turned onto the pawn's travel, the spine back: strafing and shuffles)
 //     -> offset root bone (the drawn body may lag the simulation a little, within limits)
+//     -> the clips' foot contact curves as foot speeds -> foot placement (planted feet stay put,
+//        the pelvis settles) -> leg IK
 //
 // PadelCore stays the authority: the pawn is where the simulation puts it. Only the pose and
 // how far its root may trail the pawn come from here. Settings: Data/SampleLocomotion.json.
@@ -25,6 +28,9 @@
 #include "Animation/AnimNodeSpaceConversions.h"
 #include "BoneControllers/AnimNode_OffsetRootBone.h"
 #include "BoneControllers/AnimNode_Steering.h"
+#include "BoneControllers/AnimNode_OrientationWarping.h"
+#include "BoneControllers/AnimNode_FootPlacement.h"
+#include "BoneControllers/AnimNode_LegIK.h"
 #include "PoseSearch/AnimNode_MotionMatching.h"
 #include "PoseSearch/AnimNode_PoseSearchHistoryCollector.h"
 #include "PadelSampleLocomotion.generated.h"
@@ -90,6 +96,24 @@ struct PADEL_API FPadelSampleLocomotionSettings
 	double SteeringAnimatedTargetTimeS = 3.0;
 	double SteeringProceduralTargetTimeS = 0.2;
 	double SteeringBelowSpeed = 10.0;
+	// Orientation warping (the sample's, in strafe and in the locomotion states).
+	bool bOrientationWarping = true;
+	double WarpLocomotionAngleDeltaThreshold = 160.0;
+	double WarpRotationInterpSpeed = 8.0;
+	TArray<FName> WarpSpineBones;
+	// Foot placement and leg IK (the sample's).
+	bool bFootPlacement = true;
+	TArray<FName> ContactCurves;
+	double PelvisMaxOffset = 250.0;
+	double PelvisLinearStiffness = 100.0;
+	double UnplantRadius = 20.0;
+	double ReplantRadiusRatio = 0.2;
+	double UnplantAngle = 60.0;
+	double ReplantAngleRatio = 0.2;
+	double UnplantLinearStiffness = 200.0;
+	double UnplantAngularStiffness = 179.0;
+	double MaxGroundPenetration = 20.0;
+	double LegSoftPercentLength = 0.99;
 	double StrafeAbove = 60.0;
 
 	static FPadelSampleLocomotionSettings Load();
@@ -111,8 +135,26 @@ struct FPadelSampleChoice
 };
 
 /**
- * The C++ graph: motion matching -> pose history -> offset root bone, the engine's own nodes
- * wired by pose links. Inputs are copied from UPadelSampleAnimInstance on the game thread.
+ * The sample's RemapCurves node in C++: the clips mark a planted foot with contact_l/contact_r
+ * at 1; foot placement reads a foot's speed from those curves, so it gets (1 - contact) * 100.
+ */
+USTRUCT()
+struct PADEL_API FAnimNode_PadelContactCurves : public FAnimNode_Base
+{
+	GENERATED_BODY()
+
+	UPROPERTY() FPoseLink Source;
+	TArray<FName> Curves;
+
+	virtual void Initialize_AnyThread(const FAnimationInitializeContext& Context) override { Source.Initialize(Context); }
+	virtual void CacheBones_AnyThread(const FAnimationCacheBonesContext& Context) override { Source.CacheBones(Context); }
+	virtual void Update_AnyThread(const FAnimationUpdateContext& Context) override { Source.Update(Context); }
+	virtual void Evaluate_AnyThread(FPoseContext& Output) override;
+};
+
+/**
+ * The C++ graph: the engine's own nodes wired by pose links (see the top of this file). Inputs
+ * are copied from UPadelSampleAnimInstance on the game thread.
  */
 USTRUCT()
 struct PADEL_API FAnimNode_PadelSampleLocomotion : public FAnimNode_Base
@@ -123,8 +165,14 @@ struct PADEL_API FAnimNode_PadelSampleLocomotion : public FAnimNode_Base
 	UPROPERTY() FAnimNode_PoseSearchHistoryCollector History;
 	UPROPERTY() FAnimNode_ConvertLocalToComponentSpace ToComponent;
 	UPROPERTY() FAnimNode_Steering Steering;
+	UPROPERTY() FAnimNode_OrientationWarping OrientationWarping;
 	UPROPERTY() FAnimNode_ConvertComponentToLocalSpace ToLocal;
 	UPROPERTY() FAnimNode_OffsetRootBone OffsetRoot;
+	UPROPERTY() FAnimNode_PadelContactCurves ContactCurves;
+	UPROPERTY() FAnimNode_ConvertLocalToComponentSpace ToComponentAfterRoot;
+	UPROPERTY() FAnimNode_FootPlacement FootPlacement;
+	UPROPERTY() FAnimNode_LegIK LegIK;
+	UPROPERTY() FAnimNode_ConvertComponentToLocalSpace Final;
 
 	virtual void Initialize_AnyThread(const FAnimationInitializeContext& Context) override;
 	virtual void CacheBones_AnyThread(const FAnimationCacheBonesContext& Context) override;
@@ -152,6 +200,8 @@ private:
 	EPoseSearchInterruptMode Interrupt = EPoseSearchInterruptMode::DoNotInterrupt;
 	/** Steering's target: the pawn's facing (mesh component rotation, world). */
 	FQuat SteerTo = FQuat::Identity;
+	/** Orientation warping's travel: the pawn's ground velocity (world, cm/s). */
+	FVector Travel = FVector::ZeroVector;
 	FPadelSampleChoice Choice;
 	FPadelSampleChoice LastChoice;
 };

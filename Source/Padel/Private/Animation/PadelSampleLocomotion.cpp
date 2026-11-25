@@ -114,6 +114,24 @@ FPadelSampleLocomotionSettings FPadelSampleLocomotionSettings::Load()
 	S.TranslationHalfLifeS = Number(Offset, TEXT("TranslationHalfLifeS"), S.TranslationHalfLifeS);
 	S.RotationHalfLifeS = Number(Offset, TEXT("RotationHalfLifeS"), S.RotationHalfLifeS);
 	S.MaxTranslationError = Number(Offset, TEXT("MaxTranslationError"), S.MaxTranslationError);
+	const TSharedPtr<FJsonObject> Warp = Root->GetObjectField(TEXT("OrientationWarping"));
+	S.bOrientationWarping = Warp.IsValid() && Warp->GetBoolField(TEXT("Enabled"));
+	S.WarpLocomotionAngleDeltaThreshold = Number(Warp, TEXT("LocomotionAngleDeltaThreshold"), S.WarpLocomotionAngleDeltaThreshold);
+	S.WarpRotationInterpSpeed = Number(Warp, TEXT("RotationInterpSpeed"), S.WarpRotationInterpSpeed);
+	S.WarpSpineBones = Names(Warp, TEXT("SpineBones"));
+	const TSharedPtr<FJsonObject> Feet = Root->GetObjectField(TEXT("FootPlacement"));
+	S.bFootPlacement = Feet.IsValid() && Feet->GetBoolField(TEXT("Enabled"));
+	S.ContactCurves = Names(Feet, TEXT("ContactCurves"));
+	S.PelvisMaxOffset = Number(Feet, TEXT("PelvisMaxOffset"), S.PelvisMaxOffset);
+	S.PelvisLinearStiffness = Number(Feet, TEXT("PelvisLinearStiffness"), S.PelvisLinearStiffness);
+	S.UnplantRadius = Number(Feet, TEXT("UnplantRadius"), S.UnplantRadius);
+	S.ReplantRadiusRatio = Number(Feet, TEXT("ReplantRadiusRatio"), S.ReplantRadiusRatio);
+	S.UnplantAngle = Number(Feet, TEXT("UnplantAngle"), S.UnplantAngle);
+	S.ReplantAngleRatio = Number(Feet, TEXT("ReplantAngleRatio"), S.ReplantAngleRatio);
+	S.UnplantLinearStiffness = Number(Feet, TEXT("UnplantLinearStiffness"), S.UnplantLinearStiffness);
+	S.UnplantAngularStiffness = Number(Feet, TEXT("UnplantAngularStiffness"), S.UnplantAngularStiffness);
+	S.MaxGroundPenetration = Number(Feet, TEXT("MaxGroundPenetration"), S.MaxGroundPenetration);
+	S.LegSoftPercentLength = Number(Feet, TEXT("LegSoftPercentLength"), S.LegSoftPercentLength);
 	const TSharedPtr<FJsonObject> Steer = Root->GetObjectField(TEXT("Steering"));
 	S.SteeringAnimatedTargetTimeS = Number(Steer, TEXT("AnimatedTargetTimeS"), S.SteeringAnimatedTargetTimeS);
 	S.SteeringProceduralTargetTimeS = Number(Steer, TEXT("ProceduralTargetTimeS"), S.SteeringProceduralTargetTimeS);
@@ -180,6 +198,57 @@ void FAnimNode_PadelSampleLocomotion::Configure(const FPadelSampleLocomotionSett
 	Steering.ProceduralTargetTime = static_cast<float>(Settings.SteeringProceduralTargetTimeS);
 	Steering.DisableSteeringBelowSpeed = static_cast<float>(Settings.SteeringBelowSpeed);
 
+	// Orientation warping, as the sample's locomotion states: in graph mode it reads the pose's
+	// root motion and turns the legs onto the pawn's travel, the spine (to the head) back.
+	OrientationWarping.Mode = EWarpingEvaluationMode::Graph;
+	OrientationWarping.LocomotionAngleDeltaThreshold = static_cast<float>(Settings.WarpLocomotionAngleDeltaThreshold);
+	OrientationWarping.RotationInterpSpeed = static_cast<float>(Settings.WarpRotationInterpSpeed);
+	OrientationWarping.WarpingSpace = EOrientationWarpingSpace::RootBoneTransform;
+	OrientationWarping.SpineBones.Reset();
+	for (const FName Bone : Settings.WarpSpineBones)
+	{
+		OrientationWarping.SpineBones.Add(FBoneReference(Bone));
+	}
+	OrientationWarping.IKFootRootBone = FBoneReference(TEXT("ik_foot_root"));
+	OrientationWarping.IKFootBones = { FBoneReference(TEXT("ik_foot_l")), FBoneReference(TEXT("ik_foot_r")) };
+	OrientationWarping.Alpha = Settings.bOrientationWarping ? 1.0f : 0.0f;
+
+	// Foot placement and leg IK, as the sample's.
+	ContactCurves.Curves = Settings.ContactCurves;
+	FootPlacement.IKFootRootBone = FBoneReference(TEXT("ik_foot_root"));
+	FootPlacement.PelvisBone = FBoneReference(TEXT("pelvis"));
+	FootPlacement.PelvisSettings.MaxOffset = static_cast<float>(Settings.PelvisMaxOffset);
+	FootPlacement.PelvisSettings.LinearStiffness = static_cast<float>(Settings.PelvisLinearStiffness);
+	FootPlacement.LegDefinitions.Reset();
+	const TCHAR* const Sides[2] = { TEXT("r"), TEXT("l") };
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		FFootPlacemenLegDefinition& Leg = FootPlacement.LegDefinitions.AddDefaulted_GetRef();
+		Leg.FKFootBone = FBoneReference(*FString::Printf(TEXT("foot_%s"), Sides[Side]));
+		Leg.IKFootBone = FBoneReference(*FString::Printf(TEXT("ik_foot_%s"), Sides[Side]));
+		Leg.BallBone = FBoneReference(*FString::Printf(TEXT("ball_%s"), Sides[Side]));
+		Leg.SpeedCurveName = Settings.ContactCurves.IsValidIndex(Side) ? Settings.ContactCurves[Side] : NAME_None;
+	}
+	FootPlacement.PlantSettings.UnplantRadius = static_cast<float>(Settings.UnplantRadius);
+	FootPlacement.PlantSettings.ReplantRadiusRatio = static_cast<float>(Settings.ReplantRadiusRatio);
+	FootPlacement.PlantSettings.UnplantAngle = static_cast<float>(Settings.UnplantAngle);
+	FootPlacement.PlantSettings.ReplantAngleRatio = static_cast<float>(Settings.ReplantAngleRatio);
+	FootPlacement.InterpolationSettings.UnplantLinearStiffness = static_cast<float>(Settings.UnplantLinearStiffness);
+	FootPlacement.InterpolationSettings.UnplantAngularStiffness = static_cast<float>(Settings.UnplantAngularStiffness);
+	FootPlacement.TraceSettings.MaxGroundPenetration = static_cast<float>(Settings.MaxGroundPenetration);
+	FootPlacement.Alpha = Settings.bFootPlacement ? 1.0f : 0.0f;
+	LegIK.SoftPercentLength = static_cast<float>(Settings.LegSoftPercentLength);
+	LegIK.LegsDefinition.Reset();
+	for (int32 Side = 1; Side >= 0; --Side)
+	{
+		FAnimLegIKDefinition& Leg = LegIK.LegsDefinition.AddDefaulted_GetRef();
+		Leg.IKFootBone = FBoneReference(*FString::Printf(TEXT("ik_foot_%s"), Sides[Side]));
+		Leg.FKFootBone = FBoneReference(*FString::Printf(TEXT("foot_%s"), Sides[Side]));
+		Leg.HingeRotationAxis = EAxis::Z;
+		Leg.bEnableRotationLimit = true;
+	}
+	LegIK.Alpha = Settings.bFootPlacement ? 1.0f : 0.0f;
+
 #if WITH_EDITORONLY_DATA
 	// Folded node data: read from the node itself in editor builds (see the header).
 	OffsetRoot.RotationMode = EOffsetRootBoneMode::Accumulate;
@@ -199,16 +268,22 @@ void FAnimNode_PadelSampleLocomotion::Initialize_AnyThread(const FAnimationIniti
 		History.Source.SetLinkNode(&MotionMatching);
 		ToComponent.LocalPose.SetLinkNode(&History);
 		Steering.ComponentPose.SetLinkNode(&ToComponent);
-		ToLocal.ComponentPose.SetLinkNode(&Steering);
+		OrientationWarping.ComponentPose.SetLinkNode(&Steering);
+		ToLocal.ComponentPose.SetLinkNode(&OrientationWarping);
 		OffsetRoot.Source.SetLinkNode(&ToLocal);
+		ContactCurves.Source.SetLinkNode(&OffsetRoot);
+		ToComponentAfterRoot.LocalPose.SetLinkNode(&ContactCurves);
+		FootPlacement.ComponentPose.SetLinkNode(&ToComponentAfterRoot);
+		LegIK.ComponentPose.SetLinkNode(&FootPlacement);
+		Final.ComponentPose.SetLinkNode(&LegIK);
 		bLinked = true;
 	}
-	OffsetRoot.Initialize_AnyThread(Context);
+	Final.Initialize_AnyThread(Context);
 }
 
 void FAnimNode_PadelSampleLocomotion::CacheBones_AnyThread(const FAnimationCacheBonesContext& Context)
 {
-	OffsetRoot.CacheBones_AnyThread(Context);
+	Final.CacheBones_AnyThread(Context);
 }
 
 void FAnimNode_PadelSampleLocomotion::PreUpdate(const UAnimInstance* InAnimInstance)
@@ -223,6 +298,7 @@ void FAnimNode_PadelSampleLocomotion::PreUpdate(const UAnimInstance* InAnimInsta
 	{
 		SteerTo = Mesh->GetComponentQuat();
 	}
+	Travel = Anim->GetCurrentVelocity();
 	Choose(*Anim);
 }
 
@@ -304,12 +380,15 @@ void FAnimNode_PadelSampleLocomotion::Update_AnyThread(const FAnimationUpdateCon
 	Steering.CurrentAnimAsset = Cast<UAnimationAsset>(const_cast<UObject*>(Picked.SelectedAnim.Get()));
 	Steering.CurrentAnimAssetTime = Picked.SelectedTime;
 	Steering.bMirrored = Picked.bIsMirrored;
-	OffsetRoot.Update_AnyThread(Context);
+	OrientationWarping.LocomotionDirection = Travel;
+	OrientationWarping.CurrentAnimAsset = Steering.CurrentAnimAsset;
+	OrientationWarping.CurrentAnimAssetTime = Picked.SelectedTime;
+	Final.Update_AnyThread(Context);
 }
 
 void FAnimNode_PadelSampleLocomotion::Evaluate_AnyThread(FPoseContext& Output)
 {
-	OffsetRoot.Evaluate_AnyThread(Output);
+	Final.Evaluate_AnyThread(Output);
 }
 
 const UAnimationAsset* FAnimNode_PadelSampleLocomotion::CurrentAsset() const
@@ -334,13 +413,33 @@ FName FAnimNode_PadelSampleLocomotion::CurrentDatabase() const
 	return Database->GetFName();
 }
 
+void FAnimNode_PadelContactCurves::Evaluate_AnyThread(FPoseContext& Output)
+{
+	Source.Evaluate(Output);
+	for (const FName Curve : Curves)
+	{
+		bool bFound = false;
+		const float Contact = Output.Curve.Get(Curve, bFound);
+		if (bFound)
+		{
+			Output.Curve.Set(Curve, (1.0f - Contact) * 100.0f);
+		}
+	}
+}
+
 void FPadelSampleAnimInstanceProxy::GetCustomNodes(TArray<FAnimNode_Base*>& OutNodes)
 {
 	if (Root)
 	{
 		OutNodes.Add(Root);
+		OutNodes.Add(&Root->Final);
+		OutNodes.Add(&Root->LegIK);
+		OutNodes.Add(&Root->FootPlacement);
+		OutNodes.Add(&Root->ToComponentAfterRoot);
+		OutNodes.Add(&Root->ContactCurves);
 		OutNodes.Add(&Root->OffsetRoot);
 		OutNodes.Add(&Root->ToLocal);
+		OutNodes.Add(&Root->OrientationWarping);
 		OutNodes.Add(&Root->Steering);
 		OutNodes.Add(&Root->ToComponent);
 		OutNodes.Add(&Root->History);

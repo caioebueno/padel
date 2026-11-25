@@ -1,4 +1,5 @@
 #include "Animation/PadelMetaHumanAnimInstance.h"
+#include "Animation/PadelSampleLocomotion.h"
 
 #include "Animation/PadelPlayerAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -48,7 +49,9 @@ void FAnimNode_PadelMetaHumanWarp::PreUpdate(const UAnimInstance* InAnimInstance
 	const UPadelPlayerAnimInstance* Anim = Driver ? Cast<UPadelPlayerAnimInstance>(Driver->GetAnimInstance()) : nullptr;
 	const USkeletalMeshComponent* Mesh = InAnimInstance ? InAnimInstance->GetSkelMeshComponent() : nullptr;
 	bPostProcessTwist = Mesh && Mesh->GetPostProcessInstance() != nullptr;
-	if (!Anim || !Mesh)
+	// The movement restart's path doesn't carry the racket yet (docs/decisions/0014-sample-locomotion.md):
+	// the old reach, planned around the old clips' hands, snapped the arm there. No request, no warp.
+	if (!Anim || !Mesh || Anim->IsA<UPadelSampleAnimInstance>())
 	{
 		return;
 	}

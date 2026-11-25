@@ -56,6 +56,28 @@
 		"ProceduralTargetTimeS": 0.2,
 		"DisableBelowSpeed": 10.0
 	},
+	"OrientationWarping": {
+		"_doc": "The sample's orientation warping (graph mode, in the root bone's space): the legs turn onto the pawn's travel where the clip's root motion points elsewhere, the spine to the head turns back.",
+		"Enabled": true,
+		"LocomotionAngleDeltaThreshold": 160.0,
+		"RotationInterpSpeed": 8.0,
+		"SpineBones": ["spine_01", "spine_02", "spine_03", "spine_04", "spine_05", "neck_01", "neck_02", "head"]
+	},
+	"FootPlacement": {
+		"_doc": "The sample's foot placement and leg IK: a foot the clip plants (its contact curve, remapped to a speed as the sample's RemapCurves node does: (1 - contact) * 100) stays put until it moves UnplantRadius or turns UnplantAngle, the pelvis settles to keep the legs in reach, two-bone leg IK reaches the IK foot bones.",
+		"Enabled": true,
+		"ContactCurves": ["contact_r", "contact_l"],
+		"PelvisMaxOffset": 250.0,
+		"PelvisLinearStiffness": 100.0,
+		"UnplantRadius": 20.0,
+		"ReplantRadiusRatio": 0.2,
+		"UnplantAngle": 60.0,
+		"ReplantAngleRatio": 0.2,
+		"UnplantLinearStiffness": 200.0,
+		"UnplantAngularStiffness": 179.0,
+		"MaxGroundPenetration": 20.0,
+		"LegSoftPercentLength": 0.99
+	},
 	"OffsetRoot": {
 		"TranslationHalfLifeS": 0.2,
 		"RotationHalfLifeS": 0.1,
