@@ -46,3 +46,9 @@ __pycache__/
 /Content/Padel/Animations/MotionMatching/Footwork/
 /Content/Padel/Animations/Retarget/IK_PadelFootwork.uasset
 /Content/Padel/Animations/Retarget/RTG_Footwork_To_Placeholder.uasset
+# The movement restart (docs/decisions/0014-sample-locomotion.md): Tools/AssetPipeline/unreal/gasp_migrate.py
+# copies the Game Animation Sample's locomotion set (under /Content/Characters/ and /Content/MetaHumans/,
+# above) with the sample content it depends on (foley sounds, anim notifies), which stays local too.
+/Content/Audio/
+/Content/Blueprints/
+/Content/Misc/

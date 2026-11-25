@@ -7,6 +7,8 @@
 #include "Animation/PadelMetaHumanAnimInstance.h"
 #include "Components/LODSyncComponent.h"
 #include "Animation/PadelPlayerAnimInstance.h"
+#include "Animation/PadelSampleLocomotion.h"
+#include "HAL/IConsoleManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -24,6 +26,10 @@
 
 namespace PadelAnimComponentDetail
 {
+	// The movement restart (docs/decisions/0014-sample-locomotion.md), off until it is accepted.
+	TAutoConsoleVariable<int32> CVarSampleLocomotion(TEXT("Padel.Animation.SampleLocomotion"), 0,
+		TEXT("1: players animate with the Game Animation Sample's locomotion (Data/SampleLocomotion.json) on its mannequin; 0: the legacy path. Read when a player's body is set up."));
+
 	Padel::Animation::FRacketSettings LoadRacketSettings()
 	{
 		Padel::Animation::FRacketSettings Settings;
@@ -85,7 +91,32 @@ void UPadelPlayerAnimComponent::Init(const Padel::Shots::FShotLibrary* Shots, in
 	bSkeletalBody = false;
 	const bool bWantsMetaHuman = !PlayerKey.IsNone() && Data->PlayerBodies.Contains(PlayerKey);
 	const int32 MeshIndex = bWantsMetaHuman ? 0 : TeamIndex;
-	if (Body && Data->TeamMeshes.IsValidIndex(MeshIndex))
+	// The sample path drives the sample's own mannequin (its clips' skeleton, no retarget).
+	bSampleLocomotion = false;
+	if (Body && PadelAnimComponentDetail::CVarSampleLocomotion.GetValueOnGameThread() != 0)
+	{
+		SampleSettings = MakeUnique<FPadelSampleLocomotionSettings>(FPadelSampleLocomotionSettings::Load());
+		USkeletalMesh* Mesh = SampleSettings->bOk ? LoadObject<USkeletalMesh>(nullptr, *SampleSettings->DriverMesh, nullptr, LOAD_Quiet | LOAD_NoWarn) : nullptr;
+		if (Mesh)
+		{
+			Body->SetSkeletalMeshAsset(Mesh);
+			Body->SetAnimInstanceClass(UPadelSampleAnimInstance::StaticClass());
+			Body->SetVisibility(true);
+			if (UPadelSampleAnimInstance* Anim = Cast<UPadelSampleAnimInstance>(Body->GetAnimInstance()))
+			{
+				Anim->WarpTuning = Data->Warp;
+				Anim->Configure(*SampleSettings);
+				bSkeletalBody = true;
+				bSampleLocomotion = true;
+			}
+		}
+		else
+		{
+			UE_LOG(LogPadel, Warning, TEXT("Sample locomotion: %s, or its mannequin %s, isn't there (Tools/AssetPipeline/unreal/gasp_migrate.py): the legacy path plays."),
+				SampleSettings->bOk ? TEXT("Data/SampleLocomotion.json") : *SampleSettings->Error, *SampleSettings->DriverMesh);
+		}
+	}
+	if (Body && !bSampleLocomotion && Data->TeamMeshes.IsValidIndex(MeshIndex))
 	{
 		USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, *Data->TeamMeshes[MeshIndex], nullptr, LOAD_Quiet | LOAD_NoWarn);
 		UClass* AnimClass = LoadObject<UClass>(nullptr, *Data->AnimClass, nullptr, LOAD_Quiet | LOAD_NoWarn);
@@ -236,13 +267,15 @@ bool UPadelPlayerAnimComponent::ShowMetaHuman(FName PlayerKey)
 		Class = LoadObject<UClass>(nullptr, *Data->MetaHumanFallbackClass, nullptr, LOAD_Quiet | LOAD_NoWarn);
 		ClassPath = Data->MetaHumanFallbackClass;
 	}
-	UIKRetargeter* Retargeter = LoadObject<UIKRetargeter>(nullptr, *Data->MetaHumanRetargeter, nullptr, LOAD_Quiet | LOAD_NoWarn);
+	// The sample path retargets with Epic's mannequin-to-MetaHuman retargeter.
+	const FString& RetargeterPath = bSampleLocomotion && SampleSettings ? SampleSettings->MetaHumanRetargeter : Data->MetaHumanRetargeter;
+	UIKRetargeter* Retargeter = LoadObject<UIKRetargeter>(nullptr, *RetargeterPath, nullptr, LOAD_Quiet | LOAD_NoWarn);
 	UWorld* World = GetWorld();
 	if (!Class || !Class->IsChildOf(AActor::StaticClass()) || !Retargeter || !World)
 	{
 		// MetaHuman assets live outside git (0006), so a fresh clone lands here: keep the placeholder.
 		UE_LOG(LogPadel, Log, TEXT("Player %s: MetaHuman %s or retargeter %s not on disk, using the placeholder body."),
-			*PlayerKey.ToString(), *Row->MetaHumanClass, *Data->MetaHumanRetargeter);
+			*PlayerKey.ToString(), *Row->MetaHumanClass, *RetargeterPath);
 		return false;
 	}
 

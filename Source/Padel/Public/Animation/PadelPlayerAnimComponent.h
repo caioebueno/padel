@@ -60,6 +60,8 @@ public:
 
 	/** True once a skeletal body and the AnimBP are in use. */
 	bool HasSkeletalBody() const { return bSkeletalBody; }
+	/** True when this body plays the Game Animation Sample's locomotion (docs/decisions/0014-sample-locomotion.md). */
+	bool UsesSampleLocomotion() const { return bSampleLocomotion; }
 
 	/** The placeholder skeleton: shown, or hidden and driving a MetaHuman. */
 	USkeletalMeshComponent* GetDriverBody() const { return Body; }
@@ -121,6 +123,9 @@ private:
 	TMap<FString, TObjectPtr<UAnimSequenceBase>> Sequences;
 
 	TUniquePtr<FPadelAnimData> Data;
+	/** The movement restart (Padel.Animation.SampleLocomotion): the sample path's settings, and whether this body uses it. */
+	TUniquePtr<struct FPadelSampleLocomotionSettings> SampleSettings;
+	bool bSampleLocomotion = false;
 	TUniquePtr<Padel::Animation::FPlayerAnimModel> Model;
 	bool bSkeletalBody = false;
 	Padel::Animation::FRacketSettings RacketSettings;

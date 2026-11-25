@@ -33,5 +33,9 @@ public class Padel : ModuleRules
 
 		// Padel.Animation.LayerVideo renders the probe's path to PNGs (a scene capture read back).
 		PrivateDependencyModuleNames.AddRange(new string[] { "RenderCore", "ImageCore" });
+
+		// The movement restart (docs/decisions/0014-sample-locomotion.md): the engine's motion
+		// matching (a blend stack) and offset root bone nodes, wired in C++.
+		PublicDependencyModuleNames.AddRange(new string[] { "BlendStack", "AnimationWarpingRuntime", "AnimGraphRuntime" });
 	}
 }

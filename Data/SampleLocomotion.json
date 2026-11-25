@@ -1,0 +1,73 @@
+{
+	"_doc": "The movement restart (docs/decisions/0014-sample-locomotion.md): Epic's Game Animation Sample locomotion as Epic ships it, assembled in C++ (Source/Padel/Public/Animation/PadelSampleLocomotion.h). Asset paths are the sample's own, copied in by Tools/AssetPipeline/unreal/gasp_migrate.py. Numbers are the sample's (SandboxCharacter_CMC_ABP and CHT_PoseSearchDatabases_Dense), in Unreal units (cm, cm/s, degrees, seconds). On while the console variable Padel.Animation.SampleLocomotion is 1.",
+	"DriverMesh": "/Game/Characters/UEFN_Mannequin/Meshes/SKM_UEFN_Mannequin.SKM_UEFN_Mannequin",
+	"MetaHumanRetargeter": "/Game/MetaHumans/Common/Common/Rigs/RTG_UEFN_to_Metahuman_nrw.RTG_UEFN_to_Metahuman_nrw",
+	"DatabaseFolder": "/Game/Characters/UEFN_Mannequin/Animations/MotionMatchingData/Databases/Dense",
+	"Databases": {
+		"Idles": "PSD_Dense_Stand_Idles",
+		"TurnInPlace": "PSD_Dense_Stand_TurnInPlace",
+		"WalkStops": "PSD_Dense_Stand_Walk_Stops",
+		"RunStops": "PSD_Dense_Stand_Run_Stops",
+		"SprintStops": "PSD_Dense_Stand_Sprint_Stops",
+		"WalkStarts": "PSD_Dense_Stand_Walk_Starts",
+		"WalkLoops": "PSD_Dense_Stand_Walk_Loops",
+		"WalkPivots": "PSD_Dense_Stand_Walk_Pivots",
+		"RunStarts": "PSD_Dense_Stand_Run_Starts",
+		"RunLoops": "PSD_Dense_Stand_Run_Loops",
+		"RunPivots": "PSD_Dense_Stand_Run_Pivots",
+		"SprintStarts": "PSD_Dense_Stand_Sprint_Starts",
+		"SprintLoops": "PSD_Dense_Stand_Sprint_Loops",
+		"SprintPivots": "PSD_Dense_Stand_Sprint_Pivots"
+	},
+	"Chooser": {
+		"_doc": "The sample's Dense chooser. Idle: the idles below IdleBelow, the walk stops from IdleBelow, run stops from RunStopsFrom, sprint stops from SprintStopsFrom, turns in place when ShouldTurnInPlace. Moving: the gait's loops, its starts while starting, its pivots while pivoting (sprint: loops and starts only when not pivoting). The sample picks the gait from the player's input; here the speed now picks it, walk up to RunGaitFrom, run up to SprintGaitFrom, each edge moved GaitHysteresis (a share) away from the current gait so it doesn't flicker.",
+		"IdleBelow": 20.0,
+		"RunStopsFrom": 100.0,
+		"SprintStopsFrom": 550.0,
+		"RunGaitFrom": 250.0,
+		"SprintGaitFrom": 600.0,
+		"MovingSpeedAbove": 0.1,
+		"MovingFutureSpeedAbove": 10.0,
+		"StartingFutureGain": 100.0,
+		"PivotAngle": 45.0,
+		"GaitHysteresis": 0.1,
+		"StrafePivotAngle": 30.0,
+		"TurnInPlaceAngle": 50.0,
+		"FutureVelocityFromS": 0.4,
+		"FutureVelocityToS": 0.5
+	},
+	"MotionMatching": {
+		"BlendTimeS": 0.5,
+		"BlendProfile": "FastFeet+Root_Weight",
+		"PlayRateMin": 0.85,
+		"PlayRateMax": 1.15,
+		"PoseReselectHistoryS": 0.3,
+		"MaxBlendInTimeToOverrideAnimationS": 0.03,
+		"PlayerDepthBlendInTimeMultiplier": 1.1
+	},
+	"PoseHistory": {
+		"CollectedBones": ["foot_r", "foot_l", "thigh_r", "thigh_l", "spine_05", "pelvis"],
+		"CollectedCurves": ["Phase"],
+		"RootBoneRecoveryTimeS": 0.3
+	},
+	"Steering": {
+		"_doc": "The sample's locomotion steering node: the clip's root motion over the next AnimatedTargetTimeS is scaled to reach the pawn's facing, and what remains is corrected over ProceduralTargetTimeS. Off below DisableBelowSpeed of root motion.",
+		"AnimatedTargetTimeS": 3.0,
+		"ProceduralTargetTimeS": 0.2,
+		"DisableBelowSpeed": 10.0
+	},
+	"OffsetRoot": {
+		"TranslationHalfLifeS": 0.2,
+		"RotationHalfLifeS": 0.1,
+		"MaxTranslationError": 30.0
+	},
+	"Trajectory": {
+		"_doc": "The sample's trajectory: 30 past samples, 15 future ones 0.1 s apart. The past is where the pawn was; the future carries PadelCore's velocity and acceleration on (as the legacy path does), and turns the facing toward the travel at up to FacingTurnRate when the body already faces within StrafeAbove of it (otherwise it is strafing: the facing holds).",
+		"PastCount": 30,
+		"PastIntervalS": 0.04,
+		"FutureCount": 15,
+		"FutureIntervalS": 0.1,
+		"FacingTurnRate": 540.0,
+		"StrafeAbove": 60.0
+	}
+}

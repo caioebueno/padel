@@ -6,6 +6,7 @@
 #include "Animation/PadelPlayerAnimComponent.h"
 #include "Animation/PadelPlayerAnimInstance.h"
 #include "Animation/PadelPlayerPoseNode.h"
+#include "Animation/PadelSampleLocomotion.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -522,13 +523,30 @@ namespace PadelMotionProbe
 			Driver = Pawn && Pawn->GetAnimation()->HasSkeletalBody() ? Pawn->GetAnimation()->GetDriverBody() : nullptr;
 			Anim = Driver ? Cast<UPadelPlayerAnimInstance>(Driver->GetAnimInstance()) : nullptr;
 		}
-		if (!Anim || Anim->LocomotionSet.MotionMatchingDatabases.IsEmpty())
+		// The movement restart's path (Padel.Animation.SampleLocomotion): the sample's own graph and databases.
+		const UPadelSampleAnimInstance* Sample = Cast<UPadelSampleAnimInstance>(Anim);
+		TArray<const UPoseSearchDatabase*> ToIndex;
+		if (Sample)
+		{
+			for (const TPair<FName, FString>& Entry : Sample->GetSettings().Databases)
+			{
+				if (const UPoseSearchDatabase* Database = LoadObject<UPoseSearchDatabase>(nullptr, *Entry.Value, nullptr, LOAD_Quiet | LOAD_NoWarn))
+				{
+					ToIndex.Add(Database);
+				}
+			}
+		}
+		else if (Anim)
+		{
+			ToIndex.Append(Anim->LocomotionSet.MotionMatchingDatabases);
+		}
+		if (!Anim || ToIndex.IsEmpty())
 		{
 			Out.SkipReason = TEXT("no motion matching databases on this machine (run animation_setup.py)");
 			return Out;
 		}
 #if WITH_EDITOR
-		for (const UPoseSearchDatabase* Database : Anim->LocomotionSet.MotionMatchingDatabases)
+		for (const UPoseSearchDatabase* Database : ToIndex)
 		{
 			using namespace UE::PoseSearch;
 			const EAsyncBuildIndexResult Result = FAsyncPoseSearchDatabasesManagement::RequestAsyncBuildIndex(Database,
@@ -637,6 +655,8 @@ namespace PadelMotionProbe
 		int64 PlayingSum = 0;
 		int32 LockedFrames[2] = { 0, 0 };
 		double StalledSpellS = 0.0;
+		const UAnimSequenceBase* SamplePlaying = nullptr;
+		int32 SamplePicks = 0;
 		auto Tick = [&](const FString& Phase)
 		{
 			S.Position += S.Velocity * Dt;
@@ -738,10 +758,15 @@ namespace PadelMotionProbe
 				Shown->RefreshBoneTransforms();
 			}
 			const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
-			const UAnimSequenceBase* Playing = Matcher.CurrentClip();
-			const bool bRanOut = Playing && !Matcher.CurrentLoops() && Matcher.CurrentTime() >= Playing->GetPlayLength() - 1e-3;
+			const UAnimSequenceBase* Playing = Sample ? Cast<UAnimSequenceBase>(Sample->GetSampleNode().CurrentAsset()) : Matcher.CurrentClip();
+			if (Sample && Playing != SamplePlaying)
+			{
+				SamplePlaying = Playing;
+				++SamplePicks;
+			}
+			const bool bRanOut = !Sample && Playing && !Matcher.CurrentLoops() && Matcher.CurrentTime() >= Playing->GetPlayLength() - 1e-3;
 			const double PathSpeed = S.Velocity.Size2D();
-			const bool bStalled = Playing && PathSpeed > 50.0 && (bRanOut || Matcher.ClipRootVelocity().Size2D() < PathSpeed / 3.0);
+			const bool bStalled = !Sample && Playing && PathSpeed > 50.0 && (bRanOut || Matcher.ClipRootVelocity().Size2D() < PathSpeed / 3.0);
 			if (bStalled)
 			{
 				Out.StalledMovingS += Dt;
@@ -756,10 +781,15 @@ namespace PadelMotionProbe
 			{
 				StalledSpellS = 0.0;
 			}
-			Out.ClipPerFrame.Add(Playing ? FString::Printf(TEXT("%s %.2f/%.2f x%.2f, clip %.2f m/s, path %.2f m/s"), *Playing->GetName(), Matcher.CurrentTime(),
+			Out.ClipPerFrame.Add(Sample ? FString::Printf(TEXT("%s, path %.2f m/s; chooser speed %.0f future %.0f gait %d%s%s%s%s strafe %d root lag %.0f"),
+				Playing ? *Playing->GetName() : TEXT("-"), PathSpeed / 100.0, Sample->GetSampleNode().GetChoice().Speed, Sample->GetSampleNode().GetChoice().FutureSpeed,
+				Sample->GetSampleNode().GetChoice().Gait, Sample->GetSampleNode().GetChoice().bMoving ? TEXT(" moving") : TEXT(""),
+				Sample->GetSampleNode().GetChoice().bStarting ? TEXT(" starting") : TEXT(""), Sample->GetSampleNode().GetChoice().bPivoting ? TEXT(" pivoting") : TEXT(""),
+				Sample->GetSampleNode().GetChoice().bTurnInPlace ? TEXT(" turn-in-place") : TEXT(""), Sample->IsStrafing() ? 1 : 0, Sample->GetRootYawLag())
+				: Playing ? FString::Printf(TEXT("%s %.2f/%.2f x%.2f, clip %.2f m/s, path %.2f m/s"), *Playing->GetName(), Matcher.CurrentTime(),
 				Playing->GetPlayLength(), Matcher.CurrentPlayRate(), Matcher.ClipRootVelocity().Size2D() / 100.0, PathSpeed / 100.0) : FString());
 			Out.Phases.Add(Phase);
-			Out.PickPerFrame.Add(Matcher.CurrentDatabase());
+			Out.PickPerFrame.Add(Sample ? Sample->GetSampleNode().CurrentDatabase() : Matcher.CurrentDatabase());
 			Out.MaxPlaying = FMath::Max(Out.MaxPlaying, Matcher.NumPlaying());
 			PlayingSum += Matcher.NumPlaying();
 			for (int32 F = 0; F < 2; ++F)
@@ -834,9 +864,9 @@ namespace PadelMotionProbe
 
 		const FPadelMotionMatcher& Matcher = Anim->GetPoseNode().GetMotionMatcher();
 		Out.bRan = true;
-		Out.bMotionMatched = Anim->GetPoseNode().IsMotionMatching();
+		Out.bMotionMatched = Sample ? SamplePicks > 0 : Anim->GetPoseNode().IsMotionMatching();
 		Out.DurationS = Out.Phases.Num() * Dt;
-		Out.SwitchesPerS = Out.DurationS > 0.0 ? Matcher.NumPicks() / Out.DurationS : 0.0;
+		Out.SwitchesPerS = Out.DurationS > 0.0 ? (Sample ? SamplePicks : Matcher.NumPicks()) / Out.DurationS : 0.0;
 		Out.StrandedS = Matcher.StrandedS();
 		Out.ReadySearches = Matcher.NumReadySearches();
 		Out.ReadyAccepted = Matcher.NumReadyAccepted();
