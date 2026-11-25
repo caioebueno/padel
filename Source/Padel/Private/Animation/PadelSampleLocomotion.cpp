@@ -133,6 +133,15 @@ FPadelSampleLocomotionSettings FPadelSampleLocomotionSettings::Load()
 	S.LeanSpeedTo = Number(LeanJson, TEXT("SpeedTo"), S.LeanSpeedTo);
 	S.LeanScaleFrom = Number(LeanJson, TEXT("ScaleFrom"), S.LeanScaleFrom);
 	S.LeanScaleTo = Number(LeanJson, TEXT("ScaleTo"), S.LeanScaleTo);
+	const TSharedPtr<FJsonObject> StanceJson = Root->GetObjectField(TEXT("Stance"));
+	S.bStance = StanceJson.IsValid() && StanceJson->GetBoolField(TEXT("Enabled"));
+	S.StanceFullBelow = Number(StanceJson, TEXT("FullBelow"), S.StanceFullBelow);
+	S.StanceGoneAbove = Number(StanceJson, TEXT("GoneAbove"), S.StanceGoneAbove);
+	S.StanceFadeS = Number(StanceJson, TEXT("FadeS"), S.StanceFadeS);
+	S.bRacketCarry = StanceJson.IsValid() && StanceJson->GetBoolField(TEXT("RacketCarry"));
+	const TSharedPtr<FJsonObject> HeadJson = Root->GetObjectField(TEXT("HeadLook"));
+	S.bHeadLook = HeadJson.IsValid() && HeadJson->GetBoolField(TEXT("Enabled"));
+	S.HeadLookMaxYawDeg = Number(HeadJson, TEXT("MaxYawDeg"), S.HeadLookMaxYawDeg);
 	const TSharedPtr<FJsonObject> Feet = Root->GetObjectField(TEXT("FootPlacement"));
 	S.bFootPlacement = Feet.IsValid() && Feet->GetBoolField(TEXT("Enabled"));
 	S.ContactCurves = Names(Feet, TEXT("ContactCurves"));
@@ -306,14 +315,15 @@ void FAnimNode_PadelSampleLocomotion::Initialize_AnyThread(const FAnimationIniti
 		FootPlacement.ComponentPose.SetLinkNode(&ToComponentAfterRoot);
 		LegIK.ComponentPose.SetLinkNode(&FootPlacement);
 		Final.ComponentPose.SetLinkNode(&LegIK);
+		BodyLayers.Source.SetLinkNode(&Final);
 		bLinked = true;
 	}
-	Final.Initialize_AnyThread(Context);
+	BodyLayers.Initialize_AnyThread(Context);
 }
 
 void FAnimNode_PadelSampleLocomotion::CacheBones_AnyThread(const FAnimationCacheBonesContext& Context)
 {
-	Final.CacheBones_AnyThread(Context);
+	BodyLayers.CacheBones_AnyThread(Context);
 }
 
 void FAnimNode_PadelSampleLocomotion::PreUpdate(const UAnimInstance* InAnimInstance)
@@ -331,6 +341,7 @@ void FAnimNode_PadelSampleLocomotion::PreUpdate(const UAnimInstance* InAnimInsta
 	Travel = Anim->GetWarpDirection();
 	WarpAlpha = Settings.bOrientationWarping ? Anim->GetWarpAlpha() : 0.0f;
 	LeanAmount = Anim->GetLeanAmount();
+	Layers = Anim->SampleBodyLayers();
 	Choose(*Anim);
 }
 
@@ -417,12 +428,13 @@ void FAnimNode_PadelSampleLocomotion::Update_AnyThread(const FAnimationUpdateCon
 	PadelSampleLocomotionDetail::SetMember(Lean, TEXT("X"), LeanAmount);
 	OrientationWarping.CurrentAnimAsset = Steering.CurrentAnimAsset;
 	OrientationWarping.CurrentAnimAssetTime = Picked.SelectedTime;
-	Final.Update_AnyThread(Context);
+	BodyLayers.Layers = Layers;
+	BodyLayers.Update_AnyThread(Context);
 }
 
 void FAnimNode_PadelSampleLocomotion::Evaluate_AnyThread(FPoseContext& Output)
 {
-	Final.Evaluate_AnyThread(Output);
+	BodyLayers.Evaluate_AnyThread(Output);
 }
 
 const UAnimationAsset* FAnimNode_PadelSampleLocomotion::CurrentAsset() const
@@ -447,6 +459,39 @@ FName FAnimNode_PadelSampleLocomotion::CurrentDatabase() const
 	return Database->GetFName();
 }
 
+void FAnimNode_PadelSampleBodyLayers::CacheBones_AnyThread(const FAnimationCacheBonesContext& Context)
+{
+	Source.CacheBones(Context);
+	Bones.Cache(Context.AnimInstanceProxy->GetRequiredBones());
+}
+
+void FAnimNode_PadelSampleBodyLayers::Evaluate_AnyThread(FPoseContext& Output)
+{
+	Source.Evaluate(Output);
+	PadelBodyDynamics::Apply(Output.Pose, Bones, Layers);
+}
+
+FPadelBodyDynamics UPadelSampleAnimInstance::SampleBodyLayers() const
+{
+	// The stance (the animation model's, as on the legacy path) where the player is slow and not
+	// swinging; the head's turn to the ball on top. The chest's own facing lead isn't used here, so
+	// the head takes the chest's share too.
+	FPadelBodyDynamics Out;
+	const float Keep = StanceKeep() * StanceWeight;
+	if (Settings.bStance)
+	{
+		Out.PelvisDropUnits = Stance.PelvisDropUnits * Keep;
+		Out.FeetWidenUnits = Stance.FeetWidenUnits * Keep;
+		Out.LeanForwardDeg = Stance.LeanForwardDeg * Keep;
+	}
+	if (Settings.bHeadLook)
+	{
+		Out.HeadTwistDeg = static_cast<float>(FMath::Clamp(static_cast<double>(Body.HeadTwistDeg + Body.ChestTwistDeg), -Settings.HeadLookMaxYawDeg, Settings.HeadLookMaxYawDeg));
+		Out.HeadPitchDeg = Body.HeadPitchDeg;
+	}
+	return Out;
+}
+
 void FAnimNode_PadelContactCurves::Evaluate_AnyThread(FPoseContext& Output)
 {
 	Source.Evaluate(Output);
@@ -466,6 +511,7 @@ void FPadelSampleAnimInstanceProxy::GetCustomNodes(TArray<FAnimNode_Base*>& OutN
 	if (Root)
 	{
 		OutNodes.Add(Root);
+		OutNodes.Add(&Root->BodyLayers);
 		OutNodes.Add(&Root->Final);
 		OutNodes.Add(&Root->LegIK);
 		OutNodes.Add(&Root->FootPlacement);
@@ -619,13 +665,36 @@ void UPadelSampleAnimInstance::BuildSampleTrajectory()
 	const double FacingYaw = YawOf(Forward);
 	// Strafing: the body facing away from its travel. Decided only when moving clearly; slower (a
 	// shuffle reversing through zero) the last decision holds, so the body doesn't re-face mid-shuffle.
-	if (GroundSpeed > Settings.StrafeDecideSpeed)
+	// The simulation's movement mode says it when it knows: square to the net (shuffle,
+	// backpedal) is strafing; running, turning to run or crossing over faces the travel. Mid-turn
+	// the body's facing lags its travel, and reading strafing off that angle picked backward clips
+	// there (the 180 run reversal). Adjusting (small steps) keeps the last decision.
+	using Padel::EMovementMode;
+	if (SimMode == EMovementMode::Shuffle || SimMode == EMovementMode::Backpedal)
+	{
+		bStrafing = true;
+	}
+	else if (SimMode == EMovementMode::Run || SimMode == EMovementMode::Sprint || SimMode == EMovementMode::TurnAndRun || SimMode == EMovementMode::Crossover)
+	{
+		bStrafing = false;
+	}
+	else if (GroundSpeed > Settings.StrafeDecideSpeed)
 	{
 		bStrafing = FMath::Abs(FMath::FindDeltaAngleDegrees(FacingYaw, YawOf(Velocity))) > Settings.StrafeAbove;
 	}
 	else if (GroundSpeed < 1.0 && Offset(0.5).Size2D() < 1.0)
 	{
 		bStrafing = false;
+	}
+	// The stance where the player is slow and staying slow (a shuffle reversing through zero isn't
+	// a stop: its future already moves), fading in and out over StanceFadeS.
+	{
+		const double Ahead = FutureVelocity.Size2D();
+		const double Target = (1.0 - FMath::SmoothStep(Settings.StanceFullBelow, Settings.StanceGoneAbove, GroundSpeed))
+			* (1.0 - FMath::SmoothStep(Settings.StanceFullBelow, Settings.StanceGoneAbove, Ahead));
+		const double StepDt = FMath::Max(static_cast<double>(StepDeltaS), 1e-3);
+		const double MaxStep = Settings.StanceFadeS > 0.0 ? StepDt / Settings.StanceFadeS : 1.0;
+		StanceWeight = static_cast<float>(StanceWeight + FMath::Clamp(Target - StanceWeight, -MaxStep, MaxStep));
 	}
 
 	// Orientation warping's travel: follow the travel's direction at a limited turn rate, and only

@@ -35,6 +35,7 @@ void UPadelPlayerAnimInstance::ApplyFrame(const Padel::Animation::FPlayerAnimFra
 	DesiredVelocity = Padel::ToWorld(Frame.DesiredVelocityMps) * FVector(1.0, 1.0, 0.0);
 	AccelLimit = Padel::MetresToWorld(FVector(Frame.AccelLimitMps2, 0.0, 0.0)).X;
 	bHasDesired = Frame.bHasDesired;
+	SimMode = Frame.Mode;
 	Trajectory = InTrajectoryWorld;
 	BuildMotionTrajectory();
 

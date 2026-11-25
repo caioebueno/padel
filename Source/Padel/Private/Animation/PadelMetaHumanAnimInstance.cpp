@@ -51,15 +51,22 @@ void FAnimNode_PadelMetaHumanWarp::PreUpdate(const UAnimInstance* InAnimInstance
 	bPostProcessTwist = Mesh && Mesh->GetPostProcessInstance() != nullptr;
 	// The movement restart's path doesn't carry the racket yet (docs/decisions/0014-sample-locomotion.md):
 	// the old reach, planned around the old clips' hands, snapped the arm there. No request, no warp.
-	if (!Anim || !Mesh || Anim->IsA<UPadelSampleAnimInstance>())
+	if (!Anim || !Mesh)
+	{
+		return;
+	}
+	// The sample path carries the racket in the stance's hand position only while slow (the old
+	// reach, planned around the old clips' hands, snapped the arm when running there); swings aren't on it yet.
+	const UPadelSampleAnimInstance* Sample = Cast<UPadelSampleAnimInstance>(Anim);
+	if (Sample && !Sample->GetSettings().bRacketCarry)
 	{
 		return;
 	}
 	Request.TargetCS = Mesh->GetComponentTransform().InverseTransformPosition(Anim->RacketTargetWorld);
 	Request.FaceInHand = FaceInHand;
-	Request.ArmAlpha = Anim->WarpArmAlpha();
-	Request.CarryFollow = Anim->WarpCarryFollow();
-	Request.BodyAlpha = Anim->WarpBodyAlpha();
+	Request.ArmAlpha = Sample ? Anim->ArmCarryAlpha * Sample->GetStanceWeight() : Anim->WarpArmAlpha();
+	Request.CarryFollow = Sample ? 0.0f : Anim->WarpCarryFollow();
+	Request.BodyAlpha = Sample ? 0.0f : Anim->WarpBodyAlpha();
 	Tuning = Anim->WarpTuning;
 }
 

@@ -78,6 +78,19 @@
 		"ScaleFrom": 0.5,
 		"ScaleTo": 1.0
 	},
+	"Stance": {
+		"_doc": "The ready stance over the sample's poses (the sample has no crouched clips): the animation model's stance (Data/Animation.json Stances: pelvis drop, feet width, trunk tip; the knees bend through the leg IK that keeps the feet planted), shown fully where both the speed now and the speed the trajectory heads for are below FullBelow and gone above GoneAbove (cm/s), fading over FadeS, and not during a swing. RacketCarry: the MetaHuman's arm carries the racket where the stance holds it, faded the same way.",
+		"Enabled": true,
+		"FullBelow": 30.0,
+		"GoneAbove": 120.0,
+		"FadeS": 0.3,
+		"RacketCarry": true
+	},
+	"HeadLook": {
+		"_doc": "The head turned and pitched to the ball as the animation model has it (HeadLook* in Animation.json), the chest's facing lead added to the head's since the chest's own twist isn't used here, capped at MaxYawDeg.",
+		"Enabled": true,
+		"MaxYawDeg": 80.0
+	},
 	"FootPlacement": {
 		"_doc": "The sample's foot placement and leg IK: a foot the clip plants (its contact curve, remapped to a speed as the sample's RemapCurves node does: (1 - contact) * 100) stays put until it moves UnplantRadius or turns UnplantAngle, the pelvis settles to keep the legs in reach, two-bone leg IK reaches the IK foot bones.",
 		"Enabled": true,

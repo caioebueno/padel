@@ -119,6 +119,17 @@ struct PADEL_API FPadelSampleLocomotionSettings
 	double LeanSpeedTo = 375.0;
 	double LeanScaleFrom = 0.5;
 	double LeanScaleTo = 1.0;
+	// The ready stance and the head on the ball, procedural over the sample's poses
+	// (PadelBodyDynamics with the animation model's stance and head look). The stance fades out
+	// from StanceFullBelow to StanceGoneAbove (cm/s): the sample's clips own the legs when moving.
+	bool bStance = true;
+	double StanceFullBelow = 30.0;
+	double StanceGoneAbove = 120.0;
+	double StanceFadeS = 0.3;
+	bool bHeadLook = true;
+	double HeadLookMaxYawDeg = 80.0;
+	/** The racket carried in the stance's hand position (the MetaHuman's arm IK), faded like the stance. */
+	bool bRacketCarry = true;
 	TArray<FName> WarpSpineBones;
 	// Foot placement and leg IK (the sample's).
 	bool bFootPlacement = true;
@@ -151,6 +162,28 @@ struct FPadelSampleChoice
 	double Speed = 0.0;
 	double FutureSpeed = 0.0;
 	TArray<FName> Databases;
+};
+
+/**
+ * The ready stance and the head look over the sample's pose: PadelBodyDynamics (the legacy
+ * path's layers, the same bones on the sample's mannequin) with the stance's pelvis drop, feet
+ * width and trunk tip, faded out with speed, and the head's turn and pitch to the ball.
+ */
+USTRUCT()
+struct PADEL_API FAnimNode_PadelSampleBodyLayers : public FAnimNode_Base
+{
+	GENERATED_BODY()
+
+	UPROPERTY() FPoseLink Source;
+	FPadelBodyDynamics Layers;
+
+	virtual void Initialize_AnyThread(const FAnimationInitializeContext& Context) override { Source.Initialize(Context); }
+	virtual void CacheBones_AnyThread(const FAnimationCacheBonesContext& Context) override;
+	virtual void Update_AnyThread(const FAnimationUpdateContext& Context) override { Source.Update(Context); }
+	virtual void Evaluate_AnyThread(FPoseContext& Output) override;
+
+private:
+	FPadelBodyBones Bones;
 };
 
 /**
@@ -194,6 +227,7 @@ struct PADEL_API FAnimNode_PadelSampleLocomotion : public FAnimNode_Base
 	UPROPERTY() FAnimNode_FootPlacement FootPlacement;
 	UPROPERTY() FAnimNode_LegIK LegIK;
 	UPROPERTY() FAnimNode_ConvertComponentToLocalSpace Final;
+	UPROPERTY() FAnimNode_PadelSampleBodyLayers BodyLayers;
 
 	virtual void Initialize_AnyThread(const FAnimationInitializeContext& Context) override;
 	virtual void CacheBones_AnyThread(const FAnimationCacheBonesContext& Context) override;
@@ -226,6 +260,7 @@ private:
 	float WarpAlpha = 0.0f;
 	/** The lean blend space's input (-1 left .. 1 right). */
 	float LeanAmount = 0.0f;
+	FPadelBodyDynamics Layers;
 	FPadelSampleChoice Choice;
 	FPadelSampleChoice LastChoice;
 };
@@ -273,6 +308,9 @@ public:
 	FVector GetWarpDirection() const { return WarpDirection; }
 	float GetWarpAlpha() const { return WarpAlpha; }
 	float GetLeanAmount() const { return LeanAmount; }
+	/** How much of the ready stance shows (1 standing, 0 moving), and the body layers put on the pose. */
+	float GetStanceWeight() const { return StanceWeight; }
+	FPadelBodyDynamics SampleBodyLayers() const;
 	bool IsStrafing() const { return bStrafing; }
 	const FPadelSampleLocomotionSettings& GetSettings() const { return Settings; }
 
@@ -296,6 +334,7 @@ private:
 	FVector WarpDirection = FVector::ZeroVector;
 	float WarpAlpha = 0.0f;
 	float LeanAmount = 0.0f;
+	float StanceWeight = 0.0f;
 	FVector LastGroundVelocity = FVector::ZeroVector;
 	bool bHasLastVelocity = false;
 	float StepDeltaS = 0.0f;

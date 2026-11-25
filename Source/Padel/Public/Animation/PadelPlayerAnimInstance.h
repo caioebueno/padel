@@ -223,6 +223,8 @@ protected:
 	FVector DesiredVelocity = FVector::ZeroVector;
 	double AccelLimit = 0.0;
 	bool bHasDesired = false;
+	/** The simulation's movement mode this frame (shuffle, backpedal, run...). */
+	Padel::EMovementMode SimMode = Padel::EMovementMode::Adjust;
 	double LastVelocityTime = -1.0;
 	FVector Acceleration = FVector::ZeroVector;
 	void BuildMotionTrajectory();
